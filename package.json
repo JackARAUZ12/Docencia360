@@ -14,7 +14,8 @@
     "lucide-react": "latest",
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "tailwindcss": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
