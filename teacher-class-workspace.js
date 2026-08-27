@@ -21,10 +21,12 @@
     .cw-code{background:#eeebff;color:#5544d4;border-radius:11px;padding:10px 13px;font-size:11px;font-weight:850;white-space:nowrap}
     .cw-code button{border:0;background:none;color:#5544d4;font-weight:900;margin-left:8px;cursor:pointer}
     .cw-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-top:20px}
-    .cw-stat{background:#fff;border:1px solid #e8e9ef;border-radius:14px;padding:15px;transition:transform .15s,box-shadow .15s}
+    .cw-stat{background:#fff;border:1px solid #e8e9ef;border-radius:14px;padding:14px 15px;display:flex;align-items:center;gap:11px;transition:transform .15s,box-shadow .15s}
     .cw-stat:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(20,20,45,.07)}
+    .cw-stat-icon{width:36px;height:36px;border-radius:11px;background:#f0edff;display:grid;place-items:center;font-size:15px;flex:0 0 auto}
+    .cw-stat:nth-child(2) .cw-stat-icon{background:#fff0f3}.cw-stat:nth-child(3) .cw-stat-icon{background:#eaf8ef}.cw-stat:nth-child(4) .cw-stat-icon{background:#edf4ff}
     .cw-stat span{font-size:9px;color:#8b92a0;font-weight:750;text-transform:uppercase;letter-spacing:.03em}
-    .cw-stat strong{display:block;font-size:22px;margin-top:5px}
+    .cw-stat strong{display:block;font-size:20px;margin-top:2px;line-height:1}
     .cw-panels{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(240px,.8fr);gap:12px;margin-top:14px}
     .cw-panel{background:#fff;border:1px solid #e8e9ef;border-radius:15px;padding:17px}
     .cw-panel h2{font-size:13px;margin:0}
@@ -39,7 +41,6 @@
     .cw-badge{font-size:8px;font-weight:850;padding:4px 8px;border-radius:999px;white-space:nowrap}
     .cw-badge.draft{background:#fff7df;color:#8a5b00}.cw-badge.published{background:#ecfdf3;color:#087443}
 
-    @media(min-width:1500px){.cw-main{max-width:1360px;margin:0 auto}}
     @media(max-width:1024px){.cw-panels{grid-template-columns:1fr}}
     @media(max-width:920px){
       .cw-shell{grid-template-columns:72px minmax(0,1fr)}
@@ -143,7 +144,7 @@
   async function renderSummary(c) {
     const main = document.querySelector('#d360-class-workspace .cw-main'); if (!main) return;
     main.innerHTML = `<div class="cw-top"><div><div class="cw-kicker">Espacio de clase</div><h1 class="cw-title">${esc(c.name)}</h1><div class="cw-meta">${esc(c.subject_name || 'Sin materia')}${c.grade ? ' · ' + esc(c.grade) : ''}${c.group_name ? ' · ' + esc(c.group_name) : ''}</div></div><div class="cw-code">Código: ${esc(c.join_code)} <button id="cw-copy">Copiar</button></div></div>
-      <section class="cw-grid"><article class="cw-stat"><span>Estudiantes</span><strong>${Number(c.student_count || 0)}</strong></article><article class="cw-stat"><span>Actividades</span><strong id="cw-n-activity">—</strong></article><article class="cw-stat"><span>Tareas</span><strong id="cw-n-assignment">—</strong></article><article class="cw-stat"><span>Exámenes</span><strong id="cw-n-exam">—</strong></article></section>
+      <section class="cw-grid"><article class="cw-stat"><div class="cw-stat-icon">♟</div><div><span>Estudiantes</span><strong>${Number(c.student_count || 0)}</strong></div></article><article class="cw-stat"><div class="cw-stat-icon">◈</div><div><span>Actividades</span><strong id="cw-n-activity">—</strong></div></article><article class="cw-stat"><div class="cw-stat-icon">▤</div><div><span>Tareas</span><strong id="cw-n-assignment">—</strong></div></article><article class="cw-stat"><div class="cw-stat-icon">✓</div><div><span>Exámenes</span><strong id="cw-n-exam">—</strong></div></article></section>
       <section class="cw-panels">
         <article class="cw-panel"><h2>Actividad reciente</h2><div id="cw-recent"><div class="cw-muted" style="margin-top:10px">Cargando…</div></div></article>
         <article class="cw-panel"><h2>Acciones rápidas</h2><p class="cw-muted">Desde aquí podrás administrar el trabajo de tus estudiantes.</p><button class="cw-action" id="cw-q-activity" type="button">＋ Nueva actividad</button><button class="cw-action" id="cw-q-task" type="button" style="margin-left:6px">＋ Nueva tarea</button><button class="cw-action" id="cw-q-exam" type="button" style="margin-left:6px">＋ Nuevo examen</button></article>
