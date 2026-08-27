@@ -7,7 +7,7 @@
     document.head.appendChild(s);
   });
 
-  load('./classes-core.js')
+  load('./classes-core-v2.js')
     .then(() => load('./role-mode.js'))
     .catch((error) => console.error('Docencia360 modules failed to load:', error));
 })();
