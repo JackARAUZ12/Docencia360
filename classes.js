@@ -10,7 +10,7 @@
 
   async function loadClasses() {
     const host = document.getElementById('classes-host');
-    if (!host || !window.docenciaSupabase) return;
+    if (!host || !window.docenciaSupabase || !state.user) return;
     host.innerHTML = '<div class="loading-line">Cargando clases…</div>';
     const { data, error } = await window.docenciaSupabase
       .from('classes')
@@ -67,4 +67,23 @@
     document.getElementById('new-class').onclick=modal;
     loadClasses();
   };
+
+  // The entry page loads this file with defer. This bootstrap also covers
+  // the case where the authenticated home screen rendered before this file.
+  async function autoMount() {
+    if (!window.docenciaSupabase || !document.querySelector('.content') || document.getElementById('classes-section')) return;
+    try {
+      const { data:{ user } } = await window.docenciaSupabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await window.docenciaSupabase.from('profiles').select('is_teacher').eq('id', user.id).single();
+      if (profile?.is_teacher) window.mountClasses(user);
+    } catch (error) {
+      console.error('Docencia360 classes bootstrap:', error);
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', autoMount, { once:true });
+  else setTimeout(autoMount, 0);
+  const observer = new MutationObserver(autoMount);
+  observer.observe(document.body, { childList:true, subtree:true });
+  setTimeout(() => observer.disconnect(), 30000);
 })();
