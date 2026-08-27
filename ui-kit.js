@@ -103,6 +103,34 @@
     return `<div>${Array.from({ length: n }).map(() => '<div class="d360-skel d360-skel-card"></div>').join('')}</div>`;
   }
 
+  /** Shows a code with a shareable link and an auto-generated QR the person can screenshot or project. */
+  function showShareCode({ title, code, link, hint }) {
+    const back = document.createElement('div'); back.className = 'ta-modal-back';
+    back.innerHTML = `<section class="ta-modal" style="text-align:center">
+      <h2 style="font-size:17px">${String(title || 'Código de acceso')}</h2>
+      ${hint ? `<p style="color:#8b92a0;font-size:11px;margin:-6px 0 14px">${String(hint)}</p>` : ''}
+      <div style="font-size:26px;font-weight:900;letter-spacing:.12em;color:#5544d4;background:#f7f5ff;border:1px solid #ebe7ff;border-radius:14px;padding:14px;margin-bottom:14px">${String(code)}</div>
+      <div id="d360-qr-host" style="display:flex;justify-content:center;margin-bottom:14px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <button class="ta-ghost" id="d360-share-copy-code" style="flex:1">Copiar código</button>
+        <button class="ta-ghost" id="d360-share-copy-link" style="flex:1">Copiar enlace</button>
+      </div>
+      <button class="d360-confirm-cancel" id="d360-share-close" style="width:100%;height:42px;border-radius:10px;font-weight:850;font-size:11px;margin-top:8px">Cerrar</button>
+    </section>`;
+    document.body.appendChild(back);
+    back.addEventListener('click', e => { if (e.target === back) back.remove(); });
+    back.querySelector('#d360-share-close').onclick = () => back.remove();
+    back.querySelector('#d360-share-copy-code').onclick = () => { navigator.clipboard.writeText(code); toast('Código copiado.', 'success'); };
+    if (link) back.querySelector('#d360-share-copy-link').onclick = () => { navigator.clipboard.writeText(link); toast('Enlace copiado.', 'success'); };
+    else back.querySelector('#d360-share-copy-link').remove();
+    const qrHost = back.querySelector('#d360-qr-host');
+    if (window.QRCode && link) {
+      const canvas = document.createElement('canvas');
+      qrHost.appendChild(canvas);
+      window.QRCode.toCanvas(canvas, link, { width: 168, margin: 1, color: { dark: '#171827', light: '#ffffff' } }, err => { if (err) qrHost.innerHTML = ''; });
+    }
+  }
+
   /** Makes a list of rows reorderable by drag-and-drop. onReorder(orderedIds) fires after drop. */
   function makeReorderable(host, rowSelector, onReorder) {
     let dragEl = null;
@@ -130,5 +158,5 @@
     });
   }
 
-  window.D360 = { toast, confirm: confirmDialog, skeletonList, makeReorderable };
+  window.D360 = { toast, confirm: confirmDialog, skeletonList, makeReorderable, showShareCode };
 })();

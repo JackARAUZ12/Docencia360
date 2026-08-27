@@ -68,6 +68,7 @@
   let classesCache = [];
   let current = null;
 
+  let accessMode = null;
   async function open(card) {
     if (!sb() || !window.__docenciaCurrentUser) return;
     const id = card.dataset.id;
@@ -79,6 +80,7 @@
     if (!c?.id) return;
     const { data, error } = await sb().rpc('get_my_teacher_class', { p_class_id: c.id });
     const cls = error ? c : (Array.isArray(data) ? data[0] : data) || c;
+    if (accessMode === null) { const m = await sb().rpc('get_teacher_student_access_mode'); accessMode = m.error ? 'accounts' : (m.data || 'accounts'); }
     mount(cls);
   }
 
@@ -143,13 +145,18 @@
 
   async function renderSummary(c) {
     const main = document.querySelector('#d360-class-workspace .cw-main'); if (!main) return;
-    main.innerHTML = `<div class="cw-top"><div><div class="cw-kicker">Espacio de clase</div><h1 class="cw-title">${esc(c.name)}</h1><div class="cw-meta">${esc(c.subject_name || 'Sin materia')}${c.grade ? ' · ' + esc(c.grade) : ''}${c.group_name ? ' · ' + esc(c.group_name) : ''}</div></div><div class="cw-code">Código: ${esc(c.join_code)} <button id="cw-copy">Copiar</button></div></div>
+    const codeBlock = accessMode === 'codes'
+      ? `<button class="cw-code" id="cw-mode-note" style="border:0;cursor:pointer" title="Cambiar en Configuración">⚡ Acceso sin cuenta activo — usa los códigos de cada actividad</button>`
+      : `<div class="cw-code">Código: ${esc(c.join_code)} <button id="cw-copy">Copiar</button> <button id="cw-share">Compartir</button></div>`;
+    main.innerHTML = `<div class="cw-top"><div><div class="cw-kicker">Espacio de clase</div><h1 class="cw-title">${esc(c.name)}</h1><div class="cw-meta">${esc(c.subject_name || 'Sin materia')}${c.grade ? ' · ' + esc(c.grade) : ''}${c.group_name ? ' · ' + esc(c.group_name) : ''}</div></div>${codeBlock}</div>
       <section class="cw-grid"><article class="cw-stat"><div class="cw-stat-icon">♟</div><div><span>Estudiantes</span><strong>${Number(c.student_count || 0)}</strong></div></article><article class="cw-stat"><div class="cw-stat-icon">◈</div><div><span>Actividades</span><strong id="cw-n-activity">—</strong></div></article><article class="cw-stat"><div class="cw-stat-icon">▤</div><div><span>Tareas</span><strong id="cw-n-assignment">—</strong></div></article><article class="cw-stat"><div class="cw-stat-icon">✓</div><div><span>Exámenes</span><strong id="cw-n-exam">—</strong></div></article></section>
       <section class="cw-panels">
         <article class="cw-panel"><h2>Actividad reciente</h2><div id="cw-recent"><div class="cw-muted" style="margin-top:10px">Cargando…</div></div></article>
         <article class="cw-panel"><h2>Acciones rápidas</h2><p class="cw-muted">Desde aquí podrás administrar el trabajo de tus estudiantes.</p><button class="cw-action" id="cw-q-activity" type="button">＋ Nueva actividad</button><button class="cw-action" id="cw-q-task" type="button" style="margin-left:6px">＋ Nueva tarea</button><button class="cw-action" id="cw-q-exam" type="button" style="margin-left:6px">＋ Nuevo examen</button></article>
       </section>`;
-    main.querySelector('#cw-copy').onclick = async () => { try { await navigator.clipboard.writeText(c.join_code); window.D360?.toast('Código copiado.', 'success'); } catch {} };
+    main.querySelector('#cw-mode-note')?.addEventListener('click', () => window.docenciaOpenAccessMode ? window.docenciaOpenAccessMode() : null);
+    main.querySelector('#cw-copy')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(c.join_code); window.D360?.toast('Código copiado.', 'success'); } catch {} });
+    main.querySelector('#cw-share')?.addEventListener('click', () => window.D360?.showShareCode({ title: 'Código de la clase', code: c.join_code, link: `${location.origin}${location.pathname}?join=${encodeURIComponent(c.join_code)}`, hint: 'Tus estudiantes escanean o entran al enlace, y eligen su nombre de la lista.' }));
     main.querySelector('#cw-q-activity').onclick = () => clickTabAndThen('Actividades', () => document.getElementById('ta-new'));
     main.querySelector('#cw-q-task').onclick = () => clickTabAndThen('Tareas', () => document.getElementById('ta-new'));
     main.querySelector('#cw-q-exam').onclick = () => clickTabAndThen('Exámenes', () => document.getElementById('ta-new'));

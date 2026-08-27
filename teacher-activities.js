@@ -360,14 +360,24 @@
     const codes = r.error ? [] : (r.data || []);
     const active = codes.find(c => c.is_active);
     area.innerHTML = active
-      ? `<div class="ta-code-box"><div><div style="font-size:9px;color:#7165d9;font-weight:850">CÓDIGO DE ACCESO</div><div class="code">${esc(active.code)}</div></div><button class="ta-ghost" id="ta-code-copy">Copiar</button></div>`
+      ? `<div class="ta-code-box"><div><div style="font-size:9px;color:#7165d9;font-weight:850">CÓDIGO DE ACCESO</div><div class="code">${esc(active.code)}</div></div><button class="ta-ghost" id="ta-code-share">Compartir</button></div>`
       : `<button class="ta-ghost" id="ta-code-gen">Generar código de acceso</button>`;
-    area.querySelector('#ta-code-copy')?.addEventListener('click', () => { navigator.clipboard.writeText(active.code); });
+    area.querySelector('#ta-code-share')?.addEventListener('click', () => window.D360?.showShareCode({
+      title: `Código de esta ${TYPES[a.activity_type].singular.toLowerCase()}`,
+      code: active.code,
+      link: `${location.origin}${location.pathname}?code=${encodeURIComponent(active.code)}`,
+      hint: 'Tus estudiantes escanean o entran al enlace, eligen su nombre y quedan registrados — sin correo ni contraseña.'
+    }));
     area.querySelector('#ta-code-gen')?.addEventListener('click', async () => {
       const g = await sb().rpc('create_activity_access_code', { p_class_id: state.classId, p_activity_type: a.activity_type, p_activity_id: a.id });
-      if (g.error) { area.innerHTML = `<div class="ta-msg ta-error">${esc(g.error.message)}</div>`; return; }
+      if (g.error) { area.innerHTML = `<div class="ta-msg ta-error">${esc(translateCodeError(g.error.message))}</div>`; return; }
       renderCodeArea(a);
     });
+  }
+
+  function translateCodeError(msg) {
+    if (msg === 'teacher_not_configured_for_code_access') return 'Tu modo de acceso de estudiantes está en "con cuenta". Cámbialo a "sin cuenta" en Configuración para generar códigos.';
+    return msg;
   }
 
   // ---------- BIND TABS ----------
