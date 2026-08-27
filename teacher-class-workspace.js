@@ -88,7 +88,7 @@
     { id: 'actividades', label: 'Actividades', icon: '◈' },
     { id: 'tareas', label: 'Tareas', icon: '▤' },
     { id: 'examenes', label: 'Exámenes', icon: '✓' },
-    { id: 'calificaciones', label: 'Calificaciones', icon: '▦', soon: true },
+    { id: 'calificaciones', label: 'Calificaciones', icon: '▦' },
     { id: 'asistencia', label: 'Asistencia', icon: '◷', soon: true },
     { id: 'recursos', label: 'Recursos', icon: '▧', soon: true },
     { id: 'avisos', label: 'Avisos', icon: '◌', soon: true }

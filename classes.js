@@ -6,6 +6,7 @@
     .then(() => load('./teacher-class-workspace.js'))
     .then(() => load('./teacher-roster.js'))
     .then(() => load('./teacher-activities.js'))
+    .then(() => load('./teacher-grades.js'))
     .then(() => load('./student-join.js'))
     .catch((error) => console.error('Docencia360 classes module failed to load:', error));
 })();
