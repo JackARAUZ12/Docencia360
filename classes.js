@@ -8,6 +8,6 @@
   });
 
   load('./classes-core-v2.js')
-    .then(() => load('./role-mode.js'))
+    .then(() => load('./role-selection.js'))
     .catch((error) => console.error('Docencia360 modules failed to load:', error));
 })();
