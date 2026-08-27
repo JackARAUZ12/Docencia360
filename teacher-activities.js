@@ -97,7 +97,7 @@
   async function showList(type) {
     const m = main(); if (!m) return;
     const t = TYPES[type];
-    m.innerHTML = `<div class="cw-top"><div><div class="cw-kicker">${esc(t.label)}</div><h1 class="cw-title">${esc(state.className)}</h1><div class="cw-meta">Gestiona ${esc(t.label.toLowerCase())} de esta clase</div></div><button class="ta-back" id="ta-out">← Volver a la clase</button></div><div class="ta-wrap" style="margin-top:18px"><div class="ta-head"><div></div><button class="ta-add" id="ta-new">＋ Crear ${esc(t.singular.toLowerCase())}</button></div><div id="ta-list" class="ta-list"><div class="ta-empty">Cargando…</div></div></div>`;
+    m.innerHTML = `<div class="cw-top"><div><div class="cw-kicker">${esc(t.label)}</div><h1 class="cw-title">${esc(state.className)}</h1><div class="cw-meta">Gestiona ${esc(t.label.toLowerCase())} de esta clase</div></div><button class="ta-back" id="ta-out">← Volver a la clase</button></div><div class="ta-wrap" style="margin-top:18px"><div class="ta-head"><div></div><button class="ta-add" id="ta-new">＋ Crear ${esc(t.singular.toLowerCase())}</button></div><div id="ta-list" class="ta-list">${window.D360 ? window.D360.skeletonList(3) : '<div class="ta-empty">Cargando…</div>'}</div></div>`;
     m.querySelector('#ta-out').onclick = () => location.reload();
     m.querySelector('#ta-new').onclick = () => createFlow(type);
     await renderList(type);
@@ -130,6 +130,7 @@
       const r = await sb().rpc('create_activity', { p_class_id: state.classId, p_title: title, p_activity_type: type, p_description: back.querySelector('#ta-new-desc').value.trim() || null });
       if (r.error) { msg.innerHTML = `<div class="ta-msg ta-error">${esc(r.error.message)}</div>`; btn.disabled = false; return; }
       back.remove();
+      window.D360?.toast(`${TYPES[type].singular} creada. Ahora agrégale preguntas.`, 'success');
       openBuilder(r.data);
     };
   }
@@ -137,8 +138,9 @@
   // ---------- BUILDER (info + questions + publish) ----------
   async function openBuilder(activityStub) {
     const m = main(); if (!m) return;
+    m.innerHTML = window.D360 ? window.D360.skeletonList(4) : '<div class="ta-empty">Cargando…</div>';
     const r = await sb().from('activities').select('*').eq('id', activityStub.id).single();
-    if (r.error) { alert('No pudimos abrir la actividad: ' + r.error.message); return; }
+    if (r.error) { window.D360 ? window.D360.toast('No pudimos abrir la actividad: ' + r.error.message, 'error') : alert(r.error.message); return; }
     const a = r.data;
     state.current = a;
     const t = TYPES[a.activity_type];
@@ -191,7 +193,7 @@
       const r = await sb().from('activities').update(patch).eq('id', a.id).select('*').single();
       const msg = host.querySelector('#ta-info-msg');
       if (r.error) { msg.innerHTML = `<div class="ta-msg ta-error">${esc(r.error.message)}</div>`; }
-      else { Object.assign(a, r.data); state.current = a; msg.innerHTML = '<div class="ta-msg ta-success">Guardado.</div>'; document.querySelector('.cw-title').textContent = a.title; }
+      else { Object.assign(a, r.data); state.current = a; msg.innerHTML = ''; window.D360?.toast('Cambios guardados.', 'success'); document.querySelector('.cw-title').textContent = a.title; }
       btn.disabled = false;
     };
   }
@@ -201,17 +203,25 @@
     const r = await sb().from('activity_questions').select('id,position,question_type,prompt,points').eq('activity_id', activityId).order('position');
     if (r.error) { host.innerHTML = `<div class="ta-empty">${esc(r.error.message)}</div>`; return; }
     const qs = r.data || [];
-    host.innerHTML = qs.length ? qs.map(q => `<div class="ta-qrow" data-id="${q.id}"><div><div class="qi">${esc(qLabel(q.question_type))} · ${q.points} pt${q.points === 1 ? '' : 's'}</div><p>${esc(q.prompt)}</p></div><div class="ta-qactions"><button class="ta-icon-btn" data-act="edit" title="Editar">✎</button><button class="ta-icon-btn" data-act="del" title="Eliminar">🗑</button></div></div>`).join('') : '<div class="ta-empty">Aún no hay preguntas.</div>';
+    host.innerHTML = qs.length ? qs.map(q => `<div class="ta-qrow" data-id="${q.id}"><span class="ta-drag-handle" title="Arrastra para reordenar">⠿</span><div style="flex:1"><div class="qi">${esc(qLabel(q.question_type))} · ${q.points} pt${q.points === 1 ? '' : 's'}</div><p>${esc(q.prompt)}</p></div><div class="ta-qactions"><button class="ta-icon-btn" data-act="edit" title="Editar">✎</button><button class="ta-icon-btn" data-act="del" title="Eliminar">🗑</button></div></div>`).join('') : '<div class="ta-empty">Aún no hay preguntas. Arrástralas para reordenarlas una vez creadas.</div>';
     host.querySelectorAll('[data-act=edit]').forEach(b => b.onclick = () => openQuestionModal(qs.find(q => q.id === b.closest('.ta-qrow').dataset.id)));
     host.querySelectorAll('[data-act=del]').forEach(b => b.onclick = async () => {
-      if (!confirm('¿Eliminar esta pregunta?')) return;
+      const ok = window.D360 ? await window.D360.confirm('¿Eliminar esta pregunta? Esta acción no se puede deshacer.') : confirm('¿Eliminar esta pregunta?');
+      if (!ok) return;
       const id = b.closest('.ta-qrow').dataset.id;
       const del = await sb().from('activity_questions').delete().eq('id', id);
-      if (del.error) { alert(del.error.message); return; }
+      if (del.error) { window.D360 ? window.D360.toast(del.error.message, 'error') : alert(del.error.message); return; }
+      window.D360?.toast('Pregunta eliminada.', 'success');
       renderQuestions(activityId);
       const upd = await sb().rpc('update_activity_total_points', { p_activity_id: activityId });
       if (!upd.error) renderPublish({ ...state.current, total_points: upd.data });
     });
+    if (qs.length > 1 && window.D360) {
+      window.D360.makeReorderable(host, '.ta-qrow', async orderedIds => {
+        await Promise.all(orderedIds.map((id, i) => sb().from('activity_questions').update({ position: i + 1 }).eq('id', id)));
+        window.D360.toast('Orden actualizado.', 'success');
+      });
+    }
   }
 
   function optionRow(text = '', correct = false, radioName = 'ta-correct') {
@@ -304,6 +314,7 @@
       });
       if (r.error) { msg.innerHTML = `<div class="ta-msg ta-error">${esc(translateQError(r.error.message))}</div>`; btn.disabled = false; return; }
       back.remove();
+      window.D360?.toast(editing ? 'Pregunta actualizada.' : 'Pregunta agregada.', 'success');
       renderQuestions(state.current.id);
       const upd = await sb().rpc('update_activity_total_points', { p_activity_id: state.current.id });
       if (!upd.error) { state.current.total_points = upd.data; renderPublish(state.current); }
@@ -336,7 +347,7 @@
         const pr = await sb().rpc('publish_activity', { p_activity_id: a.id });
         if (pr.error) { host.querySelector('#ta-pub-msg').innerHTML = `<div class="ta-msg ta-error">${esc(pr.error.message)}</div>`; btn.disabled = false; return; }
         Object.assign(state.current, pr.data);
-        document.querySelector('.ta-badge')?.replaceWith();
+        window.D360?.toast(`${TYPES[a.activity_type].singular} publicada. Ya es visible para tus estudiantes.`, 'success');
         openBuilder({ id: a.id });
       };
     }
