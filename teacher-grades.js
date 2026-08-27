@@ -38,12 +38,8 @@
     const ws = document.getElementById('d360-class-workspace');
     if (!ws || !sb()) return false;
     state.workspace = ws;
-    const code = ws.querySelector('.cw-code')?.textContent?.replace(/^.*Código:\s*/, '').replace(/Copiar.*$/, '').trim();
-    const r = await sb().rpc('get_my_teacher_classes');
-    if (r.error) throw r.error;
-    const c = (r.data || []).find(x => String(x.join_code).toUpperCase() === String(code || '').toUpperCase());
-    if (!c) throw new Error('No pudimos identificar la clase.');
-    state.classId = c.id; state.className = c.name;
+    if (!ws.dataset.classId) throw new Error('No pudimos identificar la clase.');
+    state.classId = ws.dataset.classId; state.className = ws.dataset.className || '';
     return true;
   }
 

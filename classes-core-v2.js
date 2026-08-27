@@ -15,14 +15,17 @@
     state.subjects.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.name;select.appendChild(o)});
   }
 
+  let cachedAccessMode=null;
   async function loadClasses(){
     const host=document.getElementById('classes-host');if(!host||!window.docenciaSupabase)return;
+    if(cachedAccessMode===null){const m=await window.docenciaSupabase.rpc('get_teacher_student_access_mode');cachedAccessMode=m.error?'accounts':(m.data||'accounts')}
     const {data,error}=await window.docenciaSupabase.rpc('get_my_teacher_classes');
     if(error){host.innerHTML='<div class="empty">No pudimos cargar tus clases. '+esc(error.message)+'</div>';return}
     if(!data?.length){host.innerHTML='<div class="empty"><strong>Aún no tienes clases</strong><br>Tu primera clase puede quedar lista en unos segundos. Crea una, personalízala y comparte el código con tus estudiantes.</div>';return}
-    host.innerHTML='<div class="class-list">'+data.map(c=>`<article class="class-card" data-id="${esc(c.id)}"><div class="class-card-top"><div><div class="class-name">${esc(c.name)}</div><div class="class-meta">${esc(c.subject_name||'Sin materia')}${c.grade?' · '+esc(c.grade):''}${c.group_name?' · '+esc(c.group_name):''} · ${c.student_count||0} estudiante${Number(c.student_count)===1?'':'s'}</div></div></div><div class="join-code"><span><strong>Código:</strong> ${esc(c.join_code)}</span><button class="copy-btn" data-copy="${esc(c.join_code)}">Copiar</button></div></article>`).join('')+'</div>';
+    host.innerHTML='<div class="class-list">'+data.map(c=>`<article class="class-card" data-id="${esc(c.id)}"><div class="class-card-top"><div><div class="class-name">${esc(c.name)}</div><div class="class-meta">${esc(c.subject_name||'Sin materia')}${c.grade?' · '+esc(c.grade):''}${c.group_name?' · '+esc(c.group_name):''} · ${c.student_count||0} estudiante${Number(c.student_count)===1?'':'s'}</div></div></div>${cachedAccessMode==='codes'?'<div class="join-code" style="background:#f3f1ff"><span style="color:#5544d4;font-weight:800">⚡ Acceso sin cuenta — usa los códigos de cada actividad</span></div>':`<div class="join-code"><span><strong>Código:</strong> ${esc(c.join_code)}</span><button class="copy-btn" data-copy="${esc(c.join_code)}">Copiar</button></div>`}</article>`).join('')+'</div>';
     host.querySelectorAll('[data-copy]').forEach(btn=>btn.onclick=async()=>{try{await navigator.clipboard.writeText(btn.dataset.copy);btn.textContent='Copiado ✓';setTimeout(()=>btn.textContent='Copiar',1200)}catch{btn.textContent=btn.dataset.copy}});
   }
+  window.addEventListener('docencia360:student-access-mode',e=>{cachedAccessMode=e.detail.mode;loadClasses()});
 
   function modal(){
     if(document.getElementById('class-modal'))return;

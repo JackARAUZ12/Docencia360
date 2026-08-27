@@ -20,6 +20,7 @@
     .cw-meta{color:#7d8492;font-size:12px}
     .cw-code{background:#eeebff;color:#5544d4;border-radius:11px;padding:10px 13px;font-size:11px;font-weight:850;white-space:nowrap}
     .cw-code button{border:0;background:none;color:#5544d4;font-weight:900;margin-left:8px;cursor:pointer}
+    .cw-mode-note{background:#eeebff;color:#5544d4;border:0;border-radius:11px;padding:10px 14px;font-size:11px;font-weight:800;cursor:pointer;text-align:left}
     .cw-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-top:20px}
     .cw-stat{background:#fff;border:1px solid #e8e9ef;border-radius:14px;padding:14px 15px;display:flex;align-items:center;gap:11px;transition:transform .15s,box-shadow .15s}
     .cw-stat:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(20,20,45,.07)}
@@ -102,6 +103,7 @@
     document.getElementById('d360-class-workspace')?.remove();
     current = c;
     const el = document.createElement('div'); el.id = 'd360-class-workspace';
+    el.dataset.classId = c.id; el.dataset.className = c.name;
     el.innerHTML = `<div class="cw-shell">
       <aside class="cw-side">
         <div class="cw-brand"><span class="cw-logo">D</span><span>Docencia360</span></div>
@@ -147,7 +149,7 @@
   async function renderSummary(c) {
     const main = document.querySelector('#d360-class-workspace .cw-main'); if (!main) return;
     const codeBlock = accessMode === 'codes'
-      ? `<button class="cw-code" id="cw-mode-note" style="border:0;cursor:pointer" title="Cambiar en Configuración">⚡ Acceso sin cuenta activo — usa los códigos de cada actividad</button>`
+      ? `<button class="cw-mode-note" id="cw-mode-note" title="Cambiar en Configuración">⚡ Acceso sin cuenta activo — usa los códigos de cada actividad</button>`
       : `<div class="cw-code">Código: ${esc(c.join_code)} <button id="cw-copy">Copiar</button> <button id="cw-share">Compartir</button></div>`;
     main.innerHTML = `<div class="cw-top"><div><div class="cw-kicker">Espacio de clase</div><h1 class="cw-title">${esc(c.name)}</h1><div class="cw-meta">${esc(c.subject_name || 'Sin materia')}${c.grade ? ' · ' + esc(c.grade) : ''}${c.group_name ? ' · ' + esc(c.group_name) : ''}</div></div>${codeBlock}</div>
       <section class="cw-grid"><article class="cw-stat"><div class="cw-stat-icon">♟</div><div><span>Estudiantes</span><strong>${Number(c.student_count || 0)}</strong></div></article><article class="cw-stat"><div class="cw-stat-icon">◈</div><div><span>Actividades</span><strong id="cw-n-activity">—</strong></div></article><article class="cw-stat"><div class="cw-stat-icon">▤</div><div><span>Tareas</span><strong id="cw-n-assignment">—</strong></div></article><article class="cw-stat"><div class="cw-stat-icon">✓</div><div><span>Exámenes</span><strong id="cw-n-exam">—</strong></div></article></section>
