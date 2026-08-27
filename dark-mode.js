@@ -52,9 +52,42 @@
     #d360-theme-toggle{width:40px;height:40px;border:1px solid #e6e7ec;background:#fff;border-radius:10px;display:grid;place-items:center;font-size:17px;cursor:pointer;margin-left:2px}
     html.d360-dark #d360-theme-toggle{background:#191b2d;color:#fff;border-color:#303247}
     @media(max-width:620px){#d360-theme-toggle{width:36px;height:36px}}
+
+    /* Espacio de clase (teacher-class-workspace.js): el CSS .cw-dark ya existía pero nada lo activaba */
+    html.d360-dark #d360-class-workspace{background:#0f1020!important;color:#f4f5fb!important}
+    html.d360-dark .cw-side,html.d360-dark .cw-panel,html.d360-dark .cw-stat,html.d360-dark .cw-tabs button{background:#151728!important;color:#f4f5fb!important;border-color:#292b40!important}
+    html.d360-dark .cw-meta,html.d360-dark .cw-muted{color:#9ea5ba!important}
+    html.d360-dark .cw-back{background:#252044!important;color:#b8adff!important}
+    html.d360-dark .cw-nav button{color:#aeb3c5!important}
+    html.d360-dark .cw-nav button.active{background:#252044!important;color:#b8adff!important}
+    html.d360-dark .cw-code{background:#282347!important;color:#c4bcff!important}
+    html.d360-dark .cw-tabs button.active{background:#5b4ce2!important;color:#fff!important;border-color:#5b4ce2!important}
+
+    /* Modal de lista de estudiantes (teacher-roster.js): nunca tuvo variante oscura */
+    html.d360-dark .tr-modal,html.d360-dark .tr-row,html.d360-dark .tr-cancel,html.d360-dark .tr-remove{background:#151728!important;color:#f4f5fb!important;border-color:#292b40!important}
+    html.d360-dark .tr-help{background:#1c1a31!important;color:#c8c2e6!important;border-color:#343052!important}
+    html.d360-dark .tr-email{color:#9ea5ba!important}
+    html.d360-dark .tr-input-row input{background:#191b2d!important;color:#f4f5fb!important;border-color:#303247!important}
+
+    /* Modal de unirse a clase (student-join.js): nunca tuvo variante oscura */
+    html.d360-dark .sj-modal,html.d360-dark .sj-student,html.d360-dark .sj-cancel,html.d360-dark .sj-dashboard{background:#151728!important;color:#f4f5fb!important;border-color:#292b40!important}
+    html.d360-dark .sj-picked{background:#1c1a31!important;border-color:#343052!important;color:#f4f5fb!important}
+    html.d360-dark .sj-small,html.d360-dark .sj-modal p{color:#9ea5ba!important}
+
+    /* Modal de modo de acceso (teacher-access-mode.js): nunca tuvo variante oscura */
+    html.d360-dark .tam-modal{background:#151728!important;color:#f4f5fb!important}
+    html.d360-dark .tam-option{background:#191b2d!important;border-color:#303247!important}
+    html.d360-dark .tam-modal .tam-sub,html.d360-dark .tam-option small{color:#9ea5ba!important}
+    html.d360-dark .tam-foot{border-color:#292b40!important;color:#9ea5ba!important}
+
+    /* Selector de rol en el signup (role-selection.js): nunca tuvo variante oscura */
+    html.d360-dark .signup-role{background:#151728!important;color:#f4f5fb!important;border-color:#292b40!important}
+    html.d360-dark .signup-role.active{background:#211e3a!important}
+    html.d360-dark .signup-role span:last-child{color:#9ea5ba!important}
   `;
   document.head.appendChild(style);
   const apply=()=>{const dark=localStorage.getItem('d360-theme')==='dark';document.documentElement.classList.toggle('d360-dark',dark);const b=document.getElementById('d360-theme-toggle');if(b){b.textContent=dark?'☀️':'🌙';b.title=dark?'Cambiar a modo claro':'Cambiar a modo oscuro'}};
+  apply();
   const mount=()=>{const top=document.querySelector('.d360-top');if(!top)return setTimeout(mount,100);if(!document.getElementById('d360-theme-toggle')){const b=document.createElement('button');b.id='d360-theme-toggle';b.type='button';b.onclick=()=>{localStorage.setItem('d360-theme',document.documentElement.classList.contains('d360-dark')?'light':'dark');apply()};const user=document.querySelector('.d360-user');top.insertBefore(b,user||null)}apply()};
   mount();
 })();
