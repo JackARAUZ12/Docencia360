@@ -4,6 +4,7 @@
   });
   load('./classes-core-v2.js')
     .then(() => load('./teacher-class-workspace.js'))
-    .then(() => load('./teacher-students.js'))
+    .then(() => load('./teacher-roster.js'))
+    .then(() => load('./student-join.js'))
     .catch((error) => console.error('Docencia360 classes module failed to load:', error));
 })();
