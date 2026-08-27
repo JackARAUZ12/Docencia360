@@ -98,7 +98,7 @@
     const m = main(); if (!m) return;
     const t = TYPES[type];
     m.innerHTML = `<div class="cw-top"><div><div class="cw-kicker">${esc(t.label)}</div><h1 class="cw-title">${esc(state.className)}</h1><div class="cw-meta">Gestiona ${esc(t.label.toLowerCase())} de esta clase</div></div><button class="ta-back" id="ta-out">← Volver a la clase</button></div><div class="ta-wrap" style="margin-top:18px"><div class="ta-head"><div></div><button class="ta-add" id="ta-new">＋ Crear ${esc(t.singular.toLowerCase())}</button></div><div id="ta-list" class="ta-list">${window.D360 ? window.D360.skeletonList(3) : '<div class="ta-empty">Cargando…</div>'}</div></div>`;
-    m.querySelector('#ta-out').onclick = () => location.reload();
+    m.querySelector('#ta-out').onclick = () => window.docenciaShowClassSummary ? window.docenciaShowClassSummary() : location.reload();
     m.querySelector('#ta-new').onclick = () => createFlow(type);
     await renderList(type);
   }
