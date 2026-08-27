@@ -1,7 +1,7 @@
 (() => {
   const style = document.createElement('style');
   style.textContent = `
-    .classes-section{margin-top:18px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.section-head h2{margin:0;font-size:20px}.small-btn{border:0;border-radius:11px;padding:9px 12px;background:var(--p);color:#fff;font-weight:800;font-size:13px}.class-list{display:grid;gap:12px}.class-card{padding:16px;border:1px solid var(--b);border-radius:18px;background:#fff}.class-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.class-name{font-weight:850;font-size:16px}.class-meta{margin-top:5px;color:var(--m);font-size:13px}.join-code{margin-top:12px;padding:10px 12px;border-radius:11px;background:#f4f5f8;font-size:13px;display:flex;justify-content:space-between;gap:10px;align-items:center}.copy-btn{border:0;background:none;color:var(--p);font-weight:800;font-size:12px}.empty{padding:18px;border:1px dashed var(--b);border-radius:18px;background:#fff;color:var(--m);font-size:14px}.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.38);display:grid;place-items:end center;padding:12px;z-index:20}.modal{width:min(100%,480px);background:#fff;border-radius:24px 24px 18px 18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.2)}.modal h2{margin:0;font-size:22px}.modal .sub{margin-bottom:18px}.modal-actions{display:flex;gap:10px;margin-top:18px}.secondary{flex:1;min-height:46px;border:1px solid var(--b);border-radius:12px;background:#fff;font-weight:800}.modal .primary{flex:1}.field select{width:100%;min-height:48px;padding:12px 14px;border:1px solid var(--b);border-radius:13px;background:#fff}.loading-line{color:var(--m);font-size:13px;padding:8px 0}@media(min-width:700px){.modal-backdrop{place-items:center}.modal{border-radius:24px}}
+    .classes-section{margin-top:18px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.section-head h2{margin:0;font-size:20px}.small-btn{border:0;border-radius:11px;padding:9px 12px;background:var(--p);color:#fff;font-weight:800;font-size:13px}.class-list{display:grid;gap:12px}.class-card{padding:16px;border:1px solid var(--b);border-radius:18px;background:#fff}.class-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.class-name{font-weight:850;font-size:16px}.class-meta{margin-top:5px;color:var(--m);font-size:13px}.join-code{margin-top:12px;padding:10px 12px;border-radius:11px;background:#f4f5f8;font-size:13px;display:flex;justify-content:space-between;gap:10px;align-items:center}.copy-btn{border:0;background:none;color:var(--p);font-weight:800;font-size:12px}.empty{padding:18px;border:1px dashed var(--b);border-radius:18px;background:#fff;color:var(--m);font-size:14px}.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.38);display:grid;place-items:end center;padding:12px;z-index:20}.modal{width:min(100%,480px);background:#fff;border-radius:24px 24px 18px 18px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.2)}.modal h2{margin:0;font-size:22px}.modal .sub{margin-bottom:18px}.modal-actions{display:flex;gap:10px;margin-top:18px}.secondary{flex:1;min-height:46px;border:1px solid var(--b);border-radius:12px;background:#fff;font-weight:800}.modal .primary{flex:1}.field select{width:100%;min-height:48px;padding:12px 14px;border:1px solid var(--b);border-radius:13px;background:#fff}.loading-line{color:var(--m);font-size:13px;padding:8px 0}.student-classes{margin-top:18px}.student-join{padding:18px;border:1px solid var(--b);border-radius:18px;background:#fff}.student-join h2{margin:0;font-size:20px}.join-form{display:flex;gap:10px;margin-top:14px}.join-form input{flex:1;min-width:0;min-height:48px;padding:12px 14px;border:1px solid var(--b);border-radius:13px;text-transform:uppercase;letter-spacing:.08em}.join-form button{min-height:48px;border:0;border-radius:13px;padding:0 16px;background:var(--p);color:#fff;font-weight:800}.student-list{display:grid;gap:12px;margin-top:14px}@media(max-width:520px){.join-form{display:grid}.join-form button{width:100%}}@media(min-width:700px){.modal-backdrop{place-items:center}.modal{border-radius:24px}}
   `;
   document.head.appendChild(style);
 
@@ -10,7 +10,7 @@
 
   async function loadClasses() {
     const host = document.getElementById('classes-host');
-    if (!host || !window.docenciaSupabase || !state.user) return;
+    if (!host || !window.docenciaSupabase) return;
     host.innerHTML = '<div class="loading-line">Cargando clases…</div>';
     const { data, error } = await window.docenciaSupabase
       .from('classes')
@@ -68,22 +68,43 @@
     loadClasses();
   };
 
-  // The entry page loads this file with defer. This bootstrap also covers
-  // the case where the authenticated home screen rendered before this file.
-  async function autoMount() {
-    if (!window.docenciaSupabase || !document.querySelector('.content') || document.getElementById('classes-section')) return;
-    try {
-      const { data:{ user } } = await window.docenciaSupabase.auth.getUser();
-      if (!user) return;
-      const { data: profile } = await window.docenciaSupabase.from('profiles').select('is_teacher').eq('id', user.id).single();
-      if (profile?.is_teacher) window.mountClasses(user);
-    } catch (error) {
-      console.error('Docencia360 classes bootstrap:', error);
-    }
+  async function loadStudentClasses(user) {
+    const host=document.getElementById('student-class-list');
+    if(!host || !window.docenciaSupabase) return;
+    host.innerHTML='<div class="loading-line">Cargando tus clases…</div>';
+    const {data,error}=await window.docenciaSupabase.from('class_members').select('joined_at,classes(id,name,grade,group_name,description,subjects(name),profiles!classes_teacher_id_fkey(full_name))').eq('student_id',user.id).order('joined_at',{ascending:false});
+    if(error){host.innerHTML='<div class="empty">No pudimos cargar tus clases. '+esc(error.message)+'</div>';return;}
+    if(!data?.length){host.innerHTML='<div class="empty">Todavía no estás inscrito en ninguna clase. Pídele a tu profesor el código de su clase.</div>';return;}
+    host.innerHTML='<div class="student-list">'+data.map(m=>{const c=m.classes; if(!c)return ''; const subject=c.subjects?.name||'Sin materia'; const teacher=c.profiles?.full_name||'Profesor'; return `<article class="class-card"><div class="class-name">${esc(c.name)}</div><div class="class-meta">${esc(subject)}${c.grade?' · '+esc(c.grade):''}${c.group_name?' · '+esc(c.group_name):''}</div><div class="class-meta">👨‍🏫 ${esc(teacher)}</div></article>`}).join('')+'</div>';
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', autoMount, { once:true });
-  else setTimeout(autoMount, 0);
-  const observer = new MutationObserver(autoMount);
-  observer.observe(document.body, { childList:true, subtree:true });
-  setTimeout(() => observer.disconnect(), 30000);
+
+  function mountStudentClasses(user){
+    const content=document.querySelector('.content');
+    if(!content || document.getElementById('student-classes-section')) return;
+    const section=document.createElement('section');
+    section.id='student-classes-section'; section.className='student-classes';
+    section.innerHTML='<div class="student-join"><h2>Mis clases</h2><p class="sub" style="margin-bottom:0">Únete a una clase usando el código que te dio tu profesor.</p><form id="join-form" class="join-form"><input id="join-code" maxlength="32" placeholder="Código de clase" autocomplete="off" required><button id="join-btn">Unirme a la clase</button></form><div id="join-msg" class="msg" hidden></div><div id="student-class-list"></div></div>';
+    content.appendChild(section);
+    document.getElementById('join-form').onsubmit=async e=>{
+      e.preventDefault();
+      const b=document.getElementById('join-btn'),m=document.getElementById('join-msg');b.disabled=true;m.hidden=true;
+      try{const code=document.getElementById('join-code').value.trim().toUpperCase();const r=await window.docenciaSupabase.rpc('join_class',{p_join_code:code});if(r.error)throw r.error;m.hidden=false;m.className='msg success';m.textContent='Te uniste correctamente a la clase.';document.getElementById('join-code').value='';await loadStudentClasses(user)}catch(e){m.hidden=false;m.className='msg error';const msg=e.message||'';m.textContent=msg==='invalid_join_code'?'El código de clase no es válido o la clase ya no está activa.':msg==='only_students_can_join'?'Esta cuenta no está configurada como estudiante.':'No se pudo unir a la clase. Intenta nuevamente.'}finally{b.disabled=false}
+    };
+    loadStudentClasses(user);
+  }
+
+  window.mountStudentClasses=mountStudentClasses;
+
+  const boot=()=>{
+    if(!window.docenciaSupabase) return;
+    const content=document.querySelector('.content');
+    if(!content) return;
+    window.docenciaSupabase.auth.getUser().then(async ({data})=>{
+      if(!data?.user)return;
+      const {data:p}=await window.docenciaSupabase.from('profiles').select('is_teacher,is_student').eq('id',data.user.id).maybeSingle();
+      if(p?.is_student) mountStudentClasses(data.user);
+    });
+  };
+  const observer=new MutationObserver(boot); observer.observe(document.body,{childList:true,subtree:true});
+  setTimeout(boot,1000);
 })();
