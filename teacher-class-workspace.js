@@ -69,6 +69,7 @@
   let current = null;
 
   let accessMode = null;
+  window.addEventListener('docencia360:student-access-mode', e => { accessMode = e.detail.mode; if (current) renderSummary(current); });
   async function open(card) {
     if (!sb() || !window.__docenciaCurrentUser) return;
     const id = card.dataset.id;

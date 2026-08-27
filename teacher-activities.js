@@ -393,5 +393,6 @@
     } catch (e) { console.error('teacher-activities bind failed', e); }
   }
   const watch = () => { bind().finally(() => setTimeout(watch, 500)); };
+  window.addEventListener('docencia360:student-access-mode', e => { state.accessMode = e.detail.mode; if (state.current && document.getElementById('ta-publish')) renderPublish(state.current); });
   watch();
 })();
