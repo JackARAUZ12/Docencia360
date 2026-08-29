@@ -94,7 +94,7 @@
     { id: 'examenes', label: 'Exámenes', icon: '✓' },
     { id: 'calificaciones', label: 'Calificaciones', icon: '▦' },
     { id: 'asistencia', label: 'Asistencia', icon: '◷' },
-    { id: 'recursos', label: 'Recursos', icon: '▧', soon: true },
+    { id: 'recursos', label: 'Recursos', icon: '▧' },
     { id: 'avisos', label: 'Avisos', icon: '◌', soon: true }
   ];
   const TYPE_LABEL = { activity: 'Actividades', assignment: 'Tareas', exam: 'Exámenes' };
