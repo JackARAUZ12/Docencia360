@@ -9,6 +9,7 @@
     .then(() => load('./teacher-grades.js'))
     .then(() => load('./teacher-attendance.js'))
     .then(() => load('./teacher-resources.js'))
+    .then(() => load('./teacher-announcements.js'))
     .then(() => load('./student-join.js'))
     .catch((error) => console.error('Docencia360 classes module failed to load:', error));
 })();
