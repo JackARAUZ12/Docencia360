@@ -76,19 +76,21 @@
     const m = main(); if (!m) return;
     m.innerHTML = `<div class="cw-top"><div><div class="cw-kicker">Calificaciones</div><h1 class="cw-title">${esc(state.className)}</h1><div class="cw-meta">Resultados de actividades, tareas y exámenes</div></div></div><div class="gr-wrap" style="margin-top:18px">${window.D360 ? window.D360.skeletonList(3) : 'Cargando…'}</div>`;
     const [accountRes, anonRes] = await Promise.all([
-      sb().rpc('get_teacher_activity_results', { p_class_id: state.classId }),
+      sb().rpc('get_teacher_account_results', { p_class_id: state.classId }),
       sb().rpc('get_teacher_anonymous_results', { p_class_id: state.classId })
     ]);
     const rows = (accountRes.error ? [] : (accountRes.data || [])).map(r => ({
-      student: r.participant_name, activity: r.activity_title, type: r.activity_type,
-      status: r.status, score: r.score, total: null, pct: r.percentage, when: r.submitted_at || r.started_at,
-      needsReview: false, attemptId: null
+      student: r.student_name, activity: r.activity_title, type: r.activity_type,
+      status: r.submitted_at ? (r.needs_review ? 'submitted' : 'graded') : 'in_progress',
+      score: r.score, total: r.total_points,
+      pct: (r.submitted_at && r.total_points > 0) ? Math.round((Number(r.score) / Number(r.total_points)) * 100) : null,
+      when: r.submitted_at || r.started_at, needsReview: !!r.needs_review, attemptId: r.attempt_id, kind: 'account'
     }));
     const anonRows = (anonRes.error ? [] : (anonRes.data || [])).map(r => ({
       student: r.student_name, activity: r.activity_title || '(actividad eliminada)', type: r.activity_type,
       status: r.submitted_at ? 'submitted' : 'in_progress', score: r.score, total: r.total_points,
       pct: (r.submitted_at && r.total_points > 0) ? Math.round((Number(r.score) / Number(r.total_points)) * 100) : null,
-      when: r.submitted_at || r.started_at, needsReview: !!r.needs_review, attemptId: r.attempt_id
+      when: r.submitted_at || r.started_at, needsReview: !!r.needs_review, attemptId: r.attempt_id, kind: 'anon'
     }));
     const all = [...rows, ...anonRows].sort((a, b) => new Date(b.when || 0) - new Date(a.when || 0));
     renderGrades(all);
@@ -121,20 +123,22 @@
       const type = document.getElementById('gr-type').value;
       const q = document.getElementById('gr-search').value.trim().toLowerCase();
       const filtered = all.filter(r => (type === 'Todas' || (TYPE_LABEL[r.type] || r.type) === type) && (!q || String(r.student || '').toLowerCase().includes(q)));
-      document.getElementById('gr-rows').innerHTML = filtered.length ? filtered.map(r => `<tr data-attempt="${r.attemptId || ''}"><td><div class="gr-student"><span class="gr-avatar">${esc(initials(r.student))}</span>${esc(r.student || 'Estudiante')}</div></td><td>${esc(r.activity || '—')}</td><td>${esc(TYPE_LABEL[r.type] || r.type)}</td><td>${r.needsReview ? '<span class="gr-badge review">Pendiente de revisar</span>' : `<span class="gr-badge ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span>`}</td><td>${r.score != null ? r.score + (r.total != null ? ' / ' + r.total : '') : '—'}</td><td>${r.pct != null ? `<div class="gr-pct-wrap"><div class="gr-pct-bar"><div class="gr-pct-fill" style="width:${r.pct}%"></div></div>${r.pct}%</div>` : '—'}</td><td>${r.when ? new Date(r.when).toLocaleDateString('es-NI') : '—'}</td><td>${r.attemptId ? `<button class="gr-review-btn ${r.needsReview ? '' : 'done'}" data-open="${r.attemptId}">${r.needsReview ? 'Revisar' : 'Ver'}</button>` : ''}</td></tr>`).join('') : `<tr><td colspan="8" style="text-align:center;color:#9097a4;padding:22px">Sin coincidencias.</td></tr>`;
-      document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openDetail(b.dataset.open));
+      document.getElementById('gr-rows').innerHTML = filtered.length ? filtered.map(r => `<tr data-attempt="${r.attemptId || ''}"><td><div class="gr-student"><span class="gr-avatar">${esc(initials(r.student))}</span>${esc(r.student || 'Estudiante')}</div></td><td>${esc(r.activity || '—')}</td><td>${esc(TYPE_LABEL[r.type] || r.type)}</td><td>${r.needsReview ? '<span class="gr-badge review">Pendiente de revisar</span>' : `<span class="gr-badge ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span>`}</td><td>${r.score != null ? r.score + (r.total != null ? ' / ' + r.total : '') : '—'}</td><td>${r.pct != null ? `<div class="gr-pct-wrap"><div class="gr-pct-bar"><div class="gr-pct-fill" style="width:${r.pct}%"></div></div>${r.pct}%</div>` : '—'}</td><td>${r.when ? new Date(r.when).toLocaleDateString('es-NI') : '—'}</td><td>${r.attemptId ? `<button class="gr-review-btn ${r.needsReview ? '' : 'done'}" data-open="${r.attemptId}" data-kind="${r.kind}">${r.needsReview ? 'Revisar' : 'Ver'}</button>` : ''}</td></tr>`).join('') : `<tr><td colspan="8" style="text-align:center;color:#9097a4;padding:22px">Sin coincidencias.</td></tr>`;
+      document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openDetail(b.dataset.open, b.dataset.kind));
     };
     document.getElementById('gr-type').onchange = paint;
     document.getElementById('gr-search').oninput = paint;
     paint();
   }
 
-  async function openDetail(attemptId) {
+  async function openDetail(attemptId, kind) {
+    const detailFn = kind === 'account' ? 'get_account_attempt_detail_for_grading' : 'get_attempt_detail_for_grading';
+    const gradeFn = kind === 'account' ? 'grade_account_attempt_answer' : 'grade_attempt_answer';
     const back = document.createElement('div'); back.className = 'gr-detail-back';
     back.innerHTML = `<section class="gr-detail">${window.D360 ? window.D360.skeletonList(3) : 'Cargando…'}</section>`;
     document.body.appendChild(back);
     back.addEventListener('click', e => { if (e.target === back) back.remove(); });
-    const r = await sb().rpc('get_attempt_detail_for_grading', { p_attempt_id: attemptId });
+    const r = await sb().rpc(detailFn, { p_attempt_id: attemptId });
     if (r.error) { back.querySelector('.gr-detail').innerHTML = `<h2>No pudimos abrir esta entrega</h2><p class="gr-sub">${esc(r.error.message)}</p><button class="gr-review-btn" id="gr-close">Cerrar</button>`; back.querySelector('#gr-close').onclick = () => back.remove(); return; }
     const qs = r.data || [];
     back.querySelector('.gr-detail').innerHTML = `<h2>Revisar respuestas</h2><p class="gr-sub">Califica manualmente las preguntas abiertas. Las de opción múltiple ya se calificaron solas.</p>${qs.map(q => questionBlock(q)).join('')}<button class="gr-review-btn" id="gr-close" style="margin-top:6px">Cerrar</button>`;
@@ -146,7 +150,7 @@
         const points = Number(input.value);
         if (isNaN(points) || points < 0 || points > q.points) { window.D360?.toast(`Ingresa un número entre 0 y ${q.points}.`, 'error'); return; }
         const btn = row.querySelector('button'); btn.disabled = true;
-        const g = await sb().rpc('grade_attempt_answer', { p_attempt_id: attemptId, p_question_id: q.question_id, p_points: points });
+        const g = await sb().rpc(gradeFn, { p_attempt_id: attemptId, p_question_id: q.question_id, p_points: points });
         if (g.error) { window.D360?.toast(g.error.message, 'error'); btn.disabled = false; return; }
         window.D360?.toast('Calificación guardada.', 'success');
         row.outerHTML = `<span class="gr-graded-tag">✓ Calificado: ${points} / ${q.points} pts</span>`;
