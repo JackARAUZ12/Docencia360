@@ -213,6 +213,8 @@
   let lockCount = 0, savedScrollY = 0;
   const applyLock = () => {
     const open = document.querySelectorAll(MODAL_SELECTOR).length;
+    const bottomNav = document.getElementById('d360-bottomnav');
+    if (bottomNav) bottomNav.style.display = open > 0 ? 'none' : '';
     if (open > 0 && lockCount === 0) {
       savedScrollY = window.scrollY;
       Object.assign(document.body.style, { position: 'fixed', top: `-${savedScrollY}px`, left: '0', right: '0' });
