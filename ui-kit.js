@@ -3,6 +3,33 @@
   const style = document.createElement('style');
   style.id = 'd360-ui-kit';
   style.textContent = `
+    /* ---- Paleta de diseño Docencia360 (azul marino + morado) ---- */
+    :root{
+      --d360-navy:#141c36; --d360-navy-2:#1b2448; --d360-navy-3:#232d57;
+      --d360-purple:#6c4ce0; --d360-purple-2:#7c5cff; --d360-purple-soft:#efe9ff;
+      --d360-bg:#f5f6fb; --d360-card:#ffffff;
+      --d360-danger:#ef4444; --d360-danger-soft:#fde8e8;
+      --d360-warning:#f59e0b; --d360-warning-soft:#fef3e0;
+      --d360-success:#16a672; --d360-success-soft:#e3f9ef;
+      --d360-info:#3b82f6; --d360-info-soft:#e7f0fe;
+      --d360-text:#151a30; --d360-muted:#8891a7;
+    }
+    html.d360-dark{
+      --d360-bg:#0b0f22; --d360-card:#161d3a; --d360-text:#eef0fb; --d360-muted:#9aa3c2;
+      --d360-purple-soft:#241f45; --d360-danger-soft:#3a1f24; --d360-warning-soft:#3a2f18; --d360-success-soft:#173229; --d360-info-soft:#182a44;
+    }
+    /* ---- Barra de navegación inferior (móvil, estilo app) ---- */
+    #d360-bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:2000;display:none;background:var(--d360-navy);padding:8px 6px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -8px 24px rgba(0,0,0,.18)}
+    #d360-bottomnav .bn-row{display:flex;align-items:center;justify-content:space-around}
+    #d360-bottomnav button{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:3px;color:#8892b8;font-size:9px;font-weight:750;flex:1;padding:4px 0;position:relative}
+    #d360-bottomnav button.active{color:#fff}
+    #d360-bottomnav button .bn-icon{font-size:18px;line-height:1}
+    #d360-bottomnav button.bn-fab{margin-top:-26px}
+    #d360-bottomnav button.bn-fab .bn-icon{width:48px;height:48px;border-radius:50%;background:linear-gradient(145deg,var(--d360-purple-2),var(--d360-purple));color:#fff;display:grid;place-items:center;font-size:22px;box-shadow:0 10px 22px rgba(108,76,224,.5)}
+    #d360-bottomnav .bn-badge{position:absolute;top:-2px;right:8px;background:#ef4444;color:#fff;font-size:8px;font-weight:900;border-radius:99px;min-width:14px;height:14px;display:grid;place-items:center;padding:0 3px}
+    @media(max-width:620px){#d360-bottomnav{display:block}body{padding-bottom:64px}}
+    html.d360-dark #d360-bottomnav{background:#0d1226}
+
     /* ---- Animaciones base ---- */
     @keyframes d360-fade-in{from{opacity:0}to{opacity:1}}
     @keyframes d360-fade-out{from{opacity:1}to{opacity:0}}
@@ -158,5 +185,23 @@
     });
   }
 
-  window.D360 = { toast, confirm: confirmDialog, skeletonList, makeReorderable, showShareCode };
+  function mountBottomNav(opts = {}) {
+    document.getElementById('d360-bottomnav')?.remove();
+    const nav = document.createElement('nav'); nav.id = 'd360-bottomnav';
+    nav.innerHTML = `<div class="bn-row">
+      <button data-a="home" class="${opts.active === 'home' ? 'active' : ''}"><span class="bn-icon">⌂</span>Inicio</button>
+      <button data-a="classes" class="${opts.active === 'classes' ? 'active' : ''}"><span class="bn-icon">📖</span>Clases</button>
+      <button data-a="create" class="bn-fab"><span class="bn-icon">＋</span></button>
+      <button data-a="messages"><span class="bn-icon">💬</span>Mensajes${opts.messagesBadge ? `<span class="bn-badge">${opts.messagesBadge}</span>` : ''}</button>
+      <button data-a="more"><span class="bn-icon">▦</span>Más</button>
+    </div>`;
+    document.body.appendChild(nav);
+    nav.querySelector('[data-a=home]').onclick = () => (opts.onHome || (() => {}))();
+    nav.querySelector('[data-a=classes]').onclick = () => (opts.onClasses || (() => {}))();
+    nav.querySelector('[data-a=create]').onclick = () => (opts.onCreate || (() => toast('Abre Inicio para crear una clase.')))();
+    nav.querySelector('[data-a=messages]').onclick = () => (opts.onMessages || (() => toast('Mensajería: próximamente.')))();
+    nav.querySelector('[data-a=more]').onclick = () => (opts.onMore || (() => toast('Más opciones: próximamente.')))();
+  }
+
+  window.D360 = { toast, confirm: confirmDialog, skeletonList, makeReorderable, showShareCode, mountBottomNav };
 })();
