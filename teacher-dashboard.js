@@ -121,7 +121,7 @@
       + '<button data-route="recursos" class="soon"><i>▧</i><span>Recursos</span></button>'
       + '<button data-route="configuracion"><i>⚙</i><span>Configuración</span></button>'
       + '</nav>'
-      + '<div class="d360-bottom"><div class="d360-plan"><small>Plan Pro</small><strong>Tu espacio docente</strong><p>Todo listo para organizar tus clases.</p><button type="button">Ver plan</button></div><div class="d360-profile" id="d360-profile-btn"><div class="d360-avatar">' + esc(initial) + '</div><div><strong>' + esc(first) + '</strong><span>Profesor</span></div></div></div>'
+      + '<div class="d360-bottom"><div class="d360-plan"><small>Plan Pro</small><strong>Tu espacio docente</strong><p>Todo listo para organizar tus clases.</p><button type="button" id="d360-see-plan">Ver plan</button></div><div class="d360-profile" id="d360-profile-btn"><div class="d360-avatar">' + esc(initial) + '</div><div><strong>' + esc(first) + '</strong><span>Profesor</span></div></div></div>'
       + '</aside>'
       + '<main class="d360-main">'
       + '<div class="d360-mobile-top"><div class="row1"><span>DOCENCIA<b>360</b></span><span id="d360-m-menu">☰</span></div><div class="hi">¡Hola, Profe ' + esc(first) + '! 👋</div><div class="date">' + esc(todayStr.charAt(0).toUpperCase() + todayStr.slice(1)) + '</div></div>'
@@ -132,7 +132,7 @@
       + '<div class="d360-panel"><div class="d360-panel-head"><h2>Próximas sesiones</h2><span id="d360-see-planning" style="cursor:pointer;color:var(--d360-purple);font-weight:800">Ver todo</span></div><div class="d360-sessions" id="d360-sessions-list"><div class="d360-empty-mini">Cargando…</div></div></div>'
       + '<div class="d360-panel"><div class="d360-panel-head"><h2>Consejo para ti</h2></div><div style="background:linear-gradient(160deg,var(--d360-purple-soft),var(--d360-card));border:1px solid rgba(120,120,160,.12);border-radius:13px;padding:13px">💡<strong style="display:block;font-size:10.5px;margin-top:5px;color:var(--d360-text)">Empieza por una clase</strong><p style="font-size:8.5px;color:var(--d360-muted);line-height:1.5;margin:5px 0 9px">Crea tu primer grupo, configura horario y periodo, y Docencia360 generará las sesiones automáticamente.</p><button id="d360-tip" type="button" style="border:0;background:var(--d360-purple);color:#fff;border-radius:8px;padding:8px 11px;font-size:8.5px;font-weight:850">Crear clase</button></div></div>'
       + '</section>'
-      + '<section id="d360-class-section"><div class="d360-class-head"><h2>Mis clases</h2><div class="d360-tools"><div class="d360-tabs"><button class="active" type="button">Todas</button><button type="button">Activas</button><button type="button">Archivadas</button></div><button class="d360-new" id="d360-new-bottom" type="button">＋ Nueva clase</button></div></div></section>'
+      + '<section id="d360-class-section"><div class="d360-class-head"><h2>Mis clases</h2><div class="d360-tools"><div class="d360-tabs" id="d360-class-filter"><button class="active" data-f="todas" type="button">Todas</button><button data-f="activas" type="button">Activas</button><button data-f="archivadas" type="button">Archivadas</button></div><button class="d360-new" id="d360-new-bottom" type="button">＋ Nueva clase</button></div></div></section>'
       + '</main></div>';
 
     outer.querySelectorAll('.d360-nav button[data-route]').forEach(btn => {
@@ -165,9 +165,20 @@
       if (typeof window.mountClasses !== 'function') return setTimeout(mountClassesWhenReady, 80);
       window.mountClasses(user);
       const generated = document.getElementById('classes-section');
-      if (generated && classSection) classSection.replaceWith(generated);
+      const host = generated && generated.querySelector('#classes-host');
+      if (host && classSection) { classSection.appendChild(host); generated.remove(); }
     };
     mountClassesWhenReady();
+
+    document.querySelectorAll('#d360-class-filter button').forEach(b => b.onclick = () => {
+      document.querySelectorAll('#d360-class-filter button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      const host = document.getElementById('classes-host');
+      if (!host) return;
+      if (b.dataset.f === 'archivadas') host.innerHTML = '<div class="empty">Archivar clases estará disponible próximamente. Por ahora todas tus clases se muestran como activas.</div>';
+      else window.docenciaReloadClasses ? window.docenciaReloadClasses() : null;
+    });
+    document.getElementById('d360-see-plan')?.addEventListener('click', () => toast('Por ahora Docencia360 tiene un solo plan, con todo incluido. Más opciones próximamente.'));
 
     if (window.docenciaSupabase) {
       window.docenciaSupabase.rpc('get_teacher_today_stats').then(({ data, error }) => {
