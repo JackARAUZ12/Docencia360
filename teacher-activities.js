@@ -336,7 +336,8 @@
     host.innerHTML = `<p class="ta-sub">${qCount} pregunta${qCount === 1 ? '' : 's'} · ${Number(a.total_points || 0)} puntos totales</p>
       ${a.status === 'draft' ? `<button class="ta-save" id="ta-pub-btn" ${canPublish ? '' : 'disabled'}>${qCount ? 'Publicar' : 'Agrega al menos una pregunta para publicar'}</button>` : `<p class="ta-msg ta-success" style="display:inline-block">Esta ${TYPES[a.activity_type].singular.toLowerCase()} ya está publicada.</p>`}
       <div id="ta-pub-msg"></div>
-      <div id="ta-code-area" style="margin-top:12px"></div>`;
+      <div id="ta-code-area" style="margin-top:12px"></div>
+      ${qCount > 0 ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid #eceeF4"><p class="ta-sub" style="margin-bottom:8px">📄 Documento imprimible</p><button class="ta-ghost" id="ta-print-student">Hoja del estudiante</button><button class="ta-ghost" id="ta-print-key" style="margin-left:6px">Hoja de respuestas (clave)</button></div>` : ''}`;
     if (a.status === 'draft' && canPublish) {
       host.querySelector('#ta-pub-btn').onclick = async () => {
         const btn = host.querySelector('#ta-pub-btn'); btn.disabled = true;
@@ -348,6 +349,20 @@
       };
     }
     if (state.accessMode === 'codes') renderCodeArea(a);
+    if (qCount > 0) {
+      host.querySelector('#ta-print-student').onclick = () => printDocument(a, false);
+      host.querySelector('#ta-print-key').onclick = () => printDocument(a, true);
+    }
+  }
+
+  async function printDocument(a, withKey) {
+    if (!window.D360Documents) { window.D360?.toast('El generador de documentos no cargó. Recarga la página.', 'error'); return; }
+    const r = await sb().from('activity_questions').select('id,position,question_type,prompt,points,image_url,options:activity_question_options(id,option_text,is_correct,metadata,position)').eq('activity_id', a.id).order('position');
+    if (r.error) { window.D360?.toast(r.error.message, 'error'); return; }
+    const lh = await window.D360Documents.getLetterhead();
+    const proceed = () => window.D360Documents.generateActivityDocument(a, r.data || [], withKey);
+    if (!lh.institution_name) window.D360Documents.openLetterheadModal(() => proceed());
+    else proceed();
   }
 
   async function renderCodeArea(a) {
