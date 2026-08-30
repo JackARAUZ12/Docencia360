@@ -55,7 +55,7 @@
     .tr-modal,.sj-modal,.tam-modal,.ta-modal,.d360-confirm-modal{animation:d360-slide-up .22s cubic-bezier(.2,.8,.2,1)}
     @media(max-width:620px){
       .tr-modal-back,.sj-modal-back,.tam-back,.ta-modal-back,.d360-confirm-back{align-items:flex-end!important;padding:0!important}
-      .tr-modal,.sj-modal,.tam-modal,.ta-modal,.d360-confirm-modal{width:100%!important;max-width:100%!important;border-radius:20px 20px 0 0!important;margin:0!important;max-height:88vh!important;animation:d360-sheet-up .26s cubic-bezier(.2,.8,.2,1)!important}
+      .tr-modal,.sj-modal,.tam-modal,.ta-modal,.d360-confirm-modal{width:100%!important;max-width:100%!important;border-radius:20px 20px 0 0!important;margin:0!important;height:85vh!important;max-height:85vh!important;display:flex!important;flex-direction:column!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;animation:d360-sheet-up .26s cubic-bezier(.2,.8,.2,1)!important}
     }
 
     /* ---- Toasts ---- */
@@ -204,4 +204,23 @@
   }
 
   window.D360 = { toast, confirm: confirmDialog, skeletonList, makeReorderable, showShareCode, mountBottomNav };
+
+  // Bloquea el scroll del fondo mientras cualquier modal de la app esté abierto, para que
+  // arrastrar dentro del modal en móvil no mueva la página detrás (sensación de "doble scroll").
+  // Usa la técnica position:fixed (no solo overflow:hidden) porque en iOS Safari overflow:hidden
+  // por sí solo no siempre bloquea el scroll táctil del fondo.
+  const MODAL_SELECTOR = '.ta-modal-back,.tr-modal-back,.sj-modal-back,.tam-back,.d360-confirm-back,.gr-detail-back,.modal-backdrop';
+  let lockCount = 0, savedScrollY = 0;
+  const applyLock = () => {
+    const open = document.querySelectorAll(MODAL_SELECTOR).length;
+    if (open > 0 && lockCount === 0) {
+      savedScrollY = window.scrollY;
+      Object.assign(document.body.style, { position: 'fixed', top: `-${savedScrollY}px`, left: '0', right: '0' });
+    } else if (open === 0 && lockCount > 0) {
+      Object.assign(document.body.style, { position: '', top: '', left: '', right: '' });
+      window.scrollTo(0, savedScrollY);
+    }
+    lockCount = open;
+  };
+  new MutationObserver(applyLock).observe(document.body, { childList: true });
 })();
