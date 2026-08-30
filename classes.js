@@ -1,6 +1,7 @@
 (() => {
+  const V = (document.currentScript && document.currentScript.src.split('v=')[1]) || Date.now();
   const load = (src) => new Promise((resolve, reject) => {
-    const s = document.createElement('script'); s.src = src; s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+    const s = document.createElement('script'); s.src = src + '?v=' + V; s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
   });
   load('./classes-core-v2.js')
     .then(() => load('./teacher-class-workspace.js'))

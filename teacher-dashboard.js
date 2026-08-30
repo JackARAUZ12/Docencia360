@@ -170,6 +170,7 @@
       const generated = document.getElementById('classes-section');
       const host = generated && generated.querySelector('#classes-host');
       if (host && classSection) { classSection.appendChild(host); generated.remove(); }
+      document.querySelectorAll('#classes-section, .section-head').forEach(el => el.remove());
     };
     mountClassesWhenReady();
 

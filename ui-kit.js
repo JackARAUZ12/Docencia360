@@ -55,7 +55,7 @@
     .tr-modal,.sj-modal,.tam-modal,.ta-modal,.d360-confirm-modal{animation:d360-slide-up .22s cubic-bezier(.2,.8,.2,1)}
     @media(max-width:620px){
       .tr-modal-back,.sj-modal-back,.tam-back,.ta-modal-back,.d360-confirm-back{align-items:flex-end!important;padding:0!important}
-      .tr-modal,.sj-modal,.tam-modal,.ta-modal,.d360-confirm-modal{width:100%!important;max-width:100%!important;border-radius:20px 20px 0 0!important;margin:0!important;height:85vh!important;max-height:85vh!important;display:flex!important;flex-direction:column!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;animation:d360-sheet-up .26s cubic-bezier(.2,.8,.2,1)!important}
+      .tr-modal,.sj-modal,.tam-modal,.ta-modal,.d360-confirm-modal{width:100%!important;max-width:100%!important;border-radius:20px 20px 0 0!important;margin:0!important;height:85vh!important;max-height:85vh!important;display:flex!important;flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;animation:d360-sheet-up .26s cubic-bezier(.2,.8,.2,1)!important}
     }
 
     /* ---- Toasts ---- */
