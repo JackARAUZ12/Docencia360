@@ -88,6 +88,7 @@
 
   const NAV = [
     { id: 'resumen', label: 'Resumen', icon: '⌂' },
+    { id: 'planificacion', label: 'Planificación', icon: '📅' },
     { id: 'estudiantes', label: 'Estudiantes', icon: '♙' },
     { id: 'actividades', label: 'Actividades', icon: '◈' },
     { id: 'tareas', label: 'Tareas', icon: '▤' },
@@ -151,7 +152,7 @@
     const codeBlock = accessMode === 'codes'
       ? `<button class="cw-mode-note" id="cw-mode-note" title="Cambiar en Configuración">⚡ Acceso sin cuenta activo — usa los códigos de cada actividad</button>`
       : `<div class="cw-code">Código: ${esc(c.join_code)} <button id="cw-copy">Copiar</button> <button id="cw-share">Compartir</button></div>`;
-    main.innerHTML = `<div class="cw-top"><div><div class="cw-kicker">Espacio de clase</div><h1 class="cw-title">${esc(c.name)}</h1><div class="cw-meta">${esc(c.subject_name || 'Sin materia')}${c.grade ? ' · ' + esc(c.grade) : ''}${c.group_name ? ' · ' + esc(c.group_name) : ''}</div></div>${codeBlock}</div>
+    main.innerHTML = `<div class="cw-top"><div><div class="cw-kicker">Espacio de clase</div><h1 class="cw-title">${esc(c.name)}</h1><div class="cw-meta">${esc(c.subject_name || 'Sin materia')}${c.grade ? ' · ' + esc(c.grade) : ''}${c.group_name ? ' · ' + esc(c.group_name) : ''}</div><div id="cw-schedule-line" class="cw-meta" style="margin-top:4px"></div></div>${codeBlock}</div>
       <section class="cw-grid"><article class="cw-stat"><div class="cw-stat-icon">♟</div><div><span>Estudiantes</span><strong>${Number(c.student_count || 0)}</strong></div></article><article class="cw-stat"><div class="cw-stat-icon">◈</div><div><span>Actividades</span><strong id="cw-n-activity">—</strong></div></article><article class="cw-stat"><div class="cw-stat-icon">▤</div><div><span>Tareas</span><strong id="cw-n-assignment">—</strong></div></article><article class="cw-stat"><div class="cw-stat-icon">✓</div><div><span>Exámenes</span><strong id="cw-n-exam">—</strong></div></article></section>
       <section class="cw-panels">
         <article class="cw-panel"><h2>Actividad reciente</h2><div id="cw-recent"><div class="cw-muted" style="margin-top:10px">Cargando…</div></div></article>
@@ -163,6 +164,21 @@
     main.querySelector('#cw-q-activity').onclick = () => clickTabAndThen('Actividades', () => document.getElementById('ta-new'));
     main.querySelector('#cw-q-task').onclick = () => clickTabAndThen('Tareas', () => document.getElementById('ta-new'));
     main.querySelector('#cw-q-exam').onclick = () => clickTabAndThen('Exámenes', () => document.getElementById('ta-new'));
+
+    if (c.start_date && c.end_date) {
+      const DOW = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+      const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('es-NI', { day: 'numeric', month: 'short' });
+      const line = main.querySelector('#cw-schedule-line');
+      if (line) {
+        line.textContent = `📅 ${fmt(c.start_date)} – ${fmt(c.end_date)}`;
+        sb()?.rpc('get_class_schedule', { p_class_id: c.id }).then(r => {
+          if (r.error || !r.data?.length) return;
+          const days = r.data.map(s => DOW[s.day_of_week]).join(' · ');
+          const uniqueTimes = [...new Set(r.data.map(s => `${s.start_time.slice(0, 5)}–${s.end_time.slice(0, 5)}`))];
+          line.textContent += `  ·  🗓 ${days}  ·  ⏰ ${uniqueTimes.join(', ')}`;
+        });
+      }
+    }
 
     if (!sb()) return;
     const r = await sb().from('activities').select('id,title,activity_type,status,created_at').eq('class_id', c.id).order('created_at', { ascending: false });

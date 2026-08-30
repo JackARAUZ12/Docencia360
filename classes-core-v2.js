@@ -30,14 +30,45 @@
   function modal(){
     if(document.getElementById('class-modal'))return;
     const el=document.createElement('div');el.id='class-modal';el.className='modal-backdrop';
-    el.innerHTML=`<section class="modal" role="dialog" aria-modal="true" aria-labelledby="class-title"><h2 id="class-title">Crear nueva clase</h2><p class="sub">Organiza una clase en segundos. El código para tus estudiantes se generará automáticamente.</p><form id="class-form" class="form"><label class="field">Nombre de la clase<input id="cn" required maxlength="80" placeholder="Ej. Matemáticas 7.º A"></label><label class="field">Materia<div class="subject-row"><select id="cs"><option value="">Sin especificar</option></select><button type="button" class="new-subject" id="ns">+ Crear</button></div><div id="subject-create" class="subject-create" hidden><div class="subject-create-row"><input id="sn" maxlength="60" placeholder="Nombre de la materia, ej. Matemáticas"><button type="button" id="save-subject">Guardar</button></div><div id="sm" class="msg" hidden></div></div></label><div class="choices"><label class="field">Grado<input id="cg" maxlength="40" placeholder="Ej. 7.º"></label><label class="field">Grupo<input id="cgr" maxlength="40" placeholder="Ej. A"></label></div><label class="field">Descripción <span style="font-weight:400;color:var(--m)">(opcional)</span><input id="cd" maxlength="180" placeholder="Información de la clase"></label><div id="cm" class="msg" hidden></div><div class="modal-actions"><button type="button" class="secondary" id="cc">Cancelar</button><button class="primary" id="cb">Crear clase</button></div></form></section>`;
+    el.innerHTML=`<section class="modal" role="dialog" aria-modal="true" aria-labelledby="class-title"><h2 id="class-title">Crear nueva clase</h2><p class="sub">Organiza una clase en segundos. El código para tus estudiantes se generará automáticamente.</p><form id="class-form" class="form"><label class="field">Nombre de la clase<input id="cn" required maxlength="80" placeholder="Ej. Matemáticas 7.º A"></label><label class="field">Materia<div class="subject-row"><select id="cs"><option value="">Sin especificar</option></select><button type="button" class="new-subject" id="ns">+ Crear</button></div><div id="subject-create" class="subject-create" hidden><div class="subject-create-row"><input id="sn" maxlength="60" placeholder="Nombre de la materia, ej. Matemáticas"><button type="button" id="save-subject">Guardar</button></div><div id="sm" class="msg" hidden></div></div></label><div class="choices"><label class="field">Grado<input id="cg" maxlength="40" placeholder="Ej. 7.º"></label><label class="field">Grupo<input id="cgr" maxlength="40" placeholder="Ej. A"></label></div><label class="field">Descripción <span style="font-weight:400;color:var(--m)">(opcional)</span><input id="cd" maxlength="180" placeholder="Información de la clase"></label>
+      <div class="field"><label style="font-weight:700">📅 Período de la clase</label><div class="choices"><label class="field">Fecha de inicio<input type="date" id="cp-start" required></label><label class="field">Fecha de finalización<input type="date" id="cp-end" required></label></div></div>
+      <div class="field"><label style="font-weight:700">🗓 Horario</label><p class="sub" style="margin:2px 0 8px">Agrega uno o varios bloques. No todas las clases son de lunes a viernes.</p><div id="cp-blocks"></div><button type="button" class="new-subject" id="cp-add-block">＋ Agregar horario</button></div>
+      <div id="cm" class="msg" hidden></div><div class="modal-actions"><button type="button" class="secondary" id="cc">Cancelar</button><button class="primary" id="cb">Crear clase</button></div></form></section>`;
     document.body.appendChild(el);
     const select=el.querySelector('#cs');
     loadSubjects(select).catch(e=>{select.innerHTML='<option value="">No se pudieron cargar tus materias</option>';});
     el.querySelector('#ns').onclick=()=>{const box=el.querySelector('#subject-create');box.hidden=!box.hidden;if(!box.hidden)setTimeout(()=>el.querySelector('#sn').focus(),20)};
     el.querySelector('#save-subject').onclick=async()=>{const input=el.querySelector('#sn'),m=el.querySelector('#sm'),name=input.value.trim();if(!name){m.hidden=false;m.className='msg error';m.textContent='Escribe el nombre de la materia.';return}const b=el.querySelector('#save-subject');b.disabled=true;m.hidden=true;try{const {data,error}=await window.docenciaSupabase.from('subjects').insert({name,teacher_id:state.user.id}).select('id,name').single();if(error)throw error;await loadSubjects(select);select.value=data.id;input.value='';el.querySelector('#subject-create').hidden=true}catch(e){m.hidden=false;m.className='msg error';m.textContent=e.code==='23505'?'Ya tienes una materia con ese nombre.':(e.message||'No se pudo crear la materia.')}finally{b.disabled=false}};
     el.querySelector('#cc').onclick=()=>el.remove();el.addEventListener('click',e=>{if(e.target===el)el.remove()});
-    el.querySelector('#class-form').onsubmit=async e=>{e.preventDefault();const b=el.querySelector('#cb'),m=el.querySelector('#cm');b.disabled=true;m.hidden=true;try{const {data,error}=await window.docenciaSupabase.from('classes').insert({teacher_id:state.user.id,name:el.querySelector('#cn').value.trim(),subject_id:select.value||null,grade:el.querySelector('#cg').value.trim()||null,group_name:el.querySelector('#cgr').value.trim()||null,description:el.querySelector('#cd').value.trim()||null}).select('id').single();if(error)throw error;if(!data?.id)throw new Error('La clase no devolvió un identificador válido.');el.remove();await loadClasses()}catch(e){m.hidden=false;m.className='msg error';m.textContent=e.message||'No se pudo crear la clase.'}finally{b.disabled=false}};
+    const DOW=[['1','Lunes'],['2','Martes'],['3','Miércoles'],['4','Jueves'],['5','Viernes'],['6','Sábado'],['0','Domingo']];
+    const blocksHost=el.querySelector('#cp-blocks');
+    function addBlock(day,from,to){
+      const row=document.createElement('div');row.className='sched-block';row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:7px;flex-wrap:wrap';
+      row.innerHTML=`<select class="sb-day" style="flex:1;min-width:110px">${DOW.map(([v,l])=>`<option value="${v}" ${v===day?'selected':''}>${l}</option>`).join('')}</select><input type="time" class="sb-from" value="${from||'07:00'}"><span style="font-size:11px;color:var(--m)">a</span><input type="time" class="sb-to" value="${to||'08:00'}"><button type="button" class="sb-del" style="border:0;background:none;color:#b42318;font-weight:900;cursor:pointer">✕</button>`;
+      row.querySelector('.sb-del').onclick=()=>row.remove();
+      blocksHost.appendChild(row);
+    }
+    addBlock('1');
+    el.querySelector('#cp-add-block').onclick=()=>addBlock('3');
+    el.querySelector('#class-form').onsubmit=async e=>{
+      e.preventDefault();const b=el.querySelector('#cb'),m=el.querySelector('#cm');b.disabled=true;m.hidden=true;
+      try{
+        const startDate=el.querySelector('#cp-start').value, endDate=el.querySelector('#cp-end').value;
+        if(!startDate||!endDate) throw new Error('Indica el período de la clase (inicio y fin).');
+        if(endDate<startDate) throw new Error('La fecha final no puede ser anterior a la inicial.');
+        const blocks=[...blocksHost.querySelectorAll('.sched-block')].map(row=>({day_of_week:Number(row.querySelector('.sb-day').value),start_time:row.querySelector('.sb-from').value,end_time:row.querySelector('.sb-to').value}));
+        if(!blocks.length) throw new Error('Agrega al menos un horario.');
+        if(blocks.some(bl=>bl.end_time<=bl.start_time)) throw new Error('La hora final debe ser posterior a la hora de inicio en cada bloque.');
+        const {data,error}=await window.docenciaSupabase.from('classes').insert({teacher_id:state.user.id,name:el.querySelector('#cn').value.trim(),subject_id:select.value||null,grade:el.querySelector('#cg').value.trim()||null,group_name:el.querySelector('#cgr').value.trim()||null,description:el.querySelector('#cd').value.trim()||null,start_date:startDate,end_date:endDate}).select('id').single();
+        if(error)throw error;
+        if(!data?.id)throw new Error('La clase no devolvió un identificador válido.');
+        const sched=await window.docenciaSupabase.from('class_schedules').insert(blocks.map(bl=>({class_id:data.id,...bl})));
+        if(sched.error)throw sched.error;
+        const gen=await window.docenciaSupabase.rpc('generate_class_sessions',{p_class_id:data.id});
+        if(gen.error) console.error('No se pudieron generar las sesiones automáticamente:',gen.error.message);
+        el.remove();window.D360?.toast('Clase creada. '+(gen.error?'':`${gen.data} sesiones generadas.`),'success');await loadClasses()
+      }catch(e){m.hidden=false;m.className='msg error';m.textContent=e.message||'No se pudo crear la clase.'}finally{b.disabled=false}
+    };
     setTimeout(()=>el.querySelector('#cn').focus(),30);
   }
 

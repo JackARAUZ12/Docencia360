@@ -146,6 +146,13 @@
     wrap.innerHTML = `<div class="at-summary">${!withData.length ? '<div class="cw-empty" style="border:0">Aún no has pasado asistencia en esta clase.</div>' : rows.map(s => `<div class="at-sum-row"><span class="at-sum-name">${esc(s.full_name)}</span><span style="font-size:9px;color:#9aa0aa">${s.total_sessions} día${s.total_sessions === 1 ? '' : 's'}</span><div class="at-sum-bar"><div class="at-sum-fill" style="width:${s.attendance_pct || 0}%"></div></div><span class="at-sum-pct">${s.attendance_pct != null ? s.attendance_pct + '%' : '—'}</span></div>`).join('')}</div>`;
   }
 
+  window.docenciaOpenAttendanceForDate = date => {
+    const nav = [...document.querySelectorAll('.cw-nav button')].find(b => b.textContent.includes('Asistencia'));
+    if (!nav) return;
+    state.date = date || todayStr();
+    nav.click();
+  };
+
   async function bind() {
     const ws = document.getElementById('d360-class-workspace');
     if (!ws || ws === state.workspace || !sb()) return;
