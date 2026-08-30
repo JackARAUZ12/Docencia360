@@ -66,7 +66,6 @@
   `;
   const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
   const sb = () => window.docenciaSupabase;
-  let classesCache = [];
   let current = null;
 
   let accessMode = null;
@@ -74,14 +73,11 @@
   async function open(card) {
     if (!sb() || !window.__docenciaCurrentUser) return;
     const id = card.dataset.id;
-    const name = card.querySelector('.class-name')?.textContent?.trim();
-    const all = classesCache.length ? classesCache : (await sb().rpc('get_my_teacher_classes')).data || [];
-    classesCache = all;
-    let c = id ? all.find(x => x.id === id) : null;
-    if (!c) { const idx = [...document.querySelectorAll('#classes-host .class-card')].indexOf(card); c = all.find(x => x.name === name) || all[idx]; }
-    if (!c?.id) return;
-    const { data, error } = await sb().rpc('get_my_teacher_class', { p_class_id: c.id });
-    const cls = error ? c : (Array.isArray(data) ? data[0] : data) || c;
+    if (!id) { window.D360?.toast('No pudimos identificar esta clase. Intenta recargar la página.', 'error'); return; }
+    const { data, error } = await sb().rpc('get_my_teacher_class', { p_class_id: id });
+    if (error || !data) { window.D360?.toast('No pudimos abrir la clase: ' + (error?.message || 'no encontrada'), 'error'); return; }
+    const cls = Array.isArray(data) ? data[0] : data;
+    if (!cls?.id) { window.D360?.toast('No pudimos abrir esta clase.', 'error'); return; }
     if (accessMode === null) { const m = await sb().rpc('get_teacher_student_access_mode'); accessMode = m.error ? 'accounts' : (m.data || 'accounts'); }
     mount(cls);
   }
