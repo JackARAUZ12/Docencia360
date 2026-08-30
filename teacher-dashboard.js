@@ -154,11 +154,14 @@
 
     window.D360 && window.D360.mountBottomNav({
       active: 'home',
-      onHome: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
-      onClasses: () => jumpToClasses(),
+      onHome: () => { showHomeView(); setBottomNavActive('home'); },
+      onClasses: () => { showClassesView(); setBottomNavActive('classes'); },
       onCreate: create,
       onMore: () => NAV_ACTIONS.configuracion()
     });
+    function setBottomNavActive(name) {
+      document.querySelectorAll('#d360-bottomnav button[data-a]').forEach(b => b.classList.toggle('active', b.dataset.a === name));
+    }
 
     const classSection = document.getElementById('d360-class-section');
     const mountClassesWhenReady = () => {
@@ -179,6 +182,20 @@
       else window.docenciaReloadClasses ? window.docenciaReloadClasses() : null;
     });
     document.getElementById('d360-see-plan')?.addEventListener('click', () => toast('Por ahora Docencia360 tiene un solo plan, con todo incluido. Más opciones próximamente.'));
+
+    const homeOnlySections = () => [
+      outer.querySelector('.d360-hero'),
+      outer.querySelector('.d360-stats'),
+      outer.querySelector('.d360-panels')
+    ].filter(Boolean);
+    function showHomeView() {
+      homeOnlySections().forEach(el => el.style.display = '');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function showClassesView() {
+      homeOnlySections().forEach(el => el.style.display = 'none');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
     if (window.docenciaSupabase) {
       window.docenciaSupabase.rpc('get_teacher_today_stats').then(({ data, error }) => {
