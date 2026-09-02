@@ -87,7 +87,38 @@
     setTimeout(()=>el.querySelector('#cn').focus(),30);
   }
 
-  window.mountClasses=function(user){state.user=user;const content=document.querySelector('.content');if(!content||document.getElementById('classes-section'))return;const section=document.createElement('section');section.id='classes-section';section.className='classes-section';section.innerHTML='<div class="section-head"><div><h2>Mis clases</h2><p class="section-sub">Tus espacios de enseñanza, organizados en un solo lugar.</p></div><button class="small-btn" id="new-class">+ Nueva clase</button></div><div id="classes-host"></div>';content.appendChild(section);document.getElementById('new-class').onclick=modal;loadClasses()};
+  window.mountClasses=function(user){
+    state.user=user;
+    // Guard against duplicate mounts using '#classes-host', which is never removed
+    // by anyone else — unlike the old '#classes-section' guard, which teacher-
+    // dashboard.js deletes after relocating its contents. With that old guard,
+    // any later/second call to mountClasses() (session refresh, re-render, etc.)
+    // found no '#classes-section' left and happily built a brand new one, which
+    // is what produced the second "Mis clases" block at the bottom of the page.
+    if(document.getElementById('classes-host'))return;
+
+    // If the teacher dashboard's own class area is present, mount straight into
+    // it — it already has its own "Mis clases" header, tabs and "+ Nueva clase"
+    // button, so we don't need to build a second header and have someone else
+    // move/clean it up afterwards.
+    const dashboardTarget=document.getElementById('d360-class-section');
+    if(dashboardTarget){
+      const host=document.createElement('div');host.id='classes-host';
+      dashboardTarget.appendChild(host);
+      let newBtn=document.getElementById('new-class');
+      if(!newBtn){newBtn=document.createElement('button');newBtn.id='new-class';newBtn.type='button';newBtn.hidden=true;dashboardTarget.appendChild(newBtn)}
+      newBtn.onclick=modal;
+      loadClasses();
+      return;
+    }
+
+    const content=document.querySelector('.content');if(!content)return;
+    const section=document.createElement('section');section.id='classes-section';section.className='classes-section';
+    section.innerHTML='<div class="section-head"><div><h2>Mis clases</h2><p class="section-sub">Tus espacios de enseñanza, organizados en un solo lugar.</p></div><button class="small-btn" id="new-class">+ Nueva clase</button></div><div id="classes-host"></div>';
+    content.appendChild(section);
+    document.getElementById('new-class').onclick=modal;
+    loadClasses();
+  };
 
   function mountStudentClasses(user){const content=document.querySelector('.content');if(!content||document.getElementById('student-classes-section'))return;const section=document.createElement('section');section.id='student-classes-section';section.className='student-classes';content.appendChild(section)}
   window.mountStudentClasses=mountStudentClasses;
