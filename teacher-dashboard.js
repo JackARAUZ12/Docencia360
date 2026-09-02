@@ -163,33 +163,14 @@
       document.querySelectorAll('#d360-bottomnav button[data-a]').forEach(b => b.classList.toggle('active', b.dataset.a === name));
     }
 
-    const classSection = document.getElementById('d360-class-section');
-
-    // classes.js (window.mountClasses) builds its own "#classes-section" scaffold
-    // (with its own "Mis clases" header, subtitle and "+ Nueva clase" button) and
-    // may do so ASYNCHRONOUSLY (e.g. after fetching the class list from Supabase).
-    // Previously this code only checked once, immediately after calling
-    // mountClasses(), so if the render hadn't happened yet it silently gave up —
-    // classes.js's own section was later inserted into the page and never
-    // relocated/removed, producing a second "Mis clases" block below the
-    // dashboard's own. We now poll until the generated markup actually shows up,
-    // then move its class list into our styled section and discard the rest.
+    // window.mountClasses (from classes-core-v2.js) detects '#d360-class-section'
+    // (created above) and mounts its class list directly inside it — no need to
+    // relocate or clean up anything here. We just wait until the function has
+    // finished loading (classes.js loads it dynamically) and call it once.
     const mountClassesWhenReady = () => {
       if (typeof window.mountClasses !== 'function') return setTimeout(mountClassesWhenReady, 80);
       window.mountClasses(user);
-      relocateGeneratedClasses();
     };
-    function relocateGeneratedClasses(attempt = 0) {
-      const generated = document.getElementById('classes-section');
-      const host = generated && generated.querySelector('#classes-host');
-      if (host && classSection) {
-        classSection.appendChild(host);
-        generated.remove();
-        document.querySelectorAll('#classes-section, .section-head').forEach(el => el.remove());
-        return;
-      }
-      if (attempt < 50) setTimeout(() => relocateGeneratedClasses(attempt + 1), 100);
-    }
     mountClassesWhenReady();
 
     document.querySelectorAll('#d360-class-filter button').forEach(b => b.onclick = () => {
