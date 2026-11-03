@@ -70,8 +70,8 @@
 .mes .ev.clase { border-color: var(--renglon-fuerte); color: var(--texto-2); }
 @media (max-width: 640px) { .mes .dia { min-height: 56px; } .mes .ev { font-size: 0; height: 6px; border-left-width: 0; background: var(--acento); border-radius: 2px; } .mes .ev.eval { background: var(--correccion); } .mes .ev.clase { background: var(--renglon-fuerte); } }
 
-.dos-col { display: grid; gap: 1rem; }
-@media (min-width: 900px) { .dos-col { grid-template-columns: 1.4fr 1fr; align-items: start; } }
+.dos-col { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .dos-col { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: start; } }
 
 /* Informe imprimible */
 .informe { background: #fff; color: #17212B; }
