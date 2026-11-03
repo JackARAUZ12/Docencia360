@@ -5,7 +5,7 @@
    solo toque de resaltador amarillo para lo que importa ahora.
    Tipografía: Atkinson Hyperlegible (diseñada para máxima legibilidad).
    ===================================================================== */
-@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&display=swap");
 
 :root {
   --fondo: #EEF1EF;
@@ -31,6 +31,7 @@
   --radio: 10px;
   --radio-sm: 6px;
   --fuente: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Bricolage Grotesque", "Atkinson Hyperlegible", system-ui, sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -74,7 +75,8 @@ body {
   font-family: var(--fuente); font-size: 16px; line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-h1, h2, h3, h4 { line-height: 1.2; margin: 0 0 .5em; font-weight: 700; letter-spacing: -.01em; }
+h1, h2, h3, h4 { line-height: 1.15; margin: 0 0 .5em; font-weight: 700; letter-spacing: -.015em; font-family: var(--display); }
+h1 { font-weight: 800; letter-spacing: -.025em; }
 h1 { font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2rem); }
 h2 { font-size: 1.25rem; }
 h3 { font-size: 1.05rem; }
@@ -95,7 +97,7 @@ img { max-width: 100%; }
 }
 
 /* ---------- Marca ---------- */
-.marca { display: inline-flex; align-items: center; gap: .55rem; color: var(--texto); text-decoration: none; font-weight: 700; font-size: 1.1rem; }
+.marca { display: inline-flex; align-items: center; gap: .55rem; color: var(--texto); text-decoration: none; font-family: var(--display); font-weight: 800; font-size: 1.15rem; letter-spacing: -.02em; }
 .marca svg { width: 30px; height: 30px; flex: none; }
 .marca b { color: var(--acento); font-weight: 700; }
 
@@ -143,7 +145,7 @@ input[type="checkbox"], input[type="radio"] { width: 20px; min-height: 20px; hei
 /* Cifras clave: no tarjetas; una fila de datos con renglón */
 .cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); border-top: 2px solid var(--texto); }
 .cifra { padding: .8rem .9rem .9rem 0; border-bottom: 1px solid var(--renglon); }
-.cifra b { display: block; font-size: 1.9rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.cifra b { display: block; font-family: var(--display); font-weight: 800; letter-spacing: -.02em; font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .cifra span { color: var(--texto-2); font-size: .92rem; }
 .cifra.alerta b { color: var(--correccion); }
 
@@ -183,7 +185,7 @@ table.registro { width: 100%; border-collapse: collapse; font-variant-numeric: t
 .vacio h3 { color: var(--texto); }
 
 /* Código grande (para entregar códigos de acceso) */
-.codigo-grande { font-size: 2rem; font-weight: 700; letter-spacing: .25em; font-variant-numeric: tabular-nums; padding: .5rem 1rem; background: var(--papel-2); border: 2px dashed var(--renglon-fuerte); border-radius: var(--radio-sm); display: inline-block; }
+.codigo-grande { font-family: var(--display); font-size: 2rem; font-weight: 700; letter-spacing: .25em; font-variant-numeric: tabular-nums; padding: .5rem 1rem; background: var(--papel-2); border: 2px dashed var(--renglon-fuerte); border-radius: var(--radio-sm); display: inline-block; }
 
 /* ---------- Toast y modal ---------- */
 #toasts { position: fixed; z-index: 100; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: grid; gap: .5rem; width: min(92vw, 420px); }
