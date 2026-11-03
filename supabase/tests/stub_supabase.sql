@@ -2,7 +2,7 @@
 create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls;
 create schema auth; create schema extensions;
 create extension pgcrypto with schema extensions;
-create table auth.users(id uuid primary key default gen_random_uuid(), email text);
+create table auth.users(id uuid primary key default gen_random_uuid(), email text, encrypted_password text, phone text);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true),'')::uuid $$;
 create function auth.jwt() returns jsonb language sql stable as $$ select '{}'::jsonb $$;
 grant usage on schema public, auth, extensions to anon, authenticated, service_role;

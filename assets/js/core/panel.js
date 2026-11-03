@@ -3,7 +3,7 @@
 // estructura visual y su propia lista de rutas encima de esto.
 import { sb, q } from "./sb.js";
 import { h, toast, errorEn, cargando, fecha } from "./ui.js";
-import { protegerModalidad } from "./sesion.js";
+import { protegerModalidad, salir, ruta } from "./sesion.js";
 
 const GESTORES = ["propietario", "director", "subdirector", "coordinador", "administrativo"];
 const FINANZAS = ["propietario", "director", "administrativo", "finanzas"];
@@ -56,6 +56,18 @@ export async function crearContexto(modalidad) {
 /** Aviso de plan vencido, en gracia o por vencer. */
 export function avisoPlan(ctx, rutaCuenta = "#/cuenta") {
   const c = ctx.cuenta;
+  if (c.es_demo) {
+    return h("div.franja-demo",
+      h("span", h("strong", "Estás en una demostración. "), "Prueba todo lo que quieras: los datos se reinician cada noche."),
+      h("span", { style: "display:flex;gap:1rem;flex-wrap:wrap" },
+        h("a", { href: ruta("registro.html") }, "Crear mi cuenta"),
+        h("a", { href: "#", onclick: (e) => { e.preventDefault(); salir(); } }, "Salir de la demo")));
+  }
+  if (c.estado === "pendiente") {
+    return h("div.aviso.ojo", h("strong", "Tu cuenta está pendiente de activación. "),
+      "Puedes conocer el panel, pero para guardar datos realiza el pago del primer mes. ",
+      ctx.esDueno ? h("a", { href: rutaCuenta }, "Ver cómo pagar") : "Habla con la administración.");
+  }
   const dias = Math.ceil((new Date(c.vence + "T00:00:00") - new Date().setHours(0, 0, 0, 0)) / 864e5);
   const enlace = ctx.esDueno ? h("a", { href: rutaCuenta }, "Renovar") : null;
   if (!c.operativa) return h("div.aviso.mal", h("strong", "El plan está vencido. "), "Puedes consultar la información, pero no guardar cambios. ", enlace);
@@ -65,6 +77,8 @@ export function avisoPlan(ctx, rutaCuenta = "#/cuenta") {
 }
 
 export function textoPlan(c) {
+  if (c.es_demo) return "Cuenta de demostración";
+  if (c.estado === "pendiente") return `Plan ${c.plan_nombre} · pendiente de activación`;
   const dias = Math.ceil((new Date(c.vence + "T00:00:00") - new Date().setHours(0, 0, 0, 0)) / 864e5);
   return `Plan ${c.plan_nombre} · ` + (c.estado === "prueba" ? `prueba: ${Math.max(dias, 0)} días` : `vence ${fecha(c.vence)}`);
 }

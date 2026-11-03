@@ -5,7 +5,7 @@
 <script>try{if(localStorage.getItem("d360-tema")==="oscuro")document.documentElement.dataset.theme="dark"}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Crear cuenta · Docencia360</title>
-<meta name="description" content="Crea tu cuenta de Docencia360 y pruébala gratis.">
+<meta name="description" content="Crea tu cuenta de Docencia360 para tu clase, academia o colegio.">
 <link rel="icon" href="assets/img/icono.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/css/d360.css">
 <style>
@@ -53,7 +53,7 @@ const MODALIDADES = [
   { id: "colegio",  t: "Colegio o institución", d: "Grados, secciones, docentes, boletines y familias.", ini: "C" },
 ];
 const PEND = "d360-registro-pendiente";
-const estado = { modalidad: null, plan: null, planes: [], dias: 14, tc: 36.62 };
+const estado = { modalidad: null, plan: null, planes: [], dias: 0, whatsapp: "" };
 const sesion = await sesionActual();
 const soloCuenta = !!sesion;   // ya tiene usuario: solo falta crear la cuenta
 
@@ -63,7 +63,7 @@ const [planes, cfg] = await Promise.all([
   q(sb.from("config_global").select("clave,valor").like("clave", "publico.%")),
 ]).catch((e) => { mostrar(mensajeError(e)); return [[], []]; });
 estado.planes = planes;
-for (const c of cfg) { if (c.clave === "publico.dias_prueba") estado.dias = Number(c.valor); }
+for (const c of cfg) { if (c.clave === "publico.dias_prueba") estado.dias = Number(c.valor) || 0; if (c.clave === "publico.contacto_whatsapp") estado.whatsapp = String(c.valor || "").replace(/\D/g, ""); }
 
 // Si vuelve tras confirmar su correo, completar con lo que había elegido
 let pendiente = null;
@@ -82,7 +82,7 @@ function paso1() {
   marcarPaso(1); limpiar();
   cont.replaceChildren(
     h("h1", "¿Cómo vas a usar Docencia360?"),
-    h("p.suave", `Cada tipo de cuenta tiene su propio panel. Pruébalo gratis ${estado.dias} días, sin tarjeta.`),
+    h("p.suave", "Cada tipo de cuenta tiene su propio panel. ¿Quieres verlo antes? ", h("a", { href: "index.html?demo=1" }, "Mira una demostración"), "."),
     h("div.opciones", MODALIDADES.map((m) => {
       const abierta = CONFIG.modalidadesAbiertas.includes(m.id);
       return h("button.opcion", { type: "button", disabled: !abierta, "aria-pressed": String(estado.modalidad === m.id),
@@ -100,7 +100,7 @@ function paso2() {
   const lim = (v, txt) => (v == null ? `${txt} sin límite` : v === 0 ? null : `Hasta ${v} ${txt}`);
   cont.replaceChildren(
     h("h1", "Elige tu plan"),
-    h("p.suave", `Empiezas con ${estado.dias} días gratis del plan que elijas. Puedes cambiarlo después.`),
+    h("p.suave", estado.dias > 0 ? `Empiezas con ${estado.dias} días de prueba del plan que elijas.` : "Tu cuenta se activa al confirmar el pago del primer mes. Puedes cambiar de plan después."),
     h("div.opciones", lista.map((p) => h("button.opcion", { type: "button", "aria-pressed": String(estado.plan === p.id),
       onclick: (ev) => { estado.plan = p.id; cont.querySelectorAll(".opcion").forEach((o) => o.setAttribute("aria-pressed", String(o === ev.currentTarget))); } },
       h("span.ini", p.nombre[0]),
@@ -166,7 +166,11 @@ async function crearCuenta(d) {
   elegirCuenta(r.cuenta_id);
   document.querySelector(".pasos").remove();
   cont.replaceChildren(
-    h("h1", h("span.resaltado", "Tu cuenta está lista")),
+    h("h1", h("span.resaltado", r.estado === "pendiente" ? "Tu cuenta está creada" : "Tu cuenta está lista")),
+    r.estado === "pendiente" ? h("div.aviso.ojo",
+      h("strong", "Falta activarla. "), "Realiza el pago del primer mes por transferencia o depósito y envíanos el comprobante. La activamos el mismo día. ",
+      "Mientras tanto ya puedes entrar y conocer tu panel.",
+      estado.whatsapp ? [" ", h("a", { href: `https://wa.me/${estado.whatsapp}?text=${encodeURIComponent("Hola, quiero activar mi cuenta de Docencia360. Código: " + r.codigo_institucion)}`, target: "_blank", rel: "noopener" }, "Enviar comprobante por WhatsApp")] : null) : null,
     h("p", "Guarda estos dos códigos. Con ellos puedes entrar desde cualquier teléfono o computadora sin escribir tu correo."),
     h("div.hoja",
       h("p.etiqueta", "Código de tu institución"), h("p", h("span.codigo-grande", r.codigo_institucion)),

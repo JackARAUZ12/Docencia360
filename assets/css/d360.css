@@ -241,3 +241,15 @@ main:focus { outline: none; }
 .b-tema { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; border: 1px solid var(--renglon-fuerte); background: var(--papel); color: var(--texto); cursor: pointer; flex: none; }
 .b-tema:hover { background: var(--papel-2); }
 .b-tema svg { width: 20px; height: 20px; }
+
+/* Selector de demostraciones */
+.demo-opcion { display: grid; gap: .15rem; width: 100%; text-align: left; padding: .8rem 1rem; margin-bottom: .5rem; border: 1px solid var(--renglon-fuerte); border-radius: var(--radio); background: var(--papel); color: var(--texto); font: inherit; cursor: pointer; transition: border-color .15s, background .15s; }
+.demo-opcion:hover:not([disabled]) { border-color: var(--acento); background: var(--acento-suave); }
+.demo-opcion strong { font-family: var(--display); font-size: 1.05rem; }
+.demo-opcion span { color: var(--texto-2); font-size: .92rem; }
+.demo-opcion[disabled] { opacity: .6; cursor: wait; }
+.demo-opcion.cargando strong::after { content: " · abriendo…"; font-family: var(--fuente); font-weight: 400; color: var(--texto-3); }
+/* Franja de demostración dentro de los paneles */
+.franja-demo { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; justify-content: space-between; padding: .7rem 1rem; border-radius: var(--radio-sm); background: #FBF0D6; color: #5C3D00; border: 1px solid #F0D9A0; margin-bottom: 1rem; }
+:root[data-theme="dark"] .franja-demo { background: #382C12; color: #F3D9A0; border-color: #5A4719; }
+.franja-demo a { color: inherit; font-weight: 700; }

@@ -18,7 +18,7 @@ export async function render(el, ctx) {
   const asistentes = miembros.filter((m) => m.rol === "docente");
   const uso = (usado, max, txt) => h("li", h("div.crece", h("div.titulo", txt)), h("span.num", max == null ? `${usado} · sin límite` : `${usado} de ${max}`),
     max != null && usado >= max ? h("span.estado.mal", "Al límite") : null);
-  const ESTADO = { prueba: ["info", "Prueba gratis"], activa: ["ok", "Activa"], vencida: ["ojo", "Vencida (en gracia)"], suspendida: ["mal", "Suspendida"], cancelada: ["mal", "Cancelada"] };
+  const ESTADO = { pendiente: ["ojo", "Pendiente de activación"], prueba: ["info", "Prueba gratis"], activa: ["ok", "Activa"], vencida: ["ojo", "Vencida (en gracia)"], suspendida: ["mal", "Suspendida"], cancelada: ["mal", "Cancelada"] };
 
   const mostrarCodigo = (titulo, pin, nota) => modal(titulo, h("div",
     h("p", nota), h("p.etiqueta", "Código de la institución"), h("p", h("span.codigo-grande", cuenta.codigo)),
@@ -31,7 +31,7 @@ export async function render(el, ctx) {
       h("div",
         h("section.hoja",
           h("div.hoja-titulo", h("h2", `Plan ${plan.nombre || ""}`), h("span.estado." + ESTADO[sus.estado][0], ESTADO[sus.estado][1])),
-          h("p", sus.estado === "prueba" ? `Tu prueba gratis termina el ${fecha(sus.vence)}.` : `Pagado hasta el ${fecha(sus.vence)}.`,
+          h("p", ctx.cuenta.es_demo ? "Cuenta de demostración: tiene todas las funciones del plan." : sus.estado === "pendiente" ? "Tu cuenta se activa al registrar el pago del primer mes." : sus.estado === "prueba" ? `Tu prueba termina el ${fecha(sus.vence)}.` : `Pagado hasta el ${fecha(sus.vence)}.`,
             sus.dias_gracia ? h("span.tenue", ` Tienes ${sus.dias_gracia} días de gracia después del vencimiento.`) : null),
           h("ul.lista",
             uso(resumen.estudiantes_activos, plan.max_estudiantes, "Estudiantes activos"),

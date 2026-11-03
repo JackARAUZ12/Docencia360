@@ -5,7 +5,7 @@
 <script>try{if(localStorage.getItem("d360-tema")==="oscuro")document.documentElement.dataset.theme="dark"}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Docencia360 · Asistencia, notas y cobros para profesores, academias y colegios</title>
-<meta name="description" content="Pasa lista en segundos, calcula promedios solo y lleva matrículas y cobros. Para profesores particulares, academias y colegios de Nicaragua y Latinoamérica. Prueba gratis.">
+<meta name="description" content="Pasa lista en segundos, calcula promedios solo y lleva matrículas y cobros. Para profesores particulares, academias y colegios de Nicaragua y Latinoamérica. Mira la demostración.">
 <meta name="theme-color" content="#FFFFFF">
 <link rel="icon" href="assets/img/icono.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,7 +23,7 @@
       <a class="enl" href="#precios">Precios</a>
       <a class="enl" href="#preguntas">Preguntas</a>
       <a class="enl solo-pc" href="entrar.html">Entrar</a>
-      <a class="b-tiza" href="registro.html">Probar gratis</a>
+      <button type="button" class="b-tiza" data-demo>Ver demo</button>
     </nav>
   </div>
 </header>
@@ -36,10 +36,10 @@
         <h1 id="titulo">Pasa lista, califica y cobra sin cuadernos.</h1>
         <p class="lema">Docencia360 ordena tus clases desde el teléfono: asistencia en segundos, promedios que se calculan solos y matrículas con cobros al día. Para profesores, academias y colegios.</p>
         <div class="acciones">
-          <a class="b-tiza" href="registro.html">Probar gratis</a>
-          <a class="b-borde" href="entrar.html">Entrar con mi código</a>
+          <button type="button" class="b-tiza" data-demo>Ver una demostración</button>
+          <a class="b-borde" href="registro.html">Crear mi cuenta</a>
         </div>
-        <p class="nota-prueba" id="prueba">Prueba gratis, sin tarjeta. Precios en córdobas.</p>
+        <p class="nota-prueba">Explora una cuenta real con datos de ejemplo, sin registrarte. ¿Ya tienes código? <a href="entrar.html" style="color:inherit;font-weight:700">Entra aquí</a>.</p>
       </div>
 
       <div class="escena" aria-hidden="true">
@@ -90,7 +90,7 @@
       <h2 id="t-pasos">Listo para tu próxima clase en una tarde</h2>
       <p class="bajada">No necesitas instalar nada ni saber de computadoras.</p>
       <ol class="pasos-web">
-        <li><h3>Crea tu cuenta</h3><p>Elige tu tipo de cuenta y tu plan. Empiezas con días de prueba gratis.</p></li>
+        <li><h3>Crea tu cuenta y actívala</h3><p>Elige tu tipo de cuenta y tu plan. La activamos el mismo día en que confirmas tu pago.</p></li>
         <li><h3>Arma tus grupos</h3><p>Registra estudiantes, ponle horario a cada grupo y, si tienes academia, tus cursos con su precio.</p></li>
         <li><h3>Entrega los códigos</h3><p>Cada instructor o asistente entra con el código de tu institución y su código personal. Nada de contraseñas.</p></li>
       </ol>
@@ -146,7 +146,8 @@
       <h2 id="t-preg">Preguntas frecuentes</h2>
       <div class="preguntas">
         <details><summary>¿Funciona bien en el teléfono?</summary><p>Sí. Está pensado primero para el teléfono: pasar lista y poner notas se hace con una mano, entre clase y clase. En la computadora tienes más espacio para informes y finanzas.</p></details>
-        <details><summary>¿Qué pasa cuando termina la prueba gratis?</summary><p>Eliges tu plan y pagas por transferencia o depósito. Si no renuevas, tu información queda guardada en modo de solo lectura: no se borra nada.</p></details>
+        <details><summary>¿Puedo probarlo antes de pagar?</summary><p>Sí. Con «Ver una demostración» entras a una cuenta llena de datos de ejemplo y puedes usar todo: pasar lista, calificar, matricular y cobrar. Cuando decidas, creas tu cuenta y la activamos al confirmar tu pago.</p></details>
+        <details><summary>¿Qué pasa si no renuevo?</summary><p>Tu información queda guardada en modo de solo lectura: no se borra nada. Al renovar, sigues donde lo dejaste.</p></details>
         <details><summary>¿Mis estudiantes o instructores necesitan correo?</summary><p>No. Cada persona entra con el código de tu institución y su código personal de 6 números. Si alguien pierde el suyo, le generas uno nuevo y el anterior deja de funcionar.</p></details>
         <details><summary>¿Cómo se calculan los promedios?</summary><p>Tú defines cuánto vale cada evaluación (por ejemplo, examen 60% y tareas 40%) y el promedio se calcula al momento con lo que ya calificaste. Si no pones pesos, todas valen lo mismo.</p></details>
         <details><summary>¿Puedo llevar los cobros de mi academia?</summary><p>Sí. Al matricular a un estudiante se generan su matrícula y sus mensualidades. Registras los pagos, imprimes el recibo y ves quién está atrasado.</p></details>
@@ -158,8 +159,8 @@
   <!-- Cierre -->
   <section class="pizarra cierre" aria-labelledby="t-cierre">
     <div class="contenedor">
-      <div><h2 id="t-cierre">Tu próxima lista, ya en el teléfono.</h2><p>Crea tu cuenta en dos minutos. Sin tarjeta.</p></div>
-      <div class="acciones" style="display:flex;gap:.75rem;flex-wrap:wrap"><a class="b-tiza" href="registro.html">Probar gratis</a><a class="b-borde" href="entrar.html">Ya tengo cuenta</a></div>
+      <div><h2 id="t-cierre">Tu próxima lista, ya en el teléfono.</h2><p>Mira cómo funciona con una demostración, o crea tu cuenta en dos minutos.</p></div>
+      <div class="acciones" style="display:flex;gap:.75rem;flex-wrap:wrap"><button type="button" class="b-tiza" data-demo>Ver una demostración</button><a class="b-borde" href="registro.html">Crear mi cuenta</a></div>
     </div>
   </section>
 </main>
@@ -177,9 +178,12 @@ import { CONFIG } from "./assets/js/config.js";
 import { sb } from "./assets/js/core/sb.js";
 import { h, marca, dinero } from "./assets/js/core/ui.js";
 import { botonTema } from "./assets/js/core/tema.js";
+import { abrirSelectorDemo } from "./assets/js/core/demo.js";
+document.querySelectorAll("[data-demo]").forEach((b) => b.addEventListener("click", abrirSelectorDemo));
+if (new URLSearchParams(location.search).has("demo")) abrirSelectorDemo();
 
 document.getElementById("marca").append(marca("index.html"));
-document.querySelector(".cab-web nav").insertBefore(botonTema(), document.querySelector(".cab-web nav .b-tiza"));
+document.querySelector(".cab-web nav").insertBefore(botonTema(), document.querySelector(".cab-web nav [data-demo]"));
 document.getElementById("anio").textContent = new Date().getFullYear();
 
 // ---------- Portada: el teléfono pasa lista solo (una vez) ----------
@@ -318,7 +322,6 @@ const [{ data, error }, { data: cfg }] = await Promise.all([
   sb.from("planes").select("*").eq("activo", true).order("orden"),
   sb.from("config_global").select("clave,valor").eq("clave", "publico.dias_prueba"),
 ]);
-if (cfg?.[0]?.valor) document.getElementById("prueba").textContent = `${cfg[0].valor} días de prueba gratis, sin tarjeta. Precios en córdobas.`;
 if (error || !data?.length) zona.replaceChildren(h("p.suave", "No pudimos cargar los precios. Recarga la página en un momento."));
 else { planes = data; pintarPlanes(); }
 </script>

@@ -51,7 +51,10 @@
         <p style="margin-top:1rem"><a href="recuperar.html">Olvidé mi contraseña</a></p>
       </form>
 
-      <p style="margin-top:2rem;border-top:1px solid var(--renglon);padding-top:1rem">¿Aún no tienes cuenta? <a href="registro.html">Prueba Docencia360 gratis</a></p>
+      <div style="margin-top:2rem;border-top:1px solid var(--renglon);padding-top:1.25rem">
+        <button type="button" class="btn btn-sec btn-bloque" id="b-demo">Ver una demostración</button>
+        <p class="tenue" style="margin-top:.6rem;text-align:center">Sin registrarte, con datos de ejemplo. ¿Quieres tu propia cuenta? <a href="registro.html">Créala aquí</a>.</p>
+      </div>
     </div>
   </main>
 </div>
@@ -63,6 +66,8 @@ import { CONFIG } from "./assets/js/config.js";
 import { sb, mensajeError } from "./assets/js/core/sb.js";
 import { marca, h } from "./assets/js/core/ui.js";
 import { destinoTrasLogin, sesionActual } from "./assets/js/core/sesion.js";
+import { abrirSelectorDemo } from "./assets/js/core/demo.js";
+document.getElementById("b-demo").addEventListener("click", abrirSelectorDemo);
 
 document.getElementById("marca").append(marca("index.html"));
 document.getElementById("marca-lado").append(marca("index.html"));

@@ -1,5 +1,7 @@
 -- Pruebas de la operación de academias
 \set ON_ERROR_STOP 1
+-- Estas pruebas usan cuentas en período de prueba (escritura habilitada)
+update config_global set valor = '14' where clave = 'publico.dias_prueba';
 insert into auth.users(id,email) values ('00000000-0000-0000-0000-0000000000a1','acad@test'),('00000000-0000-0000-0000-0000000000a2','fin@test'),('00000000-0000-0000-0000-0000000000a3','inst@test');
 create temp table r(k text, v jsonb); grant all on r to authenticated;
 set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a1';

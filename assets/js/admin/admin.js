@@ -11,7 +11,7 @@ const { data: esAdmin } = await sb.rpc("d360_es_plataforma_admin");
 if (!esAdmin) { document.getElementById("app").replaceChildren(h("main", h("div.aviso.mal", "No tienes acceso a esta sección."), h("a", { href: ruta("entrar.html") }, "Volver"))); throw new Error("sin acceso"); }
 
 const MOD = { profesor: "Profesor", academia: "Academia", colegio: "Colegio" };
-const EST = { prueba: "info", activa: "ok", vencida: "ojo", suspendida: "mal", cancelada: "mal" };
+const EST = { pendiente: "ojo", prueba: "info", activa: "ok", vencida: "ojo", suspendida: "mal", cancelada: "mal" };
 const FUNCIONES = [["tareas", "Tareas"], ["calendario", "Calendario"], ["reportes_pdf", "Informes PDF"], ["exportar", "Exportar CSV"], ["asistentes", "Asistentes"],
   ["finanzas", "Finanzas"], ["certificados", "Certificados"], ["comunicados", "Comunicados"], ["portal_familias", "Portal familias"], ["horarios", "Horarios"],
   ["boletines", "Boletines"], ["auditoria", "Auditoría"], ["sedes", "Sedes"]];
@@ -31,16 +31,27 @@ const planes = async (f) => (planesCache && !f ? planesCache : (planesCache = aw
 async function resumen(el) {
   const [m, cuentas] = await Promise.all([q(sb.rpc("d360_admin_metricas")), q(sb.rpc("d360_admin_cuentas"))]);
   const hoy = hoyISO();
-  const proximas = cuentas.filter((c) => ["activa", "prueba"].includes(c.estado) && c.vence >= hoy && c.vence <= sumarDias(hoy, 7));
+  const proximas = cuentas.filter((c) => !c.es_demo && ["activa", "prueba"].includes(c.estado) && c.vence >= hoy && c.vence <= sumarDias(hoy, 7));
   const ingresos = Object.entries(m.ingresos_mes || {}).map(([mon, t]) => dinero(t, mon)).join(" + ") || dinero(0, "USD");
   el.append(h("h1", "Resumen"),
     h("section.cifras",
       h("div.cifra", h("b", m.cuentas), h("span", "cuentas registradas")),
       h("div.cifra", h("b", m.por_estado?.activa || 0), h("span", "activas (pagando)")),
-      h("div.cifra", h("b", m.por_estado?.prueba || 0), h("span", "en prueba")),
+      h("div.cifra", h("b", m.por_estado?.pendiente || 0), h("span", "pendientes de activar")),
       h("div.cifra.alerta", h("b", (m.por_estado?.vencida || 0) + (m.por_estado?.suspendida || 0)), h("span", "vencidas o suspendidas")),
       h("div.cifra", h("b", dinero(m.mrr_usd, "USD")), h("span", "ingreso mensual recurrente (precio de lista)")),
-      h("div.cifra", h("b", { style: "font-size:1.3rem" }, ingresos), h("span", "cobrado este mes"))),
+      h("div.cifra", h("b", { style: "font-size:1.3rem" }, ingresos), h("span", "cobrado este mes")),
+      h("div.cifra", h("b", m.demo_accesos_7d ?? 0), h("span", "visitas a la demo (7 días)"))),
+    h("section.hoja", { style: "margin-top:1rem" },
+      h("div.hoja-titulo", h("h2", "Cuentas de demostración"),
+        h("button.btn.btn-sec.btn-sm", { onclick: async (e) => {
+          if (!(await confirmar("Reiniciar demostraciones", "Se borran los cambios hechos por visitantes y se cargan de nuevo los datos de ejemplo. También ocurre solo cada noche.", { boton: "Reiniciar" }))) return;
+          e.target.disabled = true;
+          try { const r = await q(sb.rpc("d360_admin_reiniciar_demos")); toast(`Demostraciones reiniciadas (${r.estudiantes} estudiantes de ejemplo)`); navegar(); }
+          catch (x) { toast(x.message, "mal"); e.target.disabled = false; }
+        } }, "Reiniciar ahora")),
+      tabla([{ t: "Cuenta", v: (c) => [h("strong", c.nombre), h("div.tenue", `Código ${c.codigo}`)] }, { t: "Modalidad", v: (c) => MOD[c.modalidad] }, { t: "Estudiantes", v: (c) => c.estudiantes, clase: "derecha" }, { t: "Última visita", v: (c) => c.ultimo_acceso ? fecha(c.ultimo_acceso) : "—" }],
+        cuentas.filter((c) => c.es_demo), { vacio: "Las demostraciones se crean al aplicar la migración y reiniciarlas." })),
     h("div", { style: "display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-top:1.5rem" },
       h("section.hoja", h("h2", "Por modalidad"), tabla([{ t: "Modalidad", v: ([k]) => MOD[k] }, { t: "Cuentas", v: ([, n]) => n, clase: "derecha" }], Object.entries(m.por_modalidad || {}))),
       h("section.hoja", h("h2", "Vencen en 7 días"), tabla([
@@ -60,7 +71,7 @@ async function cuentas(el) {
     const filas = lista.filter((c) => (!fMod || c.modalidad === fMod) && (!fEst || c.estado === fEst) &&
       (!t || [c.nombre, c.codigo, c.propietario_email, c.telefono].some((x) => (x || "").toLowerCase().includes(t))));
     cont.replaceChildren(tabla([
-      { t: "Cuenta", v: (c) => [h("strong", c.nombre), h("div.tenue", `${c.codigo} · ${c.propietario_email || ""}`)] },
+      { t: "Cuenta", v: (c) => [h("strong", c.nombre), c.es_demo ? h("span.estado.info", { style: "margin-left:.4rem" }, "Demo") : null, h("div.tenue", `${c.codigo} · ${c.propietario_email || ""}`)] },
       { t: "Modalidad", v: (c) => MOD[c.modalidad] },
       { t: "Plan", v: (c) => c.plan_nombre },
       { t: "Estado", v: (c) => h("span.estado." + EST[c.estado], c.estado) },

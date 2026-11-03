@@ -261,3 +261,4 @@ body.web { background: var(--fondo-web); color: var(--tinta); }
 :root[data-theme="dark"] .plan-web.destacado .b-plan { background: var(--amarilla); border-color: var(--amarilla); color: #14212B; }
 :root[data-theme="dark"] .selector button[aria-pressed="true"] { background: var(--amarilla); color: #14212B; }
 :root[data-theme="dark"] .funciones li::before { border-color: var(--amarilla); }
+.web .modal-cab h2 { font-size: 1.25rem; line-height: 1.2; }
