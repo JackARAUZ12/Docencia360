@@ -49,10 +49,10 @@ export async function render(el, ctx) {
           h("div.cifra", h("b", activos.reduce((s, g) => s + (n[g.id] || 0), 0)), h("span", "estudiantes a mi cargo")),
           h("div.cifra", h("b", clases.length), h("span", "clases hoy")))
       : h("section.cifras",
-          h("div.cifra", h("b", resumen.estudiantes_activos), h("span", "estudiantes activos")),
-          h("div.cifra", h("b", resumen.matriculas_activas), h("span", "matrículas activas")),
-          h("div.cifra", h("b", resumen.grupos_activos), h("span", "grupos en curso")),
-          h("div.cifra", h("b", resumen.docentes), h("span", "instructores")),
+          h("div.cifra", h("b", resumen.estudiantes_activos ?? 0), h("span", "estudiantes activos")),
+          h("div.cifra", h("b", resumen.matriculas_activas ?? 0), h("span", "matrículas activas")),
+          h("div.cifra", h("b", resumen.grupos_activos ?? 0), h("span", "grupos en curso")),
+          h("div.cifra", h("b", resumen.docentes ?? 0), h("span", "instructores")),
           ctx.esFinanzas && ctx.f("finanzas") ? [
             h("div.cifra", h("b", M(resumen.ingresos_mes)), h("span", "cobrado este mes")),
             h("div.cifra" + (Number(resumen.vencido_cobro) ? ".alerta" : ""), h("b", M(resumen.pendiente_cobro)), h("span", "pagos pendientes")),

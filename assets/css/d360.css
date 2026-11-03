@@ -230,3 +230,22 @@ dialog.modal::backdrop { background: rgba(15, 21, 27, .45); }
   body.solo-impresion > *:not(#impresion) { display: none !important; }
   body.solo-impresion #impresion { display: block; }
 }
+
+/* El contenedor principal recibe el foco al navegar: sin marco visible */
+main:focus { outline: none; }
+
+/* Tablas en el teléfono: cada fila se muestra como ficha con etiquetas.
+   El cuaderno de notas conserva su forma de tabla (se desplaza de lado). */
+@media (max-width: 600px) {
+  table.registro:not(.cuaderno) thead { display: none; }
+  table.registro:not(.cuaderno), table.registro:not(.cuaderno) tbody { display: block; }
+  table.registro:not(.cuaderno) tr { display: block; padding: .65rem 0; border-bottom: 1px solid var(--renglon); }
+  table.registro:not(.cuaderno) td { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: .2rem 0; border: 0; text-align: right; }
+  table.registro:not(.cuaderno) td > * { min-width: 0; }
+  table.registro:not(.cuaderno) td::before { content: attr(data-t); color: var(--texto-3); font-size: .85rem; text-align: left; flex: none; }
+  table.registro:not(.cuaderno) td[data-t=""]::before { content: none; }
+  table.registro:not(.cuaderno) td:first-child { text-align: left; font-size: 1.02rem; }
+  table.registro:not(.cuaderno) td:first-child::before { content: none; }
+  table.registro:not(.cuaderno) td.acciones { justify-content: flex-start; flex-wrap: wrap; padding-top: .4rem; }
+  table.registro:not(.cuaderno) tr:hover td { background: transparent; }
+}

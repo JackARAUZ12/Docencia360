@@ -177,7 +177,7 @@ export function tabla(columnas, filas, { vacio = "Sin registros todavía." } = {
   return h("div.tabla-envoltura",
     h("table.registro",
       h("thead", h("tr", columnas.map((c) => h("th", { className: c.clase || "" }, c.t)))),
-      h("tbody", filas.map((f) => h("tr", columnas.map((c) => h("td", { className: c.clase || "" }, c.v(f))))))));
+      h("tbody", filas.map((f) => h("tr", columnas.map((c) => h("td", { className: c.clase || "", dataset: { t: c.t || "" } }, c.v(f))))))));
 }
 
 export function cargando(el, texto = "Cargando…") {
