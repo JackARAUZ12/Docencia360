@@ -1,1 +1,129 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Docencia360 · Gestión educativa</title>
+<meta name="description" content="Docencia360: asistencia, calificaciones, grupos e informes para profesores, academias y colegios. Precios accesibles en córdobas y dólares.">
+<link rel="icon" href="assets/img/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/d360.css">
+<style>
+  .web { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+  .web-cab { display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; gap: 1rem; }
+  .web-cab nav { display: flex; gap: .5rem; align-items: center; }
+  .heroe { position: relative; padding: 3.5rem 0 3rem; border-bottom: 1px solid var(--renglon); }
+  .heroe::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(transparent 0 37px, var(--renglon) 37px 38px); opacity: .5; pointer-events: none; mask-image: linear-gradient(to bottom, #000 40%, transparent); }
+  .heroe > * { position: relative; }
+  .heroe h1 { font-size: clamp(2rem, 1.2rem + 3.6vw, 3.6rem); line-height: 1.05; max-width: 15ch; letter-spacing: -.02em; }
+  .heroe p { font-size: 1.15rem; max-width: 52ch; color: var(--texto-2); }
+  .heroe .acciones { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: 1.5rem; }
+  section.bloque { padding: 3rem 0; border-bottom: 1px solid var(--renglon); }
+  .tres { display: grid; gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .tres h3 { font-size: 1.2rem; }
+  .tres ul { padding-left: 1.1rem; color: var(--texto-2); margin: 0; }
+  .tres li { margin-bottom: .3rem; }
+  .indice { font-weight: 700; color: var(--acento); font-size: .95rem; margin-bottom: .4rem; }
+  .precios { width: 100%; border-collapse: collapse; }
+  .precios th, .precios td { padding: .7rem .6rem; border-bottom: 1px solid var(--renglon); text-align: left; vertical-align: top; }
+  .precios thead th { border-bottom: 2px solid var(--texto); }
+  .precios .p { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pie { padding: 2rem 0 3rem; color: var(--texto-3); font-size: .92rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+  details { border-bottom: 1px solid var(--renglon); padding: .9rem 0; }
+  summary { font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="web">
+  <header class="web-cab">
+    <span id="marca"></span>
+    <nav><a class="btn btn-texto" href="#precios">Precios</a><a class="btn btn-sec" href="entrar.html">Entrar</a></nav>
+  </header>
 
+  <section class="heroe">
+    <h1>Tu registro de clases, <span class="resaltado">ordenado</span> y en tu teléfono.</h1>
+    <p>Pasa lista en segundos, registra notas con promedios automáticos y entrega informes claros. Para profesores particulares, academias y colegios.</p>
+    <div class="acciones">
+      <a class="btn" href="registro.html">Probar gratis</a>
+      <a class="btn btn-sec" href="entrar.html">Ya tengo un código</a>
+    </div>
+    <p class="tenue" id="prueba" style="margin-top:1rem"></p>
+  </section>
+
+  <section class="bloque">
+    <div class="tres">
+      <div>
+        <div class="indice">Profesor independiente</div>
+        <h3>Lo esencial, sin complicaciones</h3>
+        <ul><li>Estudiantes y expediente</li><li>Grupos con horario</li><li>Asistencia y tareas</li><li>Notas con ponderación</li><li>Calendario e informes</li></ul>
+        <p style="margin-top:1rem"><a href="registro.html?modalidad=profesor">Crear mi espacio</a></p>
+      </div>
+      <div>
+        <div class="indice">Academias y centros de cursos</div>
+        <h3>Lo académico y lo administrativo</h3>
+        <ul><li>Matrículas y cupos</li><li>Instructores y su carga</li><li>Mensualidades y pagos pendientes</li><li>Certificados con folio</li></ul>
+        <p class="tenue" style="margin-top:1rem">Disponible próximamente.</p>
+      </div>
+      <div>
+        <div class="indice">Colegios e instituciones</div>
+        <h3>Para cientos o miles de estudiantes</h3>
+        <ul><li>Grados, secciones y turnos</li><li>Horarios sin choques</li><li>Boletines por período</li><li>Portal de padres y colegiaturas</li></ul>
+        <p class="tenue" style="margin-top:1rem">Disponible próximamente.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloque">
+    <h2>Se entra con un código</h2>
+    <p class="suave" style="max-width:60ch">Cada institución tiene su código y cada persona el suyo. Docentes, asistentes y familias entran sin crear correos ni recordar contraseñas. Tras cinco intentos fallidos, el acceso se bloquea unos minutos.</p>
+  </section>
+
+  <section class="bloque" id="precios">
+    <h2>Precios mensuales</h2>
+    <p class="suave">Precios accesibles para Nicaragua y Latinoamérica. Sin contratos: pagas mes a mes.</p>
+    <div class="tabla-envoltura"><table class="precios" id="tabla-precios"><tbody><tr><td class="tenue">Cargando precios…</td></tr></tbody></table></div>
+  </section>
+
+  <section class="bloque">
+    <h2>Preguntas frecuentes</h2>
+    <details><summary>¿Mis datos están separados de los de otros usuarios?</summary><p class="suave">Sí. Cada cuenta es un espacio aislado y la base de datos verifica en cada consulta que solo veas la información de tu cuenta.</p></details>
+    <details><summary>¿Qué pasa si se vence mi plan?</summary><p class="suave">Tienes unos días de gracia. Después, tu información queda en modo de solo lectura hasta que renueves: no se borra nada.</p></details>
+    <details><summary>¿Funciona en el teléfono?</summary><p class="suave">Sí. Está pensado primero para el teléfono: el pase de lista y las notas se usan con una mano.</p></details>
+    <details><summary>¿Cómo pago?</summary><p class="suave">Por transferencia o depósito, en córdobas o dólares. Al confirmar el pago, tu plan se activa.</p></details>
+  </section>
+
+  <footer class="pie"><span>© <span id="anio"></span> Docencia360</span><span>Toda la gestión educativa, en un solo lugar.</span></footer>
+</div>
+<script src="assets/vendor/supabase.js"></script>
+<script type="module">
+import { sb } from "./assets/js/core/sb.js";
+import { h, marca, dinero } from "./assets/js/core/ui.js";
+document.getElementById("marca").append(marca("index.html"));
+document.getElementById("anio").textContent = new Date().getFullYear();
+
+const NOMBRES = { profesor: "Profesor independiente", academia: "Academias", colegio: "Colegios" };
+const [{ data: planes, error }, { data: cfg }] = await Promise.all([
+  sb.from("planes").select("*").eq("activo", true).order("modalidad").order("orden"),
+  sb.from("config_global").select("clave,valor").eq("clave", "publico.dias_prueba"),
+]);
+const dias = cfg?.[0]?.valor;
+if (dias) document.getElementById("prueba").textContent = `${dias} días de prueba gratis. Sin tarjeta.`;
+const t = document.getElementById("tabla-precios");
+if (error || !planes?.length) {
+  t.replaceChildren(h("tbody", h("tr", h("td.tenue", "No pudimos cargar los precios. Intenta más tarde."))));
+} else {
+  const lim = (v, s) => (v == null ? `${s} sin límite` : v === 0 ? null : `${v} ${s}`);
+  const filas = [];
+  for (const m of ["profesor", "academia", "colegio"]) {
+    const ps = planes.filter((p) => p.modalidad === m);
+    if (!ps.length) continue;
+    filas.push(h("tr", h("th", { colSpan: 3, style: "padding-top:1.5rem;border-bottom:2px solid var(--texto)" }, NOMBRES[m])));
+    ps.forEach((p) => filas.push(h("tr",
+      h("td", h("strong", p.nombre), h("div.tenue", p.resumen)),
+      h("td.suave", [lim(p.max_estudiantes, "estudiantes"), lim(p.max_docentes, m === "academia" ? "instructores" : m === "colegio" ? "docentes" : "asistente"), lim(p.max_grupos, "grupos")].filter(Boolean).join(" · ")),
+      h("td", { style: "text-align:right" }, h("span.p", dinero(p.precio_nio, "NIO")), h("div.tenue", `${dinero(p.precio_usd, "USD")} / mes`)))));
+  }
+  t.replaceChildren(h("tbody", filas));
+}
+</script>
+</body>
+</html>

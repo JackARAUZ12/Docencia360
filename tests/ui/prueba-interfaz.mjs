@@ -1,0 +1,106 @@
+// Prueba de humo de la interfaz: abre cada pantalla en teléfono y computadora
+// con respuestas simuladas de Supabase y reporta errores de JavaScript.
+// Uso: node tests/ui/prueba-interfaz.mjs  (requiere servidor estático en :8080)
+import { createRequire } from "node:module";
+const { chromium } = createRequire(import.meta.url)("playwright");
+import fs from "node:fs";
+
+const BASE = process.env.BASE || "http://localhost:8080";
+const OUT = process.env.OUT || "tests/ui/capturas";
+fs.mkdirSync(OUT, { recursive: true });
+const hoy = new Date().toISOString().slice(0, 10);
+const U = "11111111-1111-1111-1111-111111111111", C = "22222222-2222-2222-2222-222222222222";
+const G1 = "33333333-3333-3333-3333-333333333331", G2 = "33333333-3333-3333-3333-333333333332";
+const E = (n) => `44444444-4444-4444-4444-44444444444${n}`;
+const EV1 = "55555555-5555-5555-5555-555555555551", EV2 = "55555555-5555-5555-5555-555555555552";
+const est = [["Ana", "López"], ["Luis", "Pérez"], ["María José", "Gutiérrez Castillo"], ["Carlos", "Ruiz"]].map(([n, a], i) => ({
+  id: E(i + 1), cuenta_id: C, nombres: n, apellidos: a, estado: i === 3 ? "retirado" : "activo", telefono: "8888-000" + i,
+  contacto_nombre: "Responsable " + i, contacto_telefono: "7777-000" + i, creado: hoy + "T10:00:00Z", fecha_nacimiento: "2010-05-0" + (i + 1) }));
+const planes = [
+  { id: "prof_basico", modalidad: "profesor", nombre: "Básico", orden: 1, resumen: "Para empezar", precio_usd: 4, precio_nio: 149, max_estudiantes: 30, max_docentes: 0, max_grupos: 4, max_admins: 0, almacenamiento_mb: 200, funciones: { tareas: true }, activo: true },
+  { id: "prof_profesional", modalidad: "profesor", nombre: "Profesional", orden: 2, resumen: "Varios grupos", precio_usd: 8, precio_nio: 295, max_estudiantes: 120, max_docentes: 0, max_grupos: 15, max_admins: 0, almacenamiento_mb: 1024, funciones: { tareas: true, reportes_pdf: true, exportar: true }, activo: true },
+  { id: "prof_premium", modalidad: "profesor", nombre: "Premium", orden: 3, resumen: "Con asistente", precio_usd: 14, precio_nio: 515, max_estudiantes: 400, max_docentes: 1, max_grupos: null, max_admins: 0, almacenamiento_mb: 3072, funciones: { tareas: true, reportes_pdf: true, exportar: true, asistentes: true }, activo: true },
+  { id: "col_avanzado", modalidad: "colegio", nombre: "Avanzado", orden: 2, resumen: "Colegios", precio_usd: 99, precio_nio: 3625, max_estudiantes: 1200, max_docentes: 80, max_grupos: null, max_admins: 10, almacenamiento_mb: 51200, funciones: {}, activo: true },
+];
+const grupos = [
+  { id: G1, cuenta_id: C, nombre: "Matemática 9no", estado: "activo", cupo: 10, asignatura_id: "a1", asignaturas: { nombre: "Matemática" }, cursos: null, fecha_inicio: "2026-02-01" },
+  { id: G2, cuenta_id: C, nombre: "Física sabatino", estado: "activo", asignatura_id: null, asignaturas: null, cursos: null },
+];
+const dia = ((new Date().getDay() + 6) % 7) + 1;
+const F = {
+  planes, config_global: [{ clave: "publico.dias_prueba", valor: 14 }, { clave: "publico.inactividad_minutos", valor: 60 }, { clave: "publico.tipo_cambio", valor: 36.62, descripcion: "Tipo de cambio", actualizado: hoy }],
+  grupos, asignaturas: [{ id: "a1", cuenta_id: C, nombre: "Matemática", activo: true }], cursos: [{ id: "c1", cuenta_id: C, nombre: "Álgebra intensiva", mensualidad: 800, duracion_semanas: 8, modalidad_clase: "presencial", activo: true }],
+  estudiantes: est,
+  grupo_estudiantes: est.slice(0, 3).map((e) => ({ grupo_id: G1, estudiante_id: e.id, cuenta_id: C, estado: "activo", desde: "2026-02-01", estudiantes: e, grupos: { id: G1, nombre: "Matemática 9no", estado: "activo" } })),
+  horarios: [{ id: "h1", dia, hora_inicio: "08:00:00", hora_fin: "09:30:00", grupo_id: G1, grupos: { nombre: "Matemática 9no", estado: "activo" } }],
+  evaluaciones: [
+    { id: EV1, cuenta_id: C, grupo_id: G1, titulo: "Examen parcial", tipo: "examen", fecha: hoy, peso: 60, puntaje_max: 100, grupos: { nombre: "Matemática 9no" } },
+    { id: EV2, cuenta_id: C, grupo_id: G1, titulo: "Tarea de ecuaciones", tipo: "tarea", fecha: hoy, peso: 40, puntaje_max: 20, grupos: { nombre: "Matemática 9no" } }],
+  calificaciones: [{ id: "k1", evaluacion_id: EV1, estudiante_id: E(1), puntaje: 85, entregado: true, evaluaciones: { titulo: "Examen parcial", tipo: "examen", fecha: hoy, peso: 60, puntaje_max: 100, grupo_id: G1, grupos: { nombre: "Matemática 9no" } } }],
+  asistencias: [{ fecha: hoy, estado: "ausente", estudiante_id: E(2), grupo_id: G1, nota: "Enfermo", grupos: { nombre: "Matemática 9no" } }],
+  eventos: [{ id: "ev1", cuenta_id: C, titulo: "Reunión de padres", fecha: hoy, tipo: "reunion", hora_inicio: "17:00:00" }],
+  notificaciones: [], observaciones: [{ id: "o1", texto: "Muy participativa", tipo: "academica", creado: hoy + "T10:00:00Z" }],
+  cuentas: [{ id: C, nombre: "Clases de la Prof. Ana", codigo: "K7M2QP", moneda: "NIO", telefono: "8888-1111", email: "ana@ejemplo.com" }],
+  suscripciones: [{ cuenta_id: C, plan_id: "prof_premium", estado: "prueba", vence: "2026-12-01", dias_gracia: 5 }],
+  pagos_suscripcion: [], miembros: [{ id: "m1", user_id: U, nombre: "Ana Martínez", rol: "propietario", activo: true, codigo_ultimos: "42" }, { id: "m2", nombre: "Asistente Uno", rol: "docente", activo: true }],
+  grupo_docentes: [], promociones: [],
+};
+const RPC = {
+  d360_mis_cuentas: [{ cuenta_id: C, nombre: "Clases de la Prof. Ana", modalidad: "profesor", codigo: "K7M2QP", rol: "propietario", miembro_id: "m1", miembro_nombre: "Ana Martínez",
+    plan_id: "prof_premium", plan_nombre: "Premium", estado: "prueba", vence: "2026-12-01", dias_gracia: 5, operativa: true, funciones: planes[2].funciones, onboarding_completo: false, moneda: "NIO" }],
+  d360_resumen_panel: { estudiantes_activos: 3, grupos_activos: 2, asistencia_30d: 91.5, evaluaciones_sin_nota: 1, docentes: 1 },
+  d360_promedios_grupo: [{ estudiante_id: E(1), promedio: 85, calificadas: 1, total_evaluaciones: 2 }, { estudiante_id: E(2), promedio: 52, calificadas: 1, total_evaluaciones: 2 }, { estudiante_id: E(3), promedio: null, calificadas: 0, total_evaluaciones: 2 }],
+  d360_resumen_asistencia: [{ estudiante_id: E(1), presentes: 10, ausentes: 1, tardes: 1, justificados: 0, total: 12, porcentaje: 91.7 }, { estudiante_id: E(2), presentes: 6, ausentes: 4, tardes: 0, justificados: 0, total: 10, porcentaje: 60 }],
+  d360_marcar_acceso: null, d360_es_plataforma_admin: true,
+  d360_admin_metricas: { cuentas: 1, por_modalidad: { profesor: 1 }, por_estado: { prueba: 1 }, mrr_usd: 0, ingresos_mes: {}, ingresos_12m: [] },
+  d360_admin_cuentas: [{ cuenta_id: C, nombre: "Clases de la Prof. Ana", modalidad: "profesor", codigo: "K7M2QP", propietario_email: "ana@ejemplo.com", plan_id: "prof_premium", plan_nombre: "Premium", estado: "prueba", vence: "2026-12-01", dias_gracia: 5, estudiantes: 3, miembros: 2, creado: hoy }],
+  d360_admin_actividad: [{ id: 1, creado: hoy + "T10:00:00Z", cuenta: "Clases de la Prof. Ana", accion: "acceso_codigo", entidad: "miembros", usuario: "Ana", detalle: { origen: "1.2.3.4" } }],
+};
+
+const sesion = { access_token: "x.y.z", refresh_token: "r", token_type: "bearer", expires_in: 360000, expires_at: Math.floor(Date.now() / 1000) + 360000, user: { id: U, email: "ana@ejemplo.com", aud: "authenticated", role: "authenticated" } };
+
+async function preparar(page, conSesion) {
+  await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+  await page.route(/supabase\.co/, async (route) => {
+    const u = new URL(route.request().url());
+    const single = (route.request().headers()["accept"] || "").includes("vnd.pgrst.object");
+    let body = null;
+    if (u.pathname.startsWith("/rest/v1/rpc/")) body = RPC[u.pathname.split("/").pop()] ?? null;
+    else if (u.pathname.startsWith("/rest/v1/")) {
+      const t = u.pathname.split("/").pop();
+      body = route.request().method() === "GET" ? (F[t] ?? []) : [];
+      if (single) body = body[0] ?? null;
+    } else if (u.pathname.startsWith("/auth/v1/")) body = {};
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+  });
+  if (conSesion) await page.addInitScript((s) => localStorage.setItem("d360-sesion", JSON.stringify(s)), sesion);
+}
+
+const errores = [];
+const PANTALLAS = [
+  ["index", "/index.html", false], ["entrar", "/entrar.html", false], ["registro", "/registro.html?modalidad=profesor", false],
+  ...["inicio", "asistencia", "calificaciones", "estudiantes", `estudiantes/${E(1)}`, "grupos", `grupos/${G1}`, "tareas", "cursos", "calendario", "informes", `informes?estudiante=${E(1)}`, "cuenta", "mas"]
+    .map((r) => [`profesor-${r.replace(/[/?=]/g, "_").slice(0, 40)}`, `/app/profesor.html#/${r}`, true]),
+  ...["resumen", "cuentas", "planes", "promociones", "actividad", "parametros"].map((r) => [`admin-${r}`, `/admin/index.html#/${r}`, true]),
+];
+const browser = await chromium.launch();
+for (const [ancho, alto, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
+  const ctxB = await browser.newContext({ viewport: { width: ancho, height: alto } });
+  for (const [nombre, url, conSesion] of PANTALLAS) {
+    const page = await ctxB.newPage();
+    page.on("pageerror", (e) => errores.push(`${tag} ${nombre}: ${e.message}`));
+    page.on("console", (m) => { if (m.type() === "error" && !/fonts|favicon|ERR_|Failed to load resource/.test(m.text())) errores.push(`${tag} ${nombre} console: ${m.text()}`); });
+    await preparar(page, conSesion);
+    await page.goto(BASE + url, { waitUntil: "load", timeout: 20000 }).catch((e) => errores.push(`${tag} ${nombre}: ${e.message}`));
+    await page.waitForTimeout(900);
+    const alerta = await page.locator(".aviso.mal").first().textContent().catch(() => null);
+    if (alerta && !/vencido/.test(alerta)) errores.push(`${tag} ${nombre} muestra error: ${alerta.slice(0, 160)}`);
+    const anchoDoc = await page.evaluate(() => document.documentElement.scrollWidth);
+    if (anchoDoc > ancho + 1) errores.push(`${tag} ${nombre}: desborde horizontal (${anchoDoc}px)`);
+    await page.screenshot({ path: `${OUT}/${tag}-${nombre}.png`, fullPage: true });
+    await page.close();
+  }
+  await ctxB.close();
+}
+await browser.close();
+console.log(errores.length ? "ERRORES:\n" + errores.join("\n") : "OK: todas las pantallas renderizan sin errores");

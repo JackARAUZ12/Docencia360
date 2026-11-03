@@ -1,0 +1,19 @@
+// Iconos de línea propios (24x24, trazo 2). Sin librerías externas.
+const s = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+export const ICONOS = {
+  inicio: s('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>'),
+  estudiantes: s('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5a6 6 0 0 1 3.5 5.5"/>'),
+  asistencia: s('<rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h3"/><path d="M12.5 16l2 2 3.5-4"/>'),
+  notas: s('<path d="M4 4h12l4 4v12H4z"/><path d="M8 11h8M8 15h5"/><path d="M15 4v4h5"/>'),
+  grupos: s('<rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><path d="M17 14v6M14 17h6"/>'),
+  cursos: s('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/>'),
+  tareas: s('<path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11"/><circle cx="5" cy="18" r="1.2"/>'),
+  calendario: s('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+  informes: s('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
+  cuenta: s('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
+  mas: s('<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>'),
+  salir: s('<path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4M6 12h10"/>'),
+  mas_add: s('<path d="M12 5v14M5 12h14"/>'),
+  imprimir: s('<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>'),
+  descargar: s('<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>'),
+};

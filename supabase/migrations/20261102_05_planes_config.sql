@@ -42,6 +42,10 @@ insert into public.config_global(clave, valor, descripcion) values
 ('publico.inactividad_minutos', '60', 'Minutos sin actividad antes de cerrar la sesión'),
 ('dias_gracia_defecto', '5', 'Días de gracia tras el vencimiento antes de suspender');
 
+-- Administrador del panel maestro (propietario del SaaS)
+insert into public.plataforma_admins(user_id)
+select id from auth.users where email = 'jackarauz2008@gmail.com';
+
 -- Tarea diaria (06:05 UTC = 00:05 en Nicaragua)
 create extension if not exists pg_cron;
 select cron.schedule('d360-tareas-diarias', '5 6 * * *', $$select public.d360_tareas_diarias()$$);

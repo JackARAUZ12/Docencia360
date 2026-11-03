@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recuperar acceso · Docencia360</title>
+<link rel="icon" href="assets/img/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/d360.css">
+</head>
+<body>
+<main class="acceso-form" style="min-height:100vh">
+  <div>
+    <div id="marca" style="margin-bottom:2rem"></div>
+    <h1 id="titulo">Recuperar acceso</h1>
+    <div id="aviso"></div>
+    <section id="pedir">
+      <p class="suave">Para dueños de cuenta. Te enviaremos un enlace para crear una contraseña nueva.</p>
+      <form id="f1" novalidate>
+        <label class="campo"><span>Correo</span><input id="email" type="email" autocomplete="email" required></label>
+        <button class="btn btn-bloque">Enviar enlace</button>
+      </form>
+      <p class="tenue" style="margin-top:1.5rem">¿Entras con código? Pide uno nuevo a la administración de tu institución.</p>
+    </section>
+    <section id="nueva" class="oculto">
+      <form id="f2" novalidate>
+        <label class="campo"><span>Contraseña nueva</span><input id="clave" type="password" minlength="8" autocomplete="new-password" required><small>Mínimo 8 caracteres.</small></label>
+        <button class="btn btn-bloque">Guardar contraseña</button>
+      </form>
+    </section>
+    <p style="margin-top:2rem"><a href="entrar.html?modo=correo">Volver a entrar</a></p>
+  </div>
+</main>
+<script src="assets/vendor/supabase.js"></script>
+<script type="module">
+import { sb, mensajeError } from "./assets/js/core/sb.js";
+import { h, marca } from "./assets/js/core/ui.js";
+import { ruta, destinoTrasLogin } from "./assets/js/core/sesion.js";
+document.getElementById("marca").append(marca("index.html"));
+const aviso = document.getElementById("aviso");
+const mostrar = (m, t = "mal") => aviso.replaceChildren(h(`div.aviso.${t}`, { role: "alert" }, m));
+
+sb.auth.onAuthStateChange((ev) => {
+  if (ev === "PASSWORD_RECOVERY") {
+    document.getElementById("pedir").classList.add("oculto");
+    document.getElementById("nueva").classList.remove("oculto");
+    document.getElementById("titulo").textContent = "Crea tu contraseña nueva";
+  }
+});
+
+document.getElementById("f1").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("email").value.trim();
+  if (!email) return mostrar("Escribe tu correo.");
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: ruta("recuperar.html") });
+  // Mismo mensaje exista o no el correo (no revelar qué correos están registrados)
+  if (error && !/rate/i.test(error.message)) return mostrar(mensajeError(error));
+  mostrar("Si ese correo tiene una cuenta, te llegará un enlace en unos minutos.", "ok");
+});
+
+document.getElementById("f2").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const password = document.getElementById("clave").value;
+  if (password.length < 8) return mostrar("La contraseña debe tener al menos 8 caracteres.");
+  const { error } = await sb.auth.updateUser({ password });
+  if (error) return mostrar(mensajeError(error));
+  mostrar("Contraseña actualizada.", "ok");
+  setTimeout(async () => location.replace(await destinoTrasLogin()), 900);
+});
+</script>
+</body>
+</html>
