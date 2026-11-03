@@ -4,6 +4,7 @@
 import { sb, q } from "../core/sb.js";
 import { h, marca, tabla, formularioModal, confirmar, modal, toast, fecha, dinero, hoyISO, sumarDias, errorEn, cargando } from "../core/ui.js";
 import { sesionActual, salir, ruta } from "../core/sesion.js";
+import { botonTema } from "../core/tema.js";
 
 if (!(await sesionActual())) location.replace(ruta("entrar.html?modo=correo"));
 const { data: esAdmin } = await sb.rpc("d360_es_plataforma_admin");
@@ -20,7 +21,7 @@ const SECCIONES = [["resumen", "Resumen"], ["cuentas", "Cuentas"], ["planes", "P
 document.getElementById("app").replaceChildren(
   h("header.adm-cab", h("div", marca(ruta("admin/index.html")), h("span.sello", "Panel maestro")),
     h("nav", SECCIONES.map(([r, t]) => h("a", { href: "#/" + r, dataset: { r } }, t)),
-      h("a", { href: "#", onclick: (e) => { e.preventDefault(); salir(); } }, "Salir"))),
+      h("a", { href: "#", onclick: (e) => { e.preventDefault(); salir(); } }, "Salir"), botonTema())),
   main);
 
 let planesCache;

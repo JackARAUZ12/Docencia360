@@ -34,19 +34,6 @@
   --display: "Bricolage Grotesque", "Atkinson Hyperlegible", system-ui, sans-serif;
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --fondo: #0F151B; --papel: #172029; --papel-2: #1C2731; --renglon: #2A3743; --renglon-fuerte: #3B4A58;
-    --texto: #E8EDF1; --texto-2: #AEBAC5; --texto-3: #8592A0;
-    --tinta: #8DB4E2; --tinta-suave: #1E3147;
-    --aprobado: #5CC39A; --aprobado-suave: #16352A;
-    --correccion: #F08C80; --correccion-suave: #3A1F1C;
-    --atencion: #E8BB5A; --atencion-suave: #382C12;
-    --resaltador: #C9AE2B;
-    --sombra: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
-    color-scheme: dark;
-  }
-}
 :root[data-theme="dark"] {
   --fondo: #0F151B; --papel: #172029; --papel-2: #1C2731; --renglon: #2A3743; --renglon-fuerte: #3B4A58;
   --texto: #E8EDF1; --texto-2: #AEBAC5; --texto-3: #8592A0;
@@ -63,10 +50,8 @@
 .m-profesor { --acento: var(--tinta); --acento-suave: var(--tinta-suave); }
 .m-academia { --acento: #0E6B6B; --acento-suave: #DDEFEE; }
 .m-colegio  { --acento: #6E1F3A; --acento-suave: #F3E3E8; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .m-academia { --acento: #5FC2C0; --acento-suave: #133332; }
-  :root:not([data-theme="light"]) .m-colegio  { --acento: #E58BA8; --acento-suave: #3A1A25; }
-}
+:root[data-theme="dark"] .m-academia { --acento: #5FC2C0; --acento-suave: #133332; }
+:root[data-theme="dark"] .m-colegio  { --acento: #E58BA8; --acento-suave: #3A1A25; }
 
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -251,3 +236,8 @@ main:focus { outline: none; }
   table.registro:not(.cuaderno) td.acciones { justify-content: flex-start; flex-wrap: wrap; padding-top: .4rem; }
   table.registro:not(.cuaderno) tr:hover td { background: transparent; }
 }
+
+/* Botón para cambiar entre modo claro y oscuro */
+.b-tema { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; border: 1px solid var(--renglon-fuerte); background: var(--papel); color: var(--texto); cursor: pointer; flex: none; }
+.b-tema:hover { background: var(--papel-2); }
+.b-tema svg { width: 20px; height: 20px; }

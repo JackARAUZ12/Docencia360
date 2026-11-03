@@ -2,10 +2,11 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<script>try{if(localStorage.getItem("d360-tema")==="oscuro")document.documentElement.dataset.theme="dark"}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Docencia360 · Asistencia, notas y cobros para profesores, academias y colegios</title>
 <meta name="description" content="Pasa lista en segundos, calcula promedios solo y lleva matrículas y cobros. Para profesores particulares, academias y colegios de Nicaragua y Latinoamérica. Prueba gratis.">
-<meta name="theme-color" content="#1E3A32">
+<meta name="theme-color" content="#FFFFFF">
 <link rel="icon" href="assets/img/icono.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -63,8 +64,8 @@
         </div>
       </div>
     </div>
-    <span class="tiza-pieza" style="left:14%;width:46px;background:#F4F6F2"></span>
-    <span class="tiza-pieza" style="left:calc(14% + 58px);width:30px;background:#F2C94C"></span>
+    <span class="tiza-pieza pieza-1"></span>
+    <span class="tiza-pieza pieza-2"></span>
   </section>
 
   <!-- Tres realidades -->
@@ -175,8 +176,10 @@
 import { CONFIG } from "./assets/js/config.js";
 import { sb } from "./assets/js/core/sb.js";
 import { h, marca, dinero } from "./assets/js/core/ui.js";
+import { botonTema } from "./assets/js/core/tema.js";
 
 document.getElementById("marca").append(marca("index.html"));
+document.querySelector(".cab-web nav").insertBefore(botonTema(), document.querySelector(".cab-web nav .b-tiza"));
 document.getElementById("anio").textContent = new Date().getFullYear();
 
 // ---------- Portada: el teléfono pasa lista solo (una vez) ----------

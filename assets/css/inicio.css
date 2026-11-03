@@ -19,9 +19,6 @@
   --fondo-web: #F2F5F3;
   --linea-web: #DDE5E0;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --papel: #172029; --fondo-web: #10171D; --linea-web: #26323C; --tinta: #E8EDF1; }
-}
 :root[data-theme="dark"] { --papel: #172029; --fondo-web: #10171D; --linea-web: #26323C; --tinta: #E8EDF1; }
 
 body.web { background: var(--fondo-web); color: var(--tinta); }
@@ -206,3 +203,61 @@ body.web { background: var(--fondo-web); color: var(--tinta); }
   .telefono { transform: none; }
   .pantalla .pa i, .pantalla .aviso-ok { transition: none; }
 }
+
+/* =====================================================================
+   MODO CLARO (predeterminado): la pizarra blanca acrílica.
+   Fondo blanco con rastros de marcador borrado, marco de aluminio y
+   marcadores apoyados. El modo oscuro conserva la pizarra verde.
+   ===================================================================== */
+.cab-web .b-tema { background: transparent; border-color: rgba(244, 246, 242, .3); color: var(--tiza); width: 40px; height: 40px; }
+.cab-web .b-tema:hover { background: rgba(255, 255, 255, .08); }
+
+:root:not([data-theme="dark"]) .cab-web { background: rgba(255, 255, 255, .94); color: var(--tinta); border-bottom: 1px solid var(--linea-web); -webkit-backdrop-filter: saturate(1.4) blur(10px); backdrop-filter: saturate(1.4) blur(10px); }
+:root:not([data-theme="dark"]) .cab-web .marca { color: var(--tinta); }
+:root:not([data-theme="dark"]) .cab-web .marca b { color: var(--pizarra); }
+:root:not([data-theme="dark"]) .cab-web nav a.enl { color: #4A5866; }
+:root:not([data-theme="dark"]) .cab-web nav a.enl:hover { color: var(--tinta); background: var(--fondo-web); }
+:root:not([data-theme="dark"]) .cab-web .b-tema { border-color: var(--linea-web); color: var(--tinta); }
+:root:not([data-theme="dark"]) .cab-web .b-tema:hover { background: var(--fondo-web); }
+
+:root:not([data-theme="dark"]) .pizarra {
+  color: var(--tinta);
+  background:
+    radial-gradient(ellipse 45% 30% at 12% 22%, rgba(30, 58, 50, .045), transparent 70%),
+    radial-gradient(ellipse 35% 22% at 86% 80%, rgba(200, 67, 58, .035), transparent 70%),
+    radial-gradient(ellipse 28% 18% at 60% 8%, rgba(20, 33, 43, .03), transparent 70%),
+    linear-gradient(180deg, #FFFFFF, #F7F9FA);
+}
+:root:not([data-theme="dark"]) .pizarra::after { /* marco de aluminio */
+  background: linear-gradient(#F1F3F5, #C9CFD4 45%, #AAB2B8);
+  box-shadow: 0 -1px 0 #D9DEE2, 0 -2px 6px rgba(20, 33, 43, .08);
+}
+:root:not([data-theme="dark"]) .portada p.lema,
+:root:not([data-theme="dark"]) .portada .nota-prueba { color: #4A5866; }
+:root:not([data-theme="dark"]) .b-tiza { background: var(--pizarra); color: #FFFFFF; box-shadow: 0 2px 0 #142A24, 0 10px 24px rgba(30, 58, 50, .22); }
+:root:not([data-theme="dark"]) .b-tiza:hover { box-shadow: 0 3px 0 #142A24, 0 14px 30px rgba(30, 58, 50, .26); }
+:root:not([data-theme="dark"]) .b-tiza:active { box-shadow: 0 1px 0 #142A24; }
+:root:not([data-theme="dark"]) .b-borde { color: var(--tinta); border-color: rgba(20, 33, 43, .25); }
+:root:not([data-theme="dark"]) .b-borde:hover { border-color: var(--tinta); background: rgba(20, 33, 43, .04); }
+:root:not([data-theme="dark"]) .marca-lapiz { color: var(--lapiz); }
+:root:not([data-theme="dark"]) .telefono { box-shadow: 0 30px 60px rgba(20, 33, 43, .22), 0 6px 14px rgba(20, 33, 43, .1); }
+:root:not([data-theme="dark"]) .cierre h2 { color: var(--tinta); }
+:root:not([data-theme="dark"]) .cierre p { color: #4A5866; }
+:root:not([data-theme="dark"]) .pie-web { background: #E9EFEB; color: #4A5866; }
+:root:not([data-theme="dark"]) .pie-web a { color: var(--tinta); }
+
+/* Las piezas apoyadas en el borde: tizas (oscuro) o marcadores (claro) */
+.pieza-1 { left: 14%; width: 46px; background: var(--tiza); }
+.pieza-2 { left: calc(14% + 58px); width: 30px; background: var(--amarilla); }
+:root:not([data-theme="dark"]) .tiza-pieza { height: 9px; border-radius: 2px 5px 5px 2px; bottom: 8px; }
+:root:not([data-theme="dark"]) .pieza-1 { width: 58px; background: linear-gradient(90deg, #1E3A32 0 78%, #10221C 78%); }
+:root:not([data-theme="dark"]) .pieza-2 { left: calc(14% + 70px); width: 58px; background: linear-gradient(90deg, #C8433A 0 78%, #8E2C25 78%); }
+
+/* Ajustes de contraste del modo oscuro */
+:root[data-theme="dark"] .pasos-web li::before { color: var(--amarilla); }
+:root[data-theme="dark"] .modo-btn[aria-selected="true"] { border-left-color: var(--amarilla); }
+:root[data-theme="dark"] .plan-web.destacado { border-color: var(--amarilla); }
+:root[data-theme="dark"] .plan-web .b-plan { border-color: rgba(244, 246, 242, .4); color: var(--tiza); }
+:root[data-theme="dark"] .plan-web.destacado .b-plan { background: var(--amarilla); border-color: var(--amarilla); color: #14212B; }
+:root[data-theme="dark"] .selector button[aria-pressed="true"] { background: var(--amarilla); color: #14212B; }
+:root[data-theme="dark"] .funciones li::before { border-color: var(--amarilla); }

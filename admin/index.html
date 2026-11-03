@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<script>try{if(localStorage.getItem("d360-tema")==="oscuro")document.documentElement.dataset.theme="dark"}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Panel maestro · Docencia360</title>
 <meta name="robots" content="noindex, nofollow">
@@ -9,8 +10,8 @@
 <link rel="stylesheet" href="../assets/css/d360.css">
 <style>
   body { --acento: #17212B; --acento-suave: #E6E9EC; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) body { --acento: #E8EDF1; --acento-suave: #26323D; } }
-  .adm-cab { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 16px; background: var(--papel); border-bottom: 2px solid var(--texto); flex-wrap: wrap; }
+  :root[data-theme="dark"] body { --acento: #E8EDF1; --acento-suave: #26323D; }
+    .adm-cab { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 16px; background: var(--papel); border-bottom: 2px solid var(--texto); flex-wrap: wrap; }
   .adm-cab nav { display: flex; gap: .25rem; flex-wrap: wrap; }
   .adm-cab nav a { padding: .45rem .7rem; border-radius: var(--radio-sm); text-decoration: none; color: var(--texto-2); font-weight: 700; }
   .adm-cab nav a[aria-current="page"] { color: var(--texto); background-image: linear-gradient(transparent 62%, var(--resaltador) 62%, var(--resaltador) 92%, transparent 92%); }

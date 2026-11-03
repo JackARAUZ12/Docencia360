@@ -3,6 +3,7 @@
 import { h, marca } from "../core/ui.js";
 import { salir, ruta } from "../core/sesion.js";
 import { ICONOS } from "../core/iconos.js";
+import { botonTema } from "../core/tema.js";
 import { crearContexto, avisoPlan, textoPlan, iniciarEnrutador } from "../core/panel.js";
 
 const ctx = await crearContexto("profesor");
@@ -33,7 +34,8 @@ document.getElementById("app").replaceChildren(
       h("div.pie", h("div.tenue", { style: "padding:0 .7rem .5rem" }, textoPlan(ctx.cuenta)), enlaceSalir())),
     h("div",
       h("header.p-cabecera", marca(ruta("app/profesor.html")),
-        h("div.cuenta", h("strong", ctx.cuenta.nombre), h("span.tenue", ctx.cuenta.miembro_nombre))),
+        h("div", { style: "display:flex;align-items:center;gap:.75rem;min-width:0" },
+          h("div.cuenta", h("strong", ctx.cuenta.nombre), h("span.tenue", ctx.cuenta.miembro_nombre)), botonTema())),
       h("div", { style: "padding:1rem 16px 0;max-width:1100px" }, avisoPlan(ctx)),
       main)),
   h("nav.p-barra", { "aria-label": "Menú rápido" },

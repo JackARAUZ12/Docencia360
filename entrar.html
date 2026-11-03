@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<script>try{if(localStorage.getItem("d360-tema")==="oscuro")document.documentElement.dataset.theme="dark"}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Entrar · Docencia360</title>
 <meta name="description" content="Entra a Docencia360 con tu código de acceso.">
@@ -56,6 +57,8 @@
 </div>
 <script src="assets/vendor/supabase.js"></script>
 <script type="module">
+import { botonTema } from "./assets/js/core/tema.js";
+{ const b = botonTema(); b.style.cssText = "position:fixed;top:12px;right:12px;z-index:50"; document.body.append(b); }
 import { CONFIG } from "./assets/js/config.js";
 import { sb, mensajeError } from "./assets/js/core/sb.js";
 import { marca, h } from "./assets/js/core/ui.js";
