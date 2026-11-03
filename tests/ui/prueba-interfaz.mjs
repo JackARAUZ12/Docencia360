@@ -69,6 +69,8 @@ async function preparar(page, conSesion) {
     else if (u.pathname.startsWith("/rest/v1/")) {
       const t = u.pathname.split("/").pop();
       body = route.request().method() === "GET" ? (F[t] ?? []) : [];
+      // Aplica filtros simples col=eq.valor (como PostgREST)
+      for (const [k, v] of u.searchParams) if (v.startsWith("eq.") && Array.isArray(body) && body.some((x) => k in x)) body = body.filter((x) => String(x[k]) === v.slice(3));
       if (single) body = body[0] ?? null;
     } else if (u.pathname.startsWith("/auth/v1/")) body = {};
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
@@ -86,7 +88,7 @@ const PANTALLAS = [
 const browser = await chromium.launch();
 for (const [ancho, alto, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   const ctxB = await browser.newContext({ viewport: { width: ancho, height: alto } });
-  for (const [nombre, url, conSesion] of PANTALLAS) {
+  for (const [nombre, url, conSesion] of PANTALLAS.filter(([n]) => !process.env.SOLO || process.env.SOLO.split(",").some((x) => n.startsWith(x)))) {
     const page = await ctxB.newPage();
     page.on("pageerror", (e) => errores.push(`${tag} ${nombre}: ${e.message}`));
     page.on("console", (m) => { if (m.type() === "error" && !/fonts|favicon|ERR_|Failed to load resource/.test(m.text())) errores.push(`${tag} ${nombre} console: ${m.text()}`); });
@@ -97,7 +99,7 @@ for (const [ancho, alto, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
     if (alerta && !/vencido/.test(alerta)) errores.push(`${tag} ${nombre} muestra error: ${alerta.slice(0, 160)}`);
     const anchoDoc = await page.evaluate(() => document.documentElement.scrollWidth);
     if (anchoDoc > ancho + 1) errores.push(`${tag} ${nombre}: desborde horizontal (${anchoDoc}px)`);
-    await page.screenshot({ path: `${OUT}/${tag}-${nombre}.png`, fullPage: true });
+    await page.screenshot({ path: `${OUT}/${tag}-${nombre}.png`, fullPage: true, timeout: 5000 }).catch(() => {});
     await page.close();
   }
   await ctxB.close();

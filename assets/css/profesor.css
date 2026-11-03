@@ -1,7 +1,7 @@
 /* Panel del profesor independiente: sencillo, de una sola columna,
    con barra inferior en el teléfono y riel lateral en computadora. */
-.p-app { min-height: 100vh; display: grid; grid-template-columns: 1fr; }
-@media (min-width: 960px) { .p-app { grid-template-columns: 232px 1fr; } }
+.p-app { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 960px) { .p-app { grid-template-columns: 232px minmax(0, 1fr); } }
 
 .p-riel { display: none; }
 @media (min-width: 960px) {
