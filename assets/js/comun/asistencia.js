@@ -5,7 +5,7 @@ import { h, tabla, hoyISO, sumarDias, fecha, diaLargo, nombreCompleto } from "..
 const OPC = [["presente", "P", "Presente"], ["ausente", "A", "Ausente"], ["tarde", "T", "Tarde"], ["justificado", "J", "Justificado"]];
 
 export async function render(el, ctx, { params }) {
-  const grupos = (await ctx.datos.grupos()).filter((g) => g.estado === "activo");
+  const grupos = (await ctx.gruposVisibles()).filter((g) => g.estado === "activo");
   if (!grupos.length) {
     el.append(ctx.titulo("Asistencia"), h("div.vacio", h("h3", "Primero crea un grupo"), h("p", "La asistencia se toma por grupo."), h("a.btn", { href: "#/grupos" }, "Ir a Grupos")));
     return;

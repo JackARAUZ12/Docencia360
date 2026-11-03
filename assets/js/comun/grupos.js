@@ -27,31 +27,37 @@ async function editarGrupo(ctx, g) {
 
 export async function render(el, ctx, { partes }) {
   if (partes[0]) return detalle(el, ctx, partes[0]);
-  const [grupos, conteos, horarios] = await Promise.all([
-    ctx.datos.grupos(true),
+  const academia = ctx.modalidad !== "profesor";
+  const [grupos, conteos, horarios, docentes] = await Promise.all([
+    ctx.gruposVisibles(true),
     q(sb.from("grupo_estudiantes").select("grupo_id").eq("cuenta_id", ctx.id).eq("estado", "activo")),
     q(sb.from("horarios").select("grupo_id,dia,hora_inicio,hora_fin").eq("cuenta_id", ctx.id).order("dia").order("hora_inicio")),
+    academia ? q(sb.from("grupo_docentes").select("grupo_id, miembros(nombre)").eq("cuenta_id", ctx.id)) : [],
   ]);
+  const inst = {}; docentes.forEach((d) => (inst[d.grupo_id] ||= []).push(d.miembros?.nombre));
   const n = {}; conteos.forEach((c) => (n[c.grupo_id] = (n[c.grupo_id] || 0) + 1));
   const hor = {}; horarios.forEach((x) => (hor[x.grupo_id] ||= []).push(`${DIAS[x.dia].slice(0, 3)} ${hora(x.hora_inicio)}`));
 
   el.append(
-    ctx.titulo("Grupos y horarios", h("button.btn", { onclick: () => editarGrupo(ctx, null) }, h("span", { html: ICONOS.mas_add }), "Nuevo grupo")),
+    ctx.titulo(ctx.esDocente ? "Mis grupos" : "Grupos y horarios", ctx.esGestor ? h("button.btn", { onclick: () => editarGrupo(ctx, null) }, h("span", { html: ICONOS.mas_add }), "Nuevo grupo") : null),
     h("div.hoja", tabla([
       { t: "Grupo", v: (g) => [h("a.fila-enlace", { href: `#/grupos/${g.id}` }, g.nombre), h("div.tenue", g.asignaturas?.nombre || g.cursos?.nombre || "")] },
+      academia ? { t: "Instructor", v: (g) => (inst[g.id] || []).join(", ") || h("span.estado.ojo", "Sin asignar") } : null,
       { t: "Horario", v: (g) => (hor[g.id] || []).join(", ") || h("span.tenue", "Sin horario") },
       { t: "Estudiantes", v: (g) => `${n[g.id] || 0}${g.cupo ? ` / ${g.cupo}` : ""}`, clase: "derecha" },
       { t: "Estado", v: (g) => h("span.estado." + (ESTADO[g.estado] || "x"), g.estado) },
-    ], grupos, { vacio: "Aún no tienes grupos. Un grupo reúne a los estudiantes que reciben una misma clase." })),
+    ].filter(Boolean), grupos, { vacio: "Aún no tienes grupos. Un grupo reúne a los estudiantes que reciben una misma clase." })),
   );
 }
 
 async function detalle(el, ctx, id) {
-  const [g, miembros, horarios, todos] = await Promise.all([
+  const academia = ctx.modalidad !== "profesor";
+  const [g, miembros, horarios, todos, asignados] = await Promise.all([
     q(sb.from("grupos").select("*, asignaturas(nombre), cursos(nombre)").eq("id", id).maybeSingle()),
     q(sb.from("grupo_estudiantes").select("*, estudiantes(id,nombres,apellidos,telefono,estado)").eq("grupo_id", id).order("estado")),
     q(sb.from("horarios").select("*").eq("grupo_id", id).order("dia").order("hora_inicio")),
     ctx.datos.estudiantes(),
+    q(sb.from("grupo_docentes").select("miembro_id, miembros(nombre)").eq("grupo_id", id)),
   ]);
   if (!g) { el.append(h("div.aviso.mal", "Grupo no encontrado.")); return; }
   const activos = miembros.filter((m) => m.estado === "activo");
@@ -60,9 +66,12 @@ async function detalle(el, ctx, id) {
     { name: "dia", label: "Día", type: "select", required: true, options: DIAS.slice(1).map((d, i) => [i + 1, d]) },
     { name: "hora_inicio", label: "Desde", type: "time", required: true },
     { name: "hora_fin", label: "Hasta", type: "time", required: true },
-  ], {}, async (d, cerrar) => {
+    academia ? { name: "miembro_id", label: "Instructor", type: "select", placeholder: "Sin instructor", options: asignados.map((a) => [a.miembro_id, a.miembros?.nombre]),
+      value: asignados[0]?.miembro_id, help: "Docencia360 avisa si el instructor ya tiene clase a esa hora." } : null,
+  ].filter(Boolean), {}, async (d, cerrar) => {
     if (d.hora_fin <= d.hora_inicio) throw new Error("La hora de fin debe ser posterior al inicio.");
-    await q(sb.from("horarios").insert({ ...d, dia: Number(d.dia), grupo_id: id, cuenta_id: ctx.id, miembro_id: ctx.cuenta.miembro_id }));
+    const miembro = academia ? d.miembro_id : ctx.cuenta.miembro_id;
+    await q(sb.from("horarios").insert({ dia: Number(d.dia), hora_inicio: d.hora_inicio, hora_fin: d.hora_fin, grupo_id: id, cuenta_id: ctx.id, miembro_id: miembro || null }));
     cerrar(); ctx.toast("Horario agregado"); ctx.recargar();
   }, { boton: "Agregar" });
 
@@ -91,33 +100,34 @@ async function detalle(el, ctx, id) {
     ctx.titulo(g.nombre,
       h("a.btn.btn-sec", { href: `#/asistencia?grupo=${id}` }, "Pasar lista"),
       h("a.btn.btn-sec", { href: `#/calificaciones?grupo=${id}` }, "Calificaciones"),
-      h("button.btn.btn-sec", { onclick: () => editarGrupo(ctx, g) }, "Editar"),
-      h("button.btn.btn-texto", { onclick: async () => {
+      ctx.esGestor ? h("button.btn.btn-sec", { onclick: () => editarGrupo(ctx, g) }, "Editar") : null,
+      !ctx.esGestor ? null : h("button.btn.btn-texto", { onclick: async () => {
         if (!(await confirmar("Eliminar grupo", `Se borrarán también su asistencia, evaluaciones y notas. Si el grupo terminó, mejor márcalo como «Finalizado».`, { boton: "Eliminar", peligro: true }))) return;
         try { await q(sb.from("grupos").delete().eq("id", id)); ctx.datos.invalidar("grupos"); ctx.toast("Grupo eliminado"); ctx.ir("#/grupos"); } catch (e) { ctx.toast(e.message, "mal"); }
       } }, "Eliminar")),
     h("p.suave", [g.asignaturas?.nombre, g.cursos?.nombre, g.fecha_inicio ? `Del ${fecha(g.fecha_inicio)}${g.fecha_fin ? ` al ${fecha(g.fecha_fin)}` : ""}` : null, `Estado: ${g.estado}`].filter(Boolean).join(" · ")),
     h("div.dos-col",
       h("section.hoja",
-        h("div.hoja-titulo", h("h2", `Estudiantes (${activos.length}${g.cupo ? ` de ${g.cupo}` : ""})`), h("button.btn.btn-sm", { onclick: agregarEstudiantes }, "Agregar")),
+        h("div.hoja-titulo", h("h2", `Estudiantes (${activos.length}${g.cupo ? ` de ${g.cupo}` : ""})`),
+          !ctx.esGestor && !ctx.esFinanzas ? null : academia ? h("a.btn.btn-sm", { href: `#/matriculas?grupo=${id}` }, "Matricular") : h("button.btn.btn-sm", { onclick: agregarEstudiantes }, "Agregar")),
         tabla([
           { t: "Estudiante", v: (m) => h("a.fila-enlace", { href: `#/estudiantes/${m.estudiante_id}` }, nombreCompleto(m.estudiantes)) },
           { t: "Desde", v: (m) => fecha(m.desde) },
           { t: "", clase: "acciones", v: (m) => m.estado === "activo"
-            ? h("button.btn.btn-texto.btn-sm", { onclick: async () => {
+            ? (academia || !ctx.esGestor ? h("span.estado.ok", "Activo") : h("button.btn.btn-texto.btn-sm", { onclick: async () => {
                 if (!(await confirmar("Retirar", `¿Retirar a ${m.estudiantes.nombres} del grupo? Se conserva su historial.`, { boton: "Retirar" }))) return;
-                await q(sb.from("grupo_estudiantes").update({ estado: "retirado" }).eq("grupo_id", id).eq("estudiante_id", m.estudiante_id)); ctx.recargar(); } }, "Retirar")
+                await q(sb.from("grupo_estudiantes").update({ estado: "retirado" }).eq("grupo_id", id).eq("estudiante_id", m.estudiante_id)); ctx.recargar(); } }, "Retirar"))
             : h("span.estado.mal", "Retirado") },
         ], miembros, { vacio: "Este grupo aún no tiene estudiantes." })),
       h("section.hoja",
-        h("div.hoja-titulo", h("h2", "Horario semanal"), h("button.btn.btn-sm", { onclick: agregarHorario }, "Agregar")),
+        h("div.hoja-titulo", h("h2", "Horario semanal"), ctx.esGestor ? h("button.btn.btn-sm", { onclick: agregarHorario }, "Agregar") : null),
         horarios.length ? h("ul.agenda", horarios.map((x) => h("li",
           h("span.h", DIAS[x.dia].slice(0, 3)),
           h("div", { style: "display:flex;justify-content:space-between;align-items:center;gap:.5rem" },
             h("span.num", `${hora(x.hora_inicio)} – ${hora(x.hora_fin)}`),
-            h("button.btn.btn-texto.btn-sm", { onclick: async () => { await q(sb.from("horarios").delete().eq("id", x.id)); ctx.recargar(); } }, "Quitar"))))) : h("p.suave", "Sin horario. Agrégalo para ver tus clases en Inicio y en el Calendario."),
+            ctx.esGestor ? h("button.btn.btn-texto.btn-sm", { onclick: async () => { await q(sb.from("horarios").delete().eq("id", x.id)); ctx.recargar(); } }, "Quitar") : null)))) : h("p.suave", "Sin horario. Agrégalo para verlo en Inicio y en el Calendario."),
         h("p.tenue", "Docencia360 avisa si dos grupos chocan en el mismo horario."),
-        ctx.f("asistentes") && ctx.esDueno ? await seccionAsistentes(ctx, id) : null)),
+        (academia ? ctx.esGestor : ctx.f("asistentes") && ctx.esDueno) ? await seccionAsistentes(ctx, id) : null)),
   );
 }
 
@@ -126,17 +136,19 @@ async function seccionAsistentes(ctx, grupoId) {
     q(sb.from("miembros").select("id,nombre,activo").eq("cuenta_id", ctx.id).eq("rol", "docente")),
     q(sb.from("grupo_docentes").select("id,miembro_id").eq("grupo_id", grupoId)),
   ]);
-  if (!asis.length) return h("p.tenue", "Crea un asistente en Mi cuenta para asignarlo a este grupo.");
+  const academia = ctx.modalidad !== "profesor";
+  if (!asis.length) return h("p.tenue", academia ? "Registra instructores en «Instructores» para asignarlos." : "Crea un asistente en Mi cuenta para asignarlo a este grupo.");
   const ya = new Map(asignados.map((a) => [a.miembro_id, a.id]));
   return h("div", { style: "margin-top:1rem;border-top:1px solid var(--renglon);padding-top:.75rem" },
-    h("h3", "Asistentes del grupo"),
+    h("h3", academia ? "Instructores del grupo" : "Asistentes del grupo"),
     asis.filter((a) => a.activo).map((a) => h("label.check",
       h("input", { type: "checkbox", checked: ya.has(a.id), onchange: async (e) => {
         try {
           if (e.target.checked) await q(sb.from("grupo_docentes").insert({ cuenta_id: ctx.id, grupo_id: grupoId, miembro_id: a.id }));
           else await q(sb.from("grupo_docentes").delete().eq("grupo_id", grupoId).eq("miembro_id", a.id));
-          ctx.toast("Guardado");
+          ctx.toast("Guardado"); ctx.datos.invalidar("misGrupos");
+          if (academia) setTimeout(ctx.recargar, 300);
         } catch (err) { e.target.checked = !e.target.checked; ctx.toast(err.message, "mal"); }
       } }), a.nombre)),
-    h("p.tenue", "El asistente puede pasar lista y calificar solo en los grupos marcados."));
+    h("p.tenue", academia ? "Cada instructor pasa lista y califica solo en sus grupos." : "El asistente puede pasar lista y calificar solo en los grupos marcados."));
 }

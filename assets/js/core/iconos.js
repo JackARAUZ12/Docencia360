@@ -16,4 +16,10 @@ export const ICONOS = {
   mas_add: s('<path d="M12 5v14M5 12h14"/>'),
   imprimir: s('<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>'),
   descargar: s('<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>'),
+  matriculas: s('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/><path d="M15 16l1.5 1.5L19 15"/>'),
+  finanzas: s('<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9v.01M18 15v.01"/>'),
+  certificados: s('<circle cx="12" cy="9" r="5"/><path d="M8.5 13l-1.5 8 5-3 5 3-1.5-8"/>'),
+  instructores: s('<circle cx="12" cy="7" r="3.5"/><path d="M5 21v-1a7 7 0 0 1 14 0v1"/><path d="M3 4h4M17 4h4"/>'),
+  equipo: s('<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0"/>'),
+  menu: s('<path d="M4 6h16M4 12h16M4 18h16"/>'),
 };

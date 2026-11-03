@@ -223,3 +223,10 @@ dialog.modal::backdrop { background: rgba(15, 21, 27, .45); }
   .hoja { border: none; padding: 0; }
   main { padding: 0 !important; margin: 0 !important; }
 }
+
+/* Impresión de un documento suelto (ver imprimir() en ui.js) */
+#impresion { display: none; }
+@media print {
+  body.solo-impresion > *:not(#impresion) { display: none !important; }
+  body.solo-impresion #impresion { display: block; }
+}

@@ -43,7 +43,14 @@ const F = {
   cuentas: [{ id: C, nombre: "Clases de la Prof. Ana", codigo: "K7M2QP", moneda: "NIO", telefono: "8888-1111", email: "ana@ejemplo.com" }],
   suscripciones: [{ cuenta_id: C, plan_id: "prof_premium", estado: "prueba", vence: "2026-12-01", dias_gracia: 5 }],
   pagos_suscripcion: [], miembros: [{ id: "m1", user_id: U, nombre: "Ana Martínez", rol: "propietario", activo: true, codigo_ultimos: "42" }, { id: "m2", nombre: "Asistente Uno", rol: "docente", activo: true }],
-  grupo_docentes: [], promociones: [],
+  grupo_docentes: [{ grupo_id: G1, miembro_id: "m2", miembros: { nombre: "Asistente Uno" }, grupos: { id: G1, nombre: "Matemática 9no", estado: "activo" } }], promociones: [],
+  matriculas: [{ id: "mt1", cuenta_id: C, estudiante_id: E(1), curso_id: "c1", grupo_id: G1, fecha: hoy, estado: "activa", mensualidad: 800, descuento_pct: 10, beca: "Hermanos",
+    estudiantes: { id: E(1), nombres: "Ana", apellidos: "López" }, cursos: { nombre: "Álgebra intensiva" }, grupos: { nombre: "Matemática 9no" } },
+    { id: "mt2", cuenta_id: C, estudiante_id: E(2), curso_id: "c1", fecha: hoy, estado: "completada", mensualidad: 800, descuento_pct: 0, estudiantes: { id: E(2), nombres: "Luis", apellidos: "Pérez" }, cursos: { nombre: "Álgebra intensiva" }, grupos: null }],
+  cargos: [{ id: "cg1", cuenta_id: C, estudiante_id: E(1), concepto: "Mensualidad octubre 2026 · Álgebra", tipo: "mensualidad", monto: 800, descuento: 80, pagado: 0, vence: "2026-10-05", estado: "pendiente" },
+    { id: "cg2", cuenta_id: C, estudiante_id: E(2), concepto: "Matrícula · Álgebra", tipo: "matricula", monto: 500, descuento: 0, pagado: 200, vence: "2026-12-05", estado: "parcial" }],
+  pagos: [{ id: "pg1", cuenta_id: C, estudiante_id: E(2), cargo_id: "cg2", monto: 200, metodo: "efectivo", fecha: hoy, recibo: 1, anulado: false, cargos: { concepto: "Matrícula · Álgebra" } }],
+  certificados: [{ id: "ct1", cuenta_id: C, estudiante_id: E(2), curso_id: "c1", tipo: "certificado", titulo: "Álgebra intensiva", folio: "K7M2QP-26-ABC123", emitido: hoy, datos: { curso: "Álgebra intensiva", detalle: "Duración: 40 horas" }, anulado: false }],
 };
 const RPC = {
   d360_mis_cuentas: [{ cuenta_id: C, nombre: "Clases de la Prof. Ana", modalidad: "profesor", codigo: "K7M2QP", rol: "propietario", miembro_id: "m1", miembro_nombre: "Ana Martínez",
@@ -52,6 +59,10 @@ const RPC = {
   d360_promedios_grupo: [{ estudiante_id: E(1), promedio: 85, calificadas: 1, total_evaluaciones: 2 }, { estudiante_id: E(2), promedio: 52, calificadas: 1, total_evaluaciones: 2 }, { estudiante_id: E(3), promedio: null, calificadas: 0, total_evaluaciones: 2 }],
   d360_resumen_asistencia: [{ estudiante_id: E(1), presentes: 10, ausentes: 1, tardes: 1, justificados: 0, total: 12, porcentaje: 91.7 }, { estudiante_id: E(2), presentes: 6, ausentes: 4, tardes: 0, justificados: 0, total: 10, porcentaje: 60 }],
   d360_marcar_acceso: null, d360_es_plataforma_admin: true,
+  d360_carga_instructores: [{ miembro_id: "m2", nombre: "Asistente Uno", especialidad: "Matemática", activo: true, grupos: 1, estudiantes: 3, horas_semana: 1.5 }],
+  d360_informe_operativo: { ingresos_mes: [{ mes: hoy.slice(0, 7), total: 200, pagos: 1 }], metodos: { efectivo: 200 }, matriculas_mes: [{ mes: hoy.slice(0, 7), nuevas: 2, retiradas: 0 }],
+    cursos: [{ id: "c1", nombre: "Álgebra intensiva", activas: 1, total: 2, completadas: 1, retiradas: 0 }], morosos: [{ id: E(1), nombre: "Ana López", telefono: "8888", contacto_telefono: "7777", saldo: 720, desde: "2026-10-05", cobros: 1 }], por_vencer: 300 },
+  d360_verificar_certificado: { valido: true, folio: "K7M2QP-26-ABC123", titulo: "Álgebra intensiva", estudiante: "Luis Pérez", institucion: "Academia Prueba", emitido: hoy, tipo: "certificado" },
   d360_admin_metricas: { cuentas: 1, por_modalidad: { profesor: 1 }, por_estado: { prueba: 1 }, mrr_usd: 0, ingresos_mes: {}, ingresos_12m: [] },
   d360_admin_cuentas: [{ cuenta_id: C, nombre: "Clases de la Prof. Ana", modalidad: "profesor", codigo: "K7M2QP", propietario_email: "ana@ejemplo.com", plan_id: "prof_premium", plan_nombre: "Premium", estado: "prueba", vence: "2026-12-01", dias_gracia: 5, estudiantes: 3, miembros: 2, creado: hoy }],
   d360_admin_actividad: [{ id: 1, creado: hoy + "T10:00:00Z", cuenta: "Clases de la Prof. Ana", accion: "acceso_codigo", entidad: "miembros", usuario: "Ana", detalle: { origen: "1.2.3.4" } }],
@@ -59,13 +70,19 @@ const RPC = {
 
 const sesion = { access_token: "x.y.z", refresh_token: "r", token_type: "bearer", expires_in: 360000, expires_at: Math.floor(Date.now() / 1000) + 360000, user: { id: U, email: "ana@ejemplo.com", aud: "authenticated", role: "authenticated" } };
 
-async function preparar(page, conSesion) {
+async function preparar(page, conSesion, modalidad = "profesor", rol = "propietario") {
   await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   await page.route(/supabase\.co/, async (route) => {
     const u = new URL(route.request().url());
     const single = (route.request().headers()["accept"] || "").includes("vnd.pgrst.object");
     let body = null;
-    if (u.pathname.startsWith("/rest/v1/rpc/")) body = RPC[u.pathname.split("/").pop()] ?? null;
+    if (u.pathname.startsWith("/rest/v1/rpc/")) {
+      const fn = u.pathname.split("/").pop();
+      body = RPC[fn] ?? null;
+      if (fn === "d360_mis_cuentas") body = body.map((c) => ({ ...c, modalidad, rol, nombre: modalidad === "academia" ? "Academia Horizonte" : c.nombre,
+        plan_nombre: modalidad === "academia" ? "Profesional" : c.plan_nombre,
+        funciones: modalidad === "academia" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, tareas: true } : c.funciones }));
+    }
     else if (u.pathname.startsWith("/rest/v1/")) {
       const t = u.pathname.split("/").pop();
       body = route.request().method() === "GET" ? (F[t] ?? []) : [];
@@ -79,7 +96,12 @@ async function preparar(page, conSesion) {
 }
 
 const errores = [];
+const ACAD = ["inicio", "estudiantes", `estudiantes/${E(1)}`, "cursos", "grupos", `grupos/${G1}`, "instructores", "asistencia", "calificaciones", "tareas", "calendario", "matriculas", "finanzas", "finanzas?vista=pagos", "certificados", "informes", "informes?tipo=matriculas", "informes?tipo=academico", "equipo", "cuenta"];
 const PANTALLAS = [
+  ...ACAD.map((r) => [`academia-${r.replace(/[/?=]/g, "_").slice(0, 40)}`, `/app/academia.html#/${r}`, true, "academia", "propietario"]),
+  ...["inicio", "finanzas", "matriculas", "informes"].map((r) => [`academia-finanzas-${r}`, `/app/academia.html#/${r}`, true, "academia", "finanzas"]),
+  ...["inicio", "grupos", "asistencia", "calificaciones"].map((r) => [`academia-instructor-${r}`, `/app/academia.html#/${r}`, true, "academia", "docente"]),
+  ["verificar", "/verificar.html?folio=K7M2QP-26-ABC123", false],
   ["index", "/index.html", false], ["entrar", "/entrar.html", false], ["registro", "/registro.html?modalidad=profesor", false],
   ...["inicio", "asistencia", "calificaciones", "estudiantes", `estudiantes/${E(1)}`, "grupos", `grupos/${G1}`, "tareas", "cursos", "calendario", "informes", `informes?estudiante=${E(1)}`, "cuenta", "mas"]
     .map((r) => [`profesor-${r.replace(/[/?=]/g, "_").slice(0, 40)}`, `/app/profesor.html#/${r}`, true]),
@@ -88,11 +110,11 @@ const PANTALLAS = [
 const browser = await chromium.launch();
 for (const [ancho, alto, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   const ctxB = await browser.newContext({ viewport: { width: ancho, height: alto } });
-  for (const [nombre, url, conSesion] of PANTALLAS.filter(([n]) => !process.env.SOLO || process.env.SOLO.split(",").some((x) => n.startsWith(x)))) {
+  for (const [nombre, url, conSesion, modalidad, rol] of PANTALLAS.filter(([n]) => !process.env.SOLO || process.env.SOLO.split(",").some((x) => n.startsWith(x)))) {
     const page = await ctxB.newPage();
     page.on("pageerror", (e) => errores.push(`${tag} ${nombre}: ${e.message}`));
     page.on("console", (m) => { if (m.type() === "error" && !/fonts|favicon|ERR_|Failed to load resource/.test(m.text())) errores.push(`${tag} ${nombre} console: ${m.text()}`); });
-    await preparar(page, conSesion);
+    await preparar(page, conSesion, modalidad, rol);
     await page.goto(BASE + url, { waitUntil: "load", timeout: 20000 }).catch((e) => errores.push(`${tag} ${nombre}: ${e.message}`));
     await page.waitForTimeout(900);
     const alerta = await page.locator(".aviso.mal").first().textContent().catch(() => null);

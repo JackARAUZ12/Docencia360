@@ -8,7 +8,7 @@ const TIPOS = [["general", "General"], ["clase", "Clase extra"], ["evaluacion", 
 export async function render(el, ctx, { params }) {
   const hoy = hoyISO();
   let [anio, mes] = (params.get("mes") || hoy.slice(0, 7)).split("-").map(Number);
-  const grupos = await ctx.datos.grupos();
+  const grupos = await ctx.gruposVisibles();
   const cont = h("div");
 
   const evento = (ev, fechaInicial) => formularioModal(ev ? "Editar fecha" : "Nueva fecha importante", [

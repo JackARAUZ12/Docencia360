@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Verificar certificado · Docencia360</title>
+<meta name="description" content="Comprueba la autenticidad de un certificado emitido con Docencia360.">
+<link rel="icon" href="assets/img/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/d360.css">
+</head>
+<body>
+<main style="max-width:560px;margin:0 auto;padding:2rem 16px 4rem">
+  <div id="marca" style="margin-bottom:2rem"></div>
+  <h1>Verificar un certificado</h1>
+  <p class="suave">Escribe el folio impreso en el certificado.</p>
+  <form id="f" novalidate style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem">
+    <input id="folio" class="inst" style="flex:1;min-width:220px;letter-spacing:.1em" placeholder="ABC123-26-XXXXXX" autocomplete="off" autocapitalize="characters" required>
+    <button class="btn">Verificar</button>
+  </form>
+  <div id="resultado" aria-live="polite"></div>
+</main>
+<script src="assets/vendor/supabase.js"></script>
+<script type="module">
+import { sb } from "./assets/js/core/sb.js";
+import { h, marca, fecha } from "./assets/js/core/ui.js";
+document.getElementById("marca").append(marca("index.html"));
+const out = document.getElementById("resultado");
+const input = document.getElementById("folio");
+async function verificar(folio) {
+  folio = folio.trim().toUpperCase();
+  if (folio.length < 8) { out.replaceChildren(h("div.aviso.ojo", "Escribe el folio completo.")); return; }
+  out.replaceChildren(h("p.tenue", "Verificando…"));
+  const { data, error } = await sb.rpc("d360_verificar_certificado", { p_folio: folio });
+  if (error) { out.replaceChildren(h("div.aviso.mal", "No pudimos verificar en este momento. Intenta de nuevo.")); return; }
+  if (!data?.folio) { out.replaceChildren(h("div.aviso.mal", h("strong", "No encontrado. "), "No existe un certificado con ese folio.")); return; }
+  out.replaceChildren(h(`div.hoja`,
+    h("div.hoja-titulo", h("h2", data.valido ? "Certificado válido" : "Certificado ANULADO"), h(`span.estado.${data.valido ? "ok" : "mal"}`, data.valido ? "Auténtico" : "Anulado")),
+    h("dl", { style: "margin:0" },
+      ...[["Otorgado a", data.estudiante], ["Título", data.titulo], ["Curso", data.curso], ["Institución", data.institucion], ["Fecha de emisión", fecha(data.emitido)], ["Folio", data.folio]]
+        .filter(([, v]) => v).map(([t, v]) => h("div", h("dt.tenue", t), h("dd", { style: "margin:0 0 .6rem;font-weight:700" }, v))))));
+}
+document.getElementById("f").addEventListener("submit", (e) => { e.preventDefault(); verificar(input.value); });
+const qp = new URLSearchParams(location.search).get("folio");
+if (qp) { input.value = qp; verificar(qp); }
+</script>
+</body>
+</html>

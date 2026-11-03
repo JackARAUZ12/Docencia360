@@ -68,7 +68,7 @@ export async function render(el, ctx, { partes }) {
         [["Nombres", "Apellidos", "Estado", "Teléfono", "Correo", "Responsable", "Tel. responsable", "Grupos"],
          ...est.map((e) => [e.nombres, e.apellidos, e.estado, e.telefono, e.email, e.contacto_nombre, e.contacto_telefono, (gruposDe[e.id] || []).join("; ")])]) },
         h("span", { html: ICONOS.descargar }), "Exportar") : null,
-      h("button.btn", { onclick: () => editarEstudiante(ctx, null, ctx.recargar) }, h("span", { html: ICONOS.mas_add }), "Nuevo estudiante")),
+      ctx.esGestor ? h("button.btn", { onclick: () => editarEstudiante(ctx, null, ctx.recargar) }, h("span", { html: ICONOS.mas_add }), "Nuevo estudiante") : null),
     h("div", { style: "display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center" },
       h("input", { type: "search", placeholder: "Buscar por nombre o teléfono", style: "max-width:320px", "aria-label": "Buscar",
         oninput: (e) => { texto = e.target.value; pintar(); } }),
@@ -105,9 +105,10 @@ async function ficha(el, ctx, id) {
   el.append(
     h("p", h("a", { href: "#/estudiantes" }, "← Estudiantes")),
     ctx.titulo(nombreCompleto(e),
+      (ctx.accionesFicha || []).map((fn) => fn(ctx, e)),
       h("a.btn.btn-sec", { href: `#/informes?estudiante=${e.id}` }, "Informe"),
-      h("button.btn.btn-sec", { onclick: () => editarEstudiante(ctx, e, ctx.recargar) }, "Editar"),
-      h("button.btn.btn-texto", { onclick: async () => {
+      ctx.esGestor ? h("button.btn.btn-sec", { onclick: () => editarEstudiante(ctx, e, ctx.recargar) }, "Editar") : null,
+      !ctx.esGestor ? null : h("button.btn.btn-texto", { onclick: async () => {
         if (!(await confirmar("Eliminar estudiante", `Se borrará a ${nombreCompleto(e)} con todo su historial de notas y asistencia. Si solo dejó de venir, mejor cambia su estado a «Retirado».`, { boton: "Eliminar", peligro: true }))) return;
         try { await q(sb.from("estudiantes").delete().eq("id", e.id)); ctx.datos.invalidar("estudiantes"); ctx.toast("Estudiante eliminado"); ctx.ir("#/estudiantes"); }
         catch (err) { ctx.toast(err.message, "mal"); }
@@ -138,7 +139,8 @@ async function ficha(el, ctx, id) {
             { t: "Grupo", v: (x) => x.grupos?.nombre },
             { t: "Estado", v: (x) => h("span.estado." + ({ ausente: "mal", tarde: "ojo", justificado: "info" }[x.estado]), x.estado) },
             { t: "Nota", v: (x) => x.nota || "" },
-          ], ultimas, { vacio: "Sin ausencias registradas." }))),
+          ], ultimas, { vacio: "Sin ausencias registradas." })),
+        await Promise.all((ctx.seccionesFicha || []).map((fn) => fn(ctx, e)))),
       h("div",
         h("section.hoja",
           h("div.hoja-titulo", h("h2", "Datos"), h("span.estado." + (claseEstado[e.estado] || "x"), e.estado)),
@@ -149,11 +151,11 @@ async function ficha(el, ctx, id) {
             dato("Teléfono del responsable", e.contacto_telefono), dato("Dirección", e.direccion),
             dato("Notas", e.observaciones), dato("Registrado", fecha(e.creado)))),
         h("section.hoja",
-          h("div.hoja-titulo", h("h2", "Grupos"), h("button.btn.btn-sec.btn-sm", { onclick: () => inscribir(ctx, e, grupos, todosGrupos) }, "Inscribir")),
+          h("div.hoja-titulo", h("h2", "Grupos"), ctx.esGestor && ctx.modalidad === "profesor" ? h("button.btn.btn-sec.btn-sm", { onclick: () => inscribir(ctx, e, grupos, todosGrupos) }, "Inscribir") : null),
           grupos.length ? h("ul.lista", grupos.map((g) => h("li",
             h("div.crece", h("div.titulo", g.grupos?.nombre), h("div.tenue", `Desde ${fecha(g.desde)}`)),
             h("span.estado." + (g.estado === "activo" ? "ok" : "mal"), g.estado),
-            g.estado === "activo" ? h("button.btn.btn-texto.btn-sm", { onclick: async () => {
+            g.estado === "activo" && ctx.esGestor && ctx.modalidad === "profesor" ? h("button.btn.btn-texto.btn-sm", { onclick: async () => {
               if (!(await confirmar("Retirar del grupo", `¿Retirar a ${e.nombres} de ${g.grupos?.nombre}? Se conserva su historial.`, { boton: "Retirar" }))) return;
               try { await q(sb.from("grupo_estudiantes").update({ estado: "retirado" }).eq("grupo_id", g.grupo_id).eq("estudiante_id", id)); ctx.recargar(); }
               catch (err) { ctx.toast(err.message, "mal"); }

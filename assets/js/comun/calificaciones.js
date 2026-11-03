@@ -24,7 +24,7 @@ export function editarEvaluacion(ctx, grupoId, ev, alGuardar, tipoInicial) {
 }
 
 export async function render(el, ctx, { params }) {
-  const grupos = (await ctx.datos.grupos()).filter((g) => g.estado !== "cancelado");
+  const grupos = (await ctx.gruposVisibles()).filter((g) => g.estado !== "cancelado");
   if (!grupos.length) {
     el.append(ctx.titulo("Calificaciones"), h("div.vacio", h("h3", "Primero crea un grupo"), h("a.btn", { href: "#/grupos" }, "Ir a Grupos")));
     return;

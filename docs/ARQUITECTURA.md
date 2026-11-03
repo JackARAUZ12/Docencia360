@@ -80,3 +80,38 @@ Calculados al momento, sin procesos manuales: promedios ponderados (`d360_promed
 - `core/ui.js`: `h()` para construir DOM, modales, formularios declarativos, tablas tipo registro, *toasts*, formatos (fecha, C$/US$).
 - `profesor/app.js`: estructura (riel lateral en computadora y barra inferior en teléfono), enrutador por hash, caché de datos compartida.
 - Cada módulo exporta `render(el, ctx, {partes, params})`.
+
+## Etapa 2: Academias
+
+### Roles y menú
+| Rol | Ve |
+|---|---|
+| propietario, director, subdirector, coordinador, administrativo | Todo el panel; finanzas solo propietario, director y administrativo |
+| finanzas | Inicio, estudiantes (lectura), matrículas, finanzas, informes |
+| docente (instructor) | Inicio, **sus** grupos, asistencia, evaluaciones, actividades y calendario |
+
+El menú se arma según el rol. Aun así, la seguridad la aplica RLS: si alguien abre una ruta a mano, el servidor no le devuelve ni le deja escribir lo que no le corresponde.
+
+### Flujo de matrícula (`d360_matricular`, una sola transacción)
+1. Valida el permiso, la vigencia del plan, el estudiante activo, el grupo abierto y que no haya matrícula duplicada.
+2. Crea la matrícula y la inscripción en el grupo. El disparador de cupo impide pasarse del límite.
+3. Si el plan incluye finanzas, genera el cobro de matrícula y N mensualidades. Cada mensualidad vence el día de pago elegido, se ajusta a meses cortos y aplica el descuento o la beca.
+
+Las acciones posteriores también son funciones del servidor:
+- **Renovar** (`d360_renovar_matricula`) genera mensualidades a continuación de la última.
+- **Retirar** (`d360_retirar_matricula`) cierra la matrícula, retira del grupo y anula los cobros futuros sin abonos.
+
+### Finanzas
+- Un pago no puede superar el saldo del cobro, y su recibo es correlativo por cuenta.
+- Un pago registrado **no se edita**: solo se anula. Al anularlo, el saldo del cobro se recalcula solo.
+- Un cobro con abonos no se puede anular, y uno anulado no se reactiva.
+- Cada alta, cambio o anulación queda en la auditoría.
+
+### Certificados
+- Cada certificado tiene un folio único (`CÓDIGO-AA-XXXXXX`).
+- `verificar.html` permite a cualquiera comprobarlo con `d360_verificar_certificado`, que solo muestra los datos mínimos.
+- Un certificado anulado aparece como ANULADO.
+- La plantilla (textos y firmas) se guarda en `cuentas.config.certificado`.
+
+### Automatización adicional
+`d360_recordatorios_cobro()` se ejecuta a diario a las 00:10 (hora de Nicaragua) y avisa a la administración de los cobros que vencen en 3 días.

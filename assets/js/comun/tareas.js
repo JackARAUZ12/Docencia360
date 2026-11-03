@@ -5,8 +5,10 @@ import { editarEvaluacion } from "./calificaciones.js";
 import { ICONOS } from "../core/iconos.js";
 
 export async function render(el, ctx) {
-  const grupos = (await ctx.datos.grupos()).filter((g) => g.estado === "activo");
-  const tareas = await q(sb.from("evaluaciones").select("*, grupos(nombre)").eq("cuenta_id", ctx.id).eq("tipo", "tarea").order("fecha", { ascending: false }));
+  const grupos = (await ctx.gruposVisibles()).filter((g) => g.estado === "activo");
+  const visibles = new Set(grupos.map((g) => g.id));
+  const tareas = (await q(sb.from("evaluaciones").select("*, grupos(nombre)").eq("cuenta_id", ctx.id).eq("tipo", "tarea").order("fecha", { ascending: false })))
+    .filter((t) => !ctx.esDocente || visibles.has(t.grupo_id));
   const ids = tareas.map((t) => t.id);
   const [cals, miembros] = await Promise.all([
     ids.length ? q(sb.from("calificaciones").select("evaluacion_id,entregado").in("evaluacion_id", ids)) : [],

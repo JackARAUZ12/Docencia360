@@ -6,8 +6,8 @@ export async function render(el, ctx) {
   const [cuenta, sus, planes, pagos, miembros, cfg, resumen] = await Promise.all([
     q(sb.from("cuentas").select("*").eq("id", ctx.id).single()),
     q(sb.from("suscripciones").select("*").eq("cuenta_id", ctx.id).single()),
-    q(sb.from("planes").select("*").eq("modalidad", "profesor").eq("activo", true).order("orden")),
-    ctx.esDueno ? q(sb.from("pagos_suscripcion").select("*").eq("cuenta_id", ctx.id).order("creado", { ascending: false })) : [],
+    q(sb.from("planes").select("*").eq("modalidad", ctx.modalidad).eq("activo", true).order("orden")),
+    ["propietario", "director", "finanzas"].includes(ctx.rol) ? q(sb.from("pagos_suscripcion").select("*").eq("cuenta_id", ctx.id).order("creado", { ascending: false })) : [],
     q(sb.from("miembros").select("*").eq("cuenta_id", ctx.id).order("creado")),
     q(sb.from("config_global").select("clave,valor").like("clave", "publico.%")),
     q(sb.rpc("d360_resumen_panel", { p_cuenta: ctx.id })),
@@ -36,7 +36,10 @@ export async function render(el, ctx) {
           h("ul.lista",
             uso(resumen.estudiantes_activos, plan.max_estudiantes, "Estudiantes activos"),
             uso(resumen.grupos_activos, plan.max_grupos, "Grupos activos"),
-            plan.max_docentes ? uso(asistentes.filter((a) => a.activo).length, plan.max_docentes, "Asistentes") : null)),
+            ctx.modalidad === "profesor"
+              ? (plan.max_docentes ? uso(asistentes.filter((a) => a.activo).length, plan.max_docentes, "Asistentes") : null)
+              : [uso(asistentes.filter((a) => a.activo).length, plan.max_docentes, "Instructores"),
+                 uso(miembros.filter((m) => m.activo && ["director", "subdirector", "coordinador", "administrativo", "finanzas"].includes(m.rol)).length, plan.max_admins, "Usuarios administrativos")])),
         h("section.hoja",
           h("div.hoja-titulo", h("h2", "Renovar o cambiar de plan")),
           h("p.suave", "El pago se hace por transferencia o depósito. Al confirmarlo, activamos tu plan el mismo día."),
@@ -66,13 +69,13 @@ export async function render(el, ctx) {
           } }, "Generar un código nuevo")),
         ctx.esDueno ? h("section.hoja",
           h("div.hoja-titulo", h("h2", "Datos"), h("button.btn.btn-sec.btn-sm", { onclick: () => formularioModal("Datos de la cuenta", [
-            { name: "nombre", label: "Nombre de tu espacio", required: true, full: true, maxlength: 120 },
+            { name: "nombre", label: ctx.modalidad === "profesor" ? "Nombre de tu espacio" : "Nombre de la institución", required: true, full: true, maxlength: 120 },
             { name: "telefono", label: "Teléfono", type: "tel" },
             { name: "moneda", label: "Moneda", type: "select", options: [["NIO", "Córdobas"], ["USD", "Dólares"]] },
             { name: "direccion", label: "Dirección", full: true },
           ], cuenta, async (d, cerrar) => { await q(sb.from("cuentas").update(d).eq("id", ctx.id)); cerrar(); ctx.toast("Guardado"); location.reload(); }) }, "Editar")),
           h("p", h("strong", cuenta.nombre), h("br"), h("span.suave", [cuenta.telefono, cuenta.email, cuenta.moneda === "USD" ? "Dólares" : "Córdobas"].filter(Boolean).join(" · ")))) : null,
-        ctx.esDueno ? h("section.hoja",
+        ctx.esDueno && ctx.modalidad === "profesor" ? h("section.hoja",
           h("div.hoja-titulo", h("h2", "Asistentes"),
             ctx.f("asistentes") ? h("button.btn.btn-sm", { onclick: () => formularioModal("Nuevo asistente", [
               { name: "nombre", label: "Nombre", required: true, full: true },

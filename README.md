@@ -11,7 +11,7 @@ Toda la gestión educativa, en un solo lugar. SaaS para **profesores independien
 | Registro, recuperación de contraseña, selector de cuentas | ✅ Etapa 1 |
 | Panel **Profesor independiente** (todos sus módulos) | ✅ Etapa 1 |
 | Panel maestro (dueño del SaaS) | ✅ Etapa 1 |
-| Panel **Academias** | ⏳ Etapa 2 (la base de datos ya lo soporta) |
+| Panel **Academias** (matrículas, finanzas, instructores, certificados, informes) | ✅ Etapa 2 |
 | Panel **Colegios** y portal de familias | ⏳ Etapa 3 (la base de datos ya lo soporta) |
 | Cobro en línea con tarjeta | ❌ No implementado: los pagos se registran a mano en el panel maestro |
 
@@ -30,12 +30,14 @@ entrar.html           Acceso con código o con correo
 registro.html         Alta de cuenta en 3 pasos
 recuperar.html        Recuperar contraseña (dueños de cuenta)
 cuentas.html          Elegir cuenta si perteneces a varias
+verificar.html        Verificación pública de certificados por folio
 app/profesor.html     Panel del profesor (módulos en assets/js/profesor/)
-app/academia.html     Aviso: etapa 2
+app/academia.html     Panel de academias (módulos en assets/js/academia/)
 app/colegio.html      Aviso: etapa 3
 admin/index.html      Panel maestro (solo plataforma_admins)
 assets/css/           Sistema de diseño (d360.css) + estilos por modalidad
-assets/js/core/       Conexión, sesión, componentes, iconos
+assets/js/core/       Conexión, sesión, componentes, iconos, núcleo de paneles
+assets/js/comun/      Módulos compartidos entre modalidades (estudiantes, grupos, asistencia, notas…)
 supabase/migrations/  Esquema completo, en orden
 supabase/functions/   Edge Function acceso-codigo
 supabase/tests/       Pruebas de seguridad en SQL
@@ -57,6 +59,7 @@ docs/                 Arquitectura, seguridad y precios
 psql -d prueba -f supabase/tests/stub_supabase.sql
 psql -d prueba -f supabase/migrations/<cada archivo en orden>
 psql -d prueba -f supabase/tests/rls_test.sql
+psql -d prueba -f supabase/tests/academia_test.sql
 ```
 
 ```bash

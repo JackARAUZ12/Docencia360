@@ -1,0 +1,52 @@
+/* Panel de academias: administración académica + operativa.
+   Barra lateral agrupada por áreas; en el teléfono, menú deslizable.
+   Reutiliza las clases de contenido del panel del profesor (p-titulo,
+   pase, cuaderno, agenda, mes, dos-col) importando profesor.css. */
+.a-app { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1024px) { .a-app { grid-template-columns: 256px minmax(0, 1fr); } }
+
+.a-lateral { background: var(--papel); border-right: 1px solid var(--renglon); padding: 1rem .8rem 1.5rem; overflow-y: auto; }
+@media (min-width: 1024px) { .a-lateral { position: sticky; top: 0; height: 100vh; } }
+@media (max-width: 1023px) {
+  .a-lateral { position: fixed; inset: 0 auto 0 0; width: min(86vw, 300px); z-index: 40; transform: translateX(-102%); transition: transform .2s ease; box-shadow: var(--sombra); }
+  .a-app.abierto .a-lateral { transform: none; }
+  .a-velo { position: fixed; inset: 0; background: rgba(15, 21, 27, .4); z-index: 30; display: none; }
+  .a-app.abierto .a-velo { display: block; }
+}
+.a-lateral .marca { margin: .25rem .5rem 1rem; }
+.a-inst { margin: 0 .5rem 1rem; padding: .75rem; border-radius: var(--radio-sm); background: var(--acento-suave); }
+.a-inst strong { display: block; color: var(--acento); line-height: 1.25; }
+.a-grupo-nav { margin-top: 1rem; }
+.a-grupo-nav > span { display: block; padding: 0 .6rem .3rem; font-size: .8rem; font-weight: 700; color: var(--texto-3); }
+.a-lateral a { display: flex; align-items: center; gap: .65rem; padding: .5rem .6rem; border-radius: var(--radio-sm); color: var(--texto-2); text-decoration: none; font-weight: 700; }
+.a-lateral a svg { width: 19px; height: 19px; flex: none; }
+.a-lateral a:hover { background: var(--papel-2); color: var(--texto); }
+.a-lateral a[aria-current="page"] { background: var(--acento); color: var(--papel); }
+.a-lateral .pie { margin-top: 1.5rem; border-top: 1px solid var(--renglon); padding-top: .75rem; }
+
+.a-cabecera { display: flex; align-items: center; gap: .75rem; padding: .7rem 16px; background: var(--papel); border-bottom: 1px solid var(--renglon); position: sticky; top: 0; z-index: 10; }
+@media (min-width: 1024px) { .a-cabecera { padding: .8rem 2rem; } .a-menu { display: none !important; } }
+.a-cabecera .crece { flex: 1; min-width: 0; }
+.a-cabecera .ruta { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.a-menu { min-width: 44px; min-height: 44px; border: 1px solid var(--renglon-fuerte); border-radius: var(--radio-sm); background: var(--papel); cursor: pointer; display: grid; place-items: center; color: var(--texto); }
+.a-menu svg { width: 22px; height: 22px; }
+.a-main { padding: 1.25rem 16px 3rem; max-width: 1240px; width: 100%; min-width: 0; }
+@media (min-width: 1024px) { .a-main { padding: 1.75rem 2rem 3rem; } }
+
+/* Recibo y certificado imprimibles */
+.recibo { max-width: 560px; margin: 0 auto; background: #fff; color: #17212B; padding: 1.5rem; border: 1px solid #d0d6d2; }
+.recibo .cab { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 2px solid #17212B; padding-bottom: .75rem; margin-bottom: 1rem; }
+.recibo .monto { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.certificado { aspect-ratio: 1.414 / 1; max-width: 960px; margin: 0 auto; background: #fff; color: #17212B; padding: 6% 7%; position: relative; display: flex; flex-direction: column; justify-content: space-between; text-align: center; border: 10px double #0E6B6B; }
+.certificado .tipo { letter-spacing: .3em; font-size: clamp(.7rem, 1.6vw, 1rem); color: #0E6B6B; font-weight: 700; }
+.certificado .nombre { font-size: clamp(1.4rem, 4.4vw, 2.8rem); font-weight: 700; margin: .5rem 0; border-bottom: 2px solid #F6D84A; display: inline-block; padding: 0 1rem .2rem; }
+.certificado .firmas { display: flex; justify-content: space-around; gap: 2rem; font-size: .9rem; }
+.certificado .firmas span { border-top: 1px solid #17212B; padding-top: .3rem; min-width: 30%; }
+.certificado .folio { font-size: .75rem; color: #4F5D69; }
+@media print {
+  .a-lateral, .a-cabecera, .a-velo, .no-imprimir { display: none !important; }
+  .a-app { display: block; }
+  .a-main { padding: 0; }
+  .certificado { border-width: 8px; page-break-inside: avoid; }
+  @page { margin: 12mm; }
+}

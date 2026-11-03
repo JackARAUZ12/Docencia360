@@ -6,5 +6,5 @@ export const CONFIG = {
   supabaseKey: "sb_publishable_NkB4WcctEUz_FlbIJCSzlg_Rnhwlj2p",
   producto: "Docencia360",
   // Modalidades disponibles para registro en esta versión
-  modalidadesAbiertas: ["profesor"],
+  modalidadesAbiertas: ["profesor", "academia"],
 };

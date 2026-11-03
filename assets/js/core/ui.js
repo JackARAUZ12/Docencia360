@@ -203,3 +203,13 @@ export function descargarCSV(nombre, filas) {
   const a = h("a", { href: url, download: nombre }); document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** Imprime solo el nodo dado (recibos, certificados) con el diálogo del navegador; permite «Guardar como PDF». */
+export function imprimir(nodo) {
+  const zona = h("div", { id: "impresion" }, nodo.cloneNode(true));
+  document.body.append(zona);
+  document.body.classList.add("solo-impresion");
+  const fin = () => { zona.remove(); document.body.classList.remove("solo-impresion"); removeEventListener("afterprint", fin); };
+  addEventListener("afterprint", fin);
+  setTimeout(() => { print(); setTimeout(fin, 1000); }, 50);
+}
