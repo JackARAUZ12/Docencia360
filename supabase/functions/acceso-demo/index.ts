@@ -27,7 +27,12 @@ Deno.serve(async (req) => {
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: r, error } = await admin.rpc("d360_demo_miembro", { p_perfil: perfil, p_origen: ip });
+  // Reintento breve: dos visitas simultáneas desde la misma IP pueden chocar en el contador de límite
+  let { data: r, error } = await admin.rpc("d360_demo_miembro", { p_perfil: perfil, p_origen: ip });
+  if (error) {
+    await new Promise((ok) => setTimeout(ok, 150 + Math.random() * 250));
+    ({ data: r, error } = await admin.rpc("d360_demo_miembro", { p_perfil: perfil, p_origen: ip }));
+  }
   if (error) { console.error("demo_miembro", error.message); return json(req, 500, { error: "La demostración no está disponible ahora. Intenta en un momento." }); }
   if (!r?.ok) {
     const msg = r?.motivo === "limite" ? "Abriste muchas demostraciones seguidas. Espera unos minutos."

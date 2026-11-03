@@ -317,3 +317,4 @@ begin
   return d360_sembrar_demos();
 end $$;
 revoke execute on function public.d360_admin_reiniciar_demos() from public, anon;
+-- Programado también en producción: select cron.schedule('d360-reiniciar-demos', '20 6 * * *', $$select public.d360_sembrar_demos()$$);
