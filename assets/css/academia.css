@@ -50,3 +50,22 @@
   .certificado { border-width: 8px; page-break-inside: avoid; }
   @page { margin: 12mm; }
 }
+
+/* Barra lateral en petróleo (identidad de academias) */
+.a-lateral { background: #0E3B3A; border-right: 0; color: #F4F6F2; }
+.a-lateral .marca, .a-lateral .marca span { color: #F4F6F2; }
+.a-lateral .marca b { color: #F2C94C; }
+.a-inst { background: rgba(255, 255, 255, .08); }
+.a-inst strong { color: #F4F6F2; font-family: var(--display); }
+.a-inst .tenue { color: rgba(244, 246, 242, .65); }
+.a-grupo-nav > span { color: rgba(244, 246, 242, .5); }
+.a-lateral a { color: rgba(244, 246, 242, .76); border-radius: 10px; }
+.a-lateral a:hover { background: rgba(255, 255, 255, .07); color: #F4F6F2; }
+.a-lateral a[aria-current="page"] { background: #F2C94C; color: #14212B; }
+.a-lateral .pie { border-top-color: rgba(255, 255, 255, .12); }
+.a-lateral .pie .tenue { color: rgba(244, 246, 242, .6); }
+.a-cabecera .ruta { font-family: var(--display); font-size: 1.1rem; }
+/* La capa oscura solo existe en el teléfono con el menú abierto */
+.a-velo { display: none; }
+@media (max-width: 1023px) { .a-app.abierto .a-velo { display: block; } }
+@media (min-width: 1024px) { .a-app > .a-lateral { grid-column: 1; } .a-app > div:last-child { grid-column: 2; } }

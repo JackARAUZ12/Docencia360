@@ -85,3 +85,24 @@
   .pase .opc button { flex: 1; }
   .p-titulo .acciones { width: 100%; }
 }
+
+/* =====================================================================
+   Barra lateral en verde pizarra (identidad de la marca)
+   ===================================================================== */
+.m-profesor { --lateral: #1E3A32; --lateral-2: #28493F; }
+@media (min-width: 960px) {
+  .p-riel { background: var(--lateral); border-right: 0; color: #F4F6F2; }
+  .p-riel .marca, .p-riel .marca span { color: #F4F6F2; }
+  .p-riel .marca b { color: #F2C94C; }
+  .p-riel a { color: rgba(244, 246, 242, .74); border-radius: 10px; }
+  .p-riel a:hover { background: rgba(255, 255, 255, .07); color: #F4F6F2; }
+  .p-riel a[aria-current="page"] { background: #F2C94C; color: #14212B; }
+  .p-riel a[aria-current="page"] span { background-image: none; }
+  .p-riel .pie { border-top-color: rgba(255, 255, 255, .12); }
+  .p-riel .pie .tenue { color: rgba(244, 246, 242, .6); }
+}
+.p-cabecera > div:last-child { margin-left: auto; }
+.p-cabecera .cuenta strong { font-family: var(--display); }
+.p-barra [aria-current="page"] { color: var(--pizarra); }
+.p-barra [aria-current="page"] svg { filter: drop-shadow(0 3px 0 #F2C94C); }
+:root[data-theme="dark"] .p-barra [aria-current="page"] { color: #F2C94C; }

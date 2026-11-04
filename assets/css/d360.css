@@ -253,3 +253,33 @@ main:focus { outline: none; }
 .franja-demo { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; justify-content: space-between; padding: .7rem 1rem; border-radius: var(--radio-sm); background: #FBF0D6; color: #5C3D00; border: 1px solid #F0D9A0; margin-bottom: 1rem; }
 :root[data-theme="dark"] .franja-demo { background: #382C12; color: #F3D9A0; border-color: #5A4719; }
 .franja-demo a { color: inherit; font-weight: 700; }
+
+/* =====================================================================
+   Pulido visual de los paneles (misma identidad que la página pública)
+   ===================================================================== */
+:root { --pizarra: #1E3A32; --amarilla: #F2C94C; --fondo: #F3F6F4; }
+:root[data-theme="dark"] { --fondo: #0F151B; }
+.hoja { border-radius: 14px; border-color: var(--renglon); box-shadow: 0 1px 2px rgba(20, 33, 43, .04); }
+.hoja-titulo h2 { font-size: 1.15rem; }
+/* Nombres y títulos enlazados: sin subrayado permanente */
+.registro a.fila-enlace, .lista a.titulo, .hoja a.titulo, .agenda a { text-decoration: none; }
+.registro a.fila-enlace:hover, .lista a.titulo:hover, .hoja a.titulo:hover { text-decoration: underline; color: var(--acento); }
+/* Cifras clave en una franja blanca */
+.cifras { background: var(--papel); border: 1px solid var(--renglon); border-top: 0; border-radius: 14px; padding: 0 1.1rem; position: relative; overflow: hidden; }
+.cifras::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--acento); }
+.cifra { padding: 1rem .9rem 1rem 0; }
+.cifra:last-child { border-bottom: 0; }
+@media (min-width: 700px) { .cifra { border-bottom: 0; } }
+.p-titulo h1 { font-size: clamp(1.6rem, 1.3rem + 1.2vw, 2.1rem); }
+/* Pantalla de entrar: la pizarra verde */
+.acceso-lado { background:
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(255,255,255,.05), transparent 70%),
+    radial-gradient(ellipse 40% 40% at 80% 75%, rgba(255,255,255,.04), transparent 70%), var(--pizarra); }
+.acceso-lado .marca b { color: var(--amarilla); }
+.acceso-lado blockquote { font-family: var(--display); font-weight: 800; letter-spacing: -.02em; max-width: 14ch; font-size: clamp(2rem, 1.2rem + 2.4vw, 3.2rem); line-height: 1.02; }
+.acceso-lado .margen { display: none; }
+.acceso-lado .renglones { display: none; }
+.acceso-lado::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 12px; background: linear-gradient(#9C7A55, #8A6A48 40%, #6E5235); }
+.acceso-form .btn:not(.btn-sec) { background: var(--pizarra); color: #fff; }
+:root[data-theme="dark"] .acceso-form .btn:not(.btn-sec) { background: var(--amarilla); color: #14212B; }
+@media (min-width: 900px) { .acceso-form #marca { display: none; } }
