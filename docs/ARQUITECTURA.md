@@ -166,3 +166,17 @@ Las acciones posteriores también son funciones del servidor:
 - comunicados.
 
 Se reinicia cada noche a las 00:25, hora de Nicaragua.
+
+## Importación de estudiantes
+- El archivo (.xlsx o .csv) se lee **en el navegador** (`core/hoja.js`, sin librerías: ZIP + XML con `DecompressionStream`). El archivo no se sube.
+- `comun/importar.js` reconoce las columnas por su título (editable), separa el nombre completo, convierte fechas (dd/mm/aaaa, aaaa-mm-dd y fechas de Excel) y muestra una revisión por fila.
+- `d360_importar_estudiantes(cuenta, filas, grupo, opciones)` recibe hasta 500 filas por envío (la interfaz manda 200) y:
+  - valida el permiso (gestión con plan vigente) y el límite del plan antes de empezar;
+  - omite duplicados (mismo documento, código, o nombre + fecha de nacimiento) y filas sin nombre;
+  - cada fila va en su propia subtransacción: si falla (por ejemplo, cupo lleno), no deja datos a medias y se informa el motivo;
+  - profesor: inscribe en el grupo elegido; colegio: matricula en la sección y genera matrícula y colegiaturas; academia: solo registra (la inscripción se hace en Matrículas para generar cobros).
+
+## Términos y privacidad
+- `terminos.html` y `privacidad.html` toman titular, contacto y versión de `config_global` (`publico.titular`, `publico.correo_contacto`, `publico.terminos_version`).
+- `d360_crear_cuenta` exige la versión vigente (`p_terminos`) y la guarda en `cuentas.terminos_version` y `terminos_aceptados`.
+- Si se cambia `publico.terminos_version`, al entrar al panel el propietario ve un aviso para aceptar la nueva versión (`d360_aceptar_terminos`).

@@ -46,7 +46,7 @@ end $$;
 -- Alta sin días gratis: queda pendiente y en solo lectura
 set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000d2';
 do $$ declare r jsonb; begin
-  r := d360_crear_cuenta('profesor','Nueva','Nuevo','prof_basico');
+  r := d360_crear_cuenta('profesor','Nueva','Nuevo','prof_basico', p_terminos => '2026-11-05');
   if r->>'estado' <> 'pendiente' then raise exception 'FALLO estado %', r; end if;
   begin insert into estudiantes(cuenta_id,nombres) values ((r->>'cuenta_id')::uuid,'X'); raise exception 'FALLO escribe sin pagar';
   exception when insufficient_privilege then raise notice 'OK cuenta nueva pendiente: solo lectura hasta el pago'; end;

@@ -10,12 +10,12 @@ create temp table r(k text, v jsonb); grant all on r to authenticated;
 
 -- Profesor A
 set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
-insert into r select 'A', public.d360_crear_cuenta('profesor','Clases de Ana','Ana','prof_basico');
+insert into r select 'A', public.d360_crear_cuenta('profesor','Clases de Ana','Ana','prof_basico', p_terminos => '2026-11-05');
 insert into estudiantes(cuenta_id,nombres,apellidos) select (v->>'cuenta_id')::uuid,'Luis','Pérez' from r where k='A';
 insert into grupos(cuenta_id,nombre) select (v->>'cuenta_id')::uuid,'Mate 1' from r where k='A';
 -- Colegio B
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
-insert into r select 'B', public.d360_crear_cuenta('colegio','Colegio Beta','Berta','col_avanzado');
+insert into r select 'B', public.d360_crear_cuenta('colegio','Colegio Beta','Berta','col_avanzado', p_terminos => '2026-11-05');
 insert into estudiantes(cuenta_id,nombres) select (v->>'cuenta_id')::uuid,'Sofía' from r where k='B';
 
 do $$ begin

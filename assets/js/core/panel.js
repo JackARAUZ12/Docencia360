@@ -1,8 +1,8 @@
 // Núcleo común de los paneles: contexto de la cuenta, caché de datos,
 // avisos del plan y enrutador por hash. Cada modalidad arma su propia
 // estructura visual y su propia lista de rutas encima de esto.
-import { sb, q } from "./sb.js";
-import { h, toast, errorEn, cargando, fecha } from "./ui.js";
+import { sb, q, mensajeError } from "./sb.js";
+import { h, toast, errorEn, cargando, fecha, modal } from "./ui.js";
 import { protegerModalidad, salir, ruta } from "./sesion.js";
 
 const GESTORES = ["propietario", "director", "subdirector", "coordinador", "administrativo"];
@@ -50,7 +50,32 @@ export async function crearContexto(modalidad) {
     const mios = new Set((await ctx.datos.misGrupos(forzar)).map((x) => x.grupo_id));
     return todos.filter((g) => mios.has(g.id));
   };
+  if (ctx.esDueno && !ctx.cuenta.es_demo) revisarTerminos(ctx);
   return ctx;
+}
+
+/** Si cambió la versión de los términos, el propietario debe aceptarla. */
+async function revisarTerminos(ctx) {
+  try {
+    const [{ data: cfg }, { data: cu }] = await Promise.all([
+      sb.from("config_global").select("valor").eq("clave", "publico.terminos_version").maybeSingle(),
+      sb.from("cuentas").select("terminos_version").eq("id", ctx.id).maybeSingle(),
+    ]);
+    const vigente = cfg?.valor == null ? "" : String(cfg.valor);
+    if (!vigente || !cu || cu.terminos_version === vigente) return;
+    const err = h("div.aviso.mal.oculto", { role: "alert" });
+    modal("Términos y privacidad", h("div",
+      h("p", cu.terminos_version ? "Actualizamos los términos de uso y la política de privacidad." : "Para seguir usando tu cuenta, revisa y acepta los términos de uso y la política de privacidad."),
+      h("p", h("a", { href: ruta("terminos.html"), target: "_blank", rel: "noopener" }, "Leer los términos de uso"), " · ",
+        h("a", { href: ruta("privacidad.html"), target: "_blank", rel: "noopener" }, "Leer la política de privacidad")),
+      err), [
+      { texto: "Más tarde", clase: "btn-sec" },
+      { texto: "Acepto", onclick: async (cerrar) => {
+        try { await q(sb.rpc("d360_aceptar_terminos", { p_cuenta: ctx.id, p_version: vigente })); cerrar(); toast("Gracias. Aceptación registrada."); }
+        catch (e) { err.textContent = mensajeError(e); err.classList.remove("oculto"); }
+      } },
+    ]);
+  } catch (_) { /* sin conexión: se vuelve a preguntar en la próxima carga */ }
 }
 
 /** Aviso de plan vencido, en gracia o por vencer. */

@@ -54,7 +54,7 @@ export async function render(el, ctx, { partes }) {
       { t: "Grupos", v: (e) => (gruposDe[e.id] || []).join(", ") || h("span.tenue", "Sin grupo") },
       { t: "Teléfono", v: (e) => e.telefono || e.contacto_telefono || "—" },
       { t: "Estado", v: (e) => h("span.estado." + (claseEstado[e.estado] || "x"), e.estado) },
-    ], lista, { vacio: est.length ? "Ningún estudiante coincide con la búsqueda." : "Todavía no registras estudiantes. Empieza con el botón «Nuevo estudiante»." }));
+    ], lista, { vacio: est.length ? "Ningún estudiante coincide con la búsqueda." : "Todavía no registras estudiantes. Agrégalos con «Nuevo estudiante» o súbelos todos de una vez con «Importar de Excel»." }));
   };
 
   const filtros = h("div.segmentos", { role: "group", "aria-label": "Filtrar por estado" },
@@ -68,6 +68,8 @@ export async function render(el, ctx, { partes }) {
         [["Nombres", "Apellidos", "Estado", "Teléfono", "Correo", "Responsable", "Tel. responsable", "Grupos"],
          ...est.map((e) => [e.nombres, e.apellidos, e.estado, e.telefono, e.email, e.contacto_nombre, e.contacto_telefono, (gruposDe[e.id] || []).join("; ")])]) },
         h("span", { html: ICONOS.descargar }), "Exportar") : null,
+      ctx.esGestor ? h("button.btn.btn-sec", { onclick: async () => (await import("./importar.js")).abrirImportacion(ctx, ctx.recargar) },
+        h("span", { html: ICONOS.subir }), "Importar de Excel") : null,
       ctx.esGestor ? h("button.btn", { onclick: () => editarEstudiante(ctx, null, ctx.recargar) }, h("span", { html: ICONOS.mas_add }), "Nuevo estudiante") : null),
     h("div", { style: "display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center" },
       h("input", { type: "search", placeholder: "Buscar por nombre o teléfono", style: "max-width:320px", "aria-label": "Buscar",

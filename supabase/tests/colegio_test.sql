@@ -5,7 +5,7 @@ insert into auth.users(id,email) values ('00000000-0000-0000-0000-0000000000c1',
   ('00000000-0000-0000-0000-0000000000c3','lengua@test'),('00000000-0000-0000-0000-0000000000c4','mama@test'),('00000000-0000-0000-0000-0000000000c9','admin@test');
 create temp table r(k text, v jsonb); grant all on r to authenticated;
 set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c1';
-insert into r select 'C', public.d360_crear_cuenta('colegio','Colegio Prueba','Directora','col_avanzado');
+insert into r select 'C', public.d360_crear_cuenta('colegio','Colegio Prueba','Directora','col_avanzado', p_terminos => '2026-11-05');
 do $$ declare c uuid := (select (v->>'cuenta_id')::uuid from r where k='C'); gr uuid; s uuid; am uuid; al uuid; p uuid; e1 uuid; e2 uuid; res jsonb; begin
   insert into grados(cuenta_id, nombre, matricula, colegiatura) values (c, '7mo', 1000, 1500) returning id into gr;
   insert into asignaturas(cuenta_id, nombre, grado_id) values (c, 'Matemática', gr) returning id into am;

@@ -5,7 +5,7 @@ update config_global set valor = '14' where clave = 'publico.dias_prueba';
 insert into auth.users(id,email) values ('00000000-0000-0000-0000-0000000000a1','acad@test'),('00000000-0000-0000-0000-0000000000a2','fin@test'),('00000000-0000-0000-0000-0000000000a3','inst@test');
 create temp table r(k text, v jsonb); grant all on r to authenticated;
 set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a1';
-insert into r select 'C', public.d360_crear_cuenta('academia','Academia Prueba','Dueña','acad_profesional');
+insert into r select 'C', public.d360_crear_cuenta('academia','Academia Prueba','Dueña','acad_profesional', p_terminos => '2026-11-05');
 insert into cursos(cuenta_id,nombre,precio_matricula,mensualidad,certifica) select (v->>'cuenta_id')::uuid,'Inglés A1',500,1200,true from r where k='C';
 insert into grupos(cuenta_id,nombre,curso_id,cupo) select (v->>'cuenta_id')::uuid,'Inglés A1 sábado',(select id from cursos),2 from r where k='C';
 insert into estudiantes(cuenta_id,nombres,apellidos) select (v->>'cuenta_id')::uuid, x, 'Prueba' from r, unnest(array['Uno','Dos','Tres']) x where k='C';

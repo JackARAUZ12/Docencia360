@@ -28,7 +28,7 @@ const grupos = [
 ];
 const dia = ((new Date().getDay() + 6) % 7) + 1;
 const F = {
-  planes, config_global: [{ clave: "publico.dias_prueba", valor: 14 }, { clave: "publico.inactividad_minutos", valor: 60 }, { clave: "publico.tipo_cambio", valor: 36.62, descripcion: "Tipo de cambio", actualizado: hoy }],
+  planes, config_global: [{ clave: "publico.dias_prueba", valor: 14 }, { clave: "publico.inactividad_minutos", valor: 60 }, { clave: "publico.tipo_cambio", valor: 36.62, descripcion: "Tipo de cambio", actualizado: hoy }, { clave: "publico.terminos_version", valor: "2026-11-05" }],
   grupos, asignaturas: [{ id: "a1", cuenta_id: C, nombre: "Matemática", activo: true }], cursos: [{ id: "c1", cuenta_id: C, nombre: "Álgebra intensiva", mensualidad: 800, duracion_semanas: 8, modalidad_clase: "presencial", activo: true }],
   estudiantes: est,
   grupo_estudiantes: est.slice(0, 3).map((e) => ({ grupo_id: G1, estudiante_id: e.id, cuenta_id: C, estado: "activo", desde: "2026-02-01", estudiantes: e, grupos: { id: G1, nombre: "Matemática 9no", estado: "activo" } })),
@@ -40,7 +40,7 @@ const F = {
   asistencias: [{ fecha: hoy, estado: "ausente", estudiante_id: E(2), grupo_id: G1, nota: "Enfermo", grupos: { nombre: "Matemática 9no" } }],
   eventos: [{ id: "ev1", cuenta_id: C, titulo: "Reunión de padres", fecha: hoy, tipo: "reunion", hora_inicio: "17:00:00" }],
   notificaciones: [], observaciones: [{ id: "o1", texto: "Muy participativa", tipo: "academica", creado: hoy + "T10:00:00Z" }],
-  cuentas: [{ id: C, nombre: "Clases de la Prof. Ana", codigo: "K7M2QP", moneda: "NIO", telefono: "8888-1111", email: "ana@ejemplo.com" }],
+  cuentas: [{ id: C, nombre: "Clases de la Prof. Ana", codigo: "K7M2QP", moneda: "NIO", telefono: "8888-1111", email: "ana@ejemplo.com", terminos_version: "2026-11-05" }],
   suscripciones: [{ cuenta_id: C, plan_id: "prof_premium", estado: "prueba", vence: "2026-12-01", dias_gracia: 5 }],
   pagos_suscripcion: [], miembros: [{ id: "m1", user_id: U, nombre: "Ana Martínez", rol: "propietario", activo: true, codigo_ultimos: "42" }, { id: "m2", nombre: "Asistente Uno", rol: "docente", activo: true }],
   grupo_docentes: [{ grupo_id: G1, miembro_id: "m2", miembros: { nombre: "Asistente Uno" }, grupos: { id: G1, nombre: "Matemática 9no", estado: "activo" } }], promociones: [],
@@ -69,10 +69,12 @@ const FC = {
   boletin_comentarios: [{ id: "bc1", estudiante_id: E(1), periodo_id: P2, conducta: "AA", comentario: "Muy responsable." }],
   comunicados: [{ id: "co1", cuenta_id: C, titulo: "Entrega de boletines", cuerpo: "El viernes a las 4:00 p. m.", audiencia: "tutores", publicado: hoy + "T10:00:00Z" }],
   tutores_estudiantes: [{ miembro_id: "t1", estudiante_id: E(1), parentesco: "Madre", estudiantes: { id: E(1), nombres: "Ana", apellidos: "López", codigo: "NE-001" }, miembros: { id: "t1", nombre: "Mariana Pérez", telefono: "8899", activo: true } }],
-  cuentas: [{ id: C, nombre: "Colegio Nueva Esperanza", codigo: "DEMOCO", moneda: "NIO", config: { nota_minima: 60, escala_cualitativa: true, lema: "Educando con valores" } }],
+  cuentas: [{ id: C, nombre: "Colegio Nueva Esperanza", codigo: "DEMOCO", moneda: "NIO", config: { nota_minima: 60, escala_cualitativa: true, lema: "Educando con valores" }, terminos_version: "2026-11-05" }],
   asistencia_docentes: [],
 };
 const RPC = {
+  d360_importar_estudiantes: { creados: 2, inscritos: 2, omitidos: [{ fila: 4, nombre: "Ya Existe", motivo: "Ya existe un estudiante con el mismo documento, código o nombre" }] },
+  d360_aceptar_terminos: null,
   d360_mis_cuentas: [{ cuenta_id: C, nombre: "Clases de la Prof. Ana", modalidad: "profesor", codigo: "K7M2QP", rol: "propietario", miembro_id: "m1", miembro_nombre: "Ana Martínez",
     plan_id: "prof_premium", plan_nombre: "Premium", estado: "prueba", vence: "2026-12-01", dias_gracia: 5, operativa: true, funciones: planes[2].funciones, onboarding_completo: false, moneda: "NIO" }],
   d360_resumen_panel: { estudiantes_activos: 3, grupos_activos: 2, asistencia_30d: 91.5, evaluaciones_sin_nota: 1, docentes: 1 },
@@ -131,7 +133,7 @@ const PANTALLAS = [
   ...["inicio", "finanzas", "matriculas", "informes"].map((r) => [`academia-finanzas-${r}`, `/app/academia.html#/${r}`, true, "academia", "finanzas"]),
   ...["inicio", "grupos", "asistencia", "calificaciones"].map((r) => [`academia-instructor-${r}`, `/app/academia.html#/${r}`, true, "academia", "docente"]),
   ["verificar", "/verificar.html?folio=K7M2QP-26-ABC123", false],
-  ["index", "/index.html", false], ["entrar", "/entrar.html", false], ["registro", "/registro.html?modalidad=profesor", false],
+  ["index", "/index.html", false], ["terminos", "/terminos.html", false], ["privacidad", "/privacidad.html", false], ["entrar", "/entrar.html", false], ["registro", "/registro.html?modalidad=profesor", false],
   ...["inicio", "asistencia", "calificaciones", "estudiantes", `estudiantes/${E(1)}`, "grupos", `grupos/${G1}`, "tareas", "cursos", "calendario", "informes", `informes?estudiante=${E(1)}`, "cuenta", "mas"]
     .map((r) => [`profesor-${r.replace(/[/?=]/g, "_").slice(0, 40)}`, `/app/profesor.html#/${r}`, true]),
   ...["resumen", "cuentas", "planes", "promociones", "actividad", "parametros"].map((r) => [`admin-${r}`, `/admin/index.html#/${r}`, true]),
@@ -153,6 +155,30 @@ for (const [ancho, alto, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
     await page.screenshot({ path: `${OUT}/${tag}-${nombre}.png`, fullPage: true, timeout: 5000 }).catch(() => {});
     await page.close();
   }
+  await ctxB.close();
+}
+// Flujo de importación (profesor): elegir CSV, revisar, importar y ver el resultado
+{
+  const ctxB = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctxB.newPage();
+  page.on("pageerror", (e) => errores.push(`importar: ${e.message}`));
+  await preparar(page, true, "profesor", "propietario");
+  await page.goto(BASE + "/app/profesor.html#/estudiantes", { waitUntil: "load" });
+  await page.getByRole("button", { name: "Importar de Excel" }).click();
+  const csv = "Nombre completo;Fecha de nacimiento;Sexo\r\nAna María López Pérez;04/03/2013;F\r\nLuis Mora;31/02/2012;M\r\n;;\r\nYa Existe;;\r\n";
+  await page.locator("dialog input[type=file]").setInputFiles({ name: "lista.csv", mimeType: "text/csv", buffer: Buffer.from(csv, "utf8") });
+  await page.waitForTimeout(400);
+  const txt = await page.locator("dialog").innerText();
+  if (!/3 listos para importar/.test(txt)) errores.push("importar: no reconoce las filas: " + txt.slice(0, 300));
+  if (!/fecha no reconocida/.test(txt)) errores.push("importar: no avisa la fecha inválida");
+  await page.screenshot({ path: `${OUT}/movil-importar-revision.png`, fullPage: true });
+  await page.getByRole("button", { name: /Importar 3 estudiantes/ }).click();
+  await page.waitForTimeout(500);
+  const fin = await page.locator("dialog").innerText();
+  if (!/2 estudiantes importados/.test(fin) || !/Filas omitidas/.test(fin)) errores.push("importar: resultado incorrecto: " + fin.slice(0, 300));
+  await page.screenshot({ path: `${OUT}/movil-importar-resultado.png`, fullPage: true });
+  const ancho = await page.evaluate(() => document.documentElement.scrollWidth);
+  if (ancho > 391) errores.push(`importar: desborde horizontal (${ancho}px)`);
   await ctxB.close();
 }
 await browser.close();

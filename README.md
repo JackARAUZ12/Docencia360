@@ -15,6 +15,8 @@ Toda la gestión educativa, en un solo lugar. SaaS para **profesores independien
 | Panel **Colegios** (estructura, horarios, notas por corte, boletines, matrícula escolar) | ✅ Etapa 3 |
 | **Portal de familias** para padres y tutores | ✅ Etapa 3 |
 | Cuentas de **demostración** (profesor, academia y colegio, por rol) | ✅ |
+| **Importar estudiantes** desde Excel (.xlsx) o CSV | ✅ |
+| Términos de uso y política de privacidad, con aceptación registrada | ✅ (revisar con un abogado) |
 | Cobro en línea con tarjeta | ❌ No implementado: los pagos se registran a mano en el panel maestro |
 
 ## Tecnología
@@ -53,7 +55,7 @@ docs/                 Arquitectura, seguridad y precios
 1. Sube el repositorio a un hosting estático (en GitHub Pages: Settings → Pages → rama principal).
 2. En Supabase → Authentication → URL Configuration, agrega la URL del sitio en **Site URL** y **Redirect URLs** (para confirmación de correo y recuperación).
 3. Opcional: en la Edge Function `acceso-codigo`, define el secreto `D360_ORIGENES` con tu dominio (por ejemplo `https://docencia360.com`) para restringir CORS.
-4. En el panel maestro → Parámetros, escribe tu número en `publico.contacto_whatsapp`.
+4. En el panel maestro → Parámetros, escribe tu número en `publico.contacto_whatsapp`, tu nombre o empresa en `publico.titular` y tu correo en `publico.correo_contacto` (aparecen en los términos y la privacidad).
 
 ## Pruebas
 

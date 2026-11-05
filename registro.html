@@ -77,7 +77,7 @@ const MODALIDADES = [
   { id: "colegio",  t: "Colegio o institución", d: "Grados, secciones, docentes, boletines y familias.", ini: "C" },
 ];
 const PEND = "d360-registro-pendiente";
-const estado = { modalidad: null, plan: null, planes: [], dias: 0, whatsapp: "" };
+const estado = { modalidad: null, plan: null, planes: [], dias: 0, whatsapp: "", terminos: "" };
 const sesion = await sesionActual();
 const soloCuenta = !!sesion;   // ya tiene usuario: solo falta crear la cuenta
 
@@ -87,7 +87,7 @@ const [planes, cfg] = await Promise.all([
   q(sb.from("config_global").select("clave,valor").like("clave", "publico.%")),
 ]).catch((e) => { mostrar(mensajeError(e)); return [[], []]; });
 estado.planes = planes;
-for (const c of cfg) { if (c.clave === "publico.dias_prueba") estado.dias = Number(c.valor) || 0; if (c.clave === "publico.contacto_whatsapp") estado.whatsapp = String(c.valor || "").replace(/\D/g, ""); }
+for (const c of cfg) { if (c.clave === "publico.dias_prueba") estado.dias = Number(c.valor) || 0; if (c.clave === "publico.contacto_whatsapp") estado.whatsapp = String(c.valor || "").replace(/\D/g, ""); if (c.clave === "publico.terminos_version") estado.terminos = String(c.valor || ""); }
 
 // Si vuelve tras confirmar su correo, completar con lo que había elegido
 let pendiente = null;
@@ -177,6 +177,10 @@ function paso3() {
     soloCuenta ? null : h("div.fila",
       h("label.campo", h("span", "Correo"), h("input", { name: "email", type: "email", required: true, autocomplete: "email" })),
       h("label.campo", h("span", "Contraseña"), h("input", { name: "clave", type: "password", required: true, minLength: 8, autocomplete: "new-password" }), h("small", "Mínimo 8 caracteres."))),
+    h("label.casilla.acepto", h("input", { type: "checkbox", name: "acepto", required: true }),
+      h("span", "Leí y acepto los ", h("a", { href: "terminos.html", target: "_blank", rel: "noopener" }, "términos de uso"), " y la ",
+        h("a", { href: "privacidad.html", target: "_blank", rel: "noopener" }, "política de privacidad"),
+        estado.modalidad === "profesor" ? "." : ", y declaro que mi institución cuenta con la autorización de las familias para registrar los datos de sus estudiantes.")),
     h("div.navegar", h("button.btn.btn-sec", { type: "button", onclick: paso2 }, "Atrás"), h("button.btn", { type: "submit" }, "Crear mi cuenta")),
   );
   form.addEventListener("submit", async (e) => {
@@ -184,8 +188,9 @@ function paso3() {
     const d = Object.fromEntries(new FormData(form));
     if (!d.tu_nombre?.trim() || !d.nombre?.trim()) return mostrar("Escribe tu nombre y el nombre de tu espacio.");
     if (!soloCuenta && (!d.email || (d.clave || "").length < 8)) return mostrar("Escribe un correo válido y una contraseña de al menos 8 caracteres.");
+    if (!d.acepto) return mostrar("Para crear la cuenta, marca que aceptas los términos de uso y la política de privacidad.");
     const b = form.querySelector("[type=submit]"); b.disabled = true; b.textContent = "Creando…";
-    const datosCuenta = { modalidad: estado.modalidad, plan: estado.plan, tu_nombre: d.tu_nombre, nombre: d.nombre, telefono: d.telefono, moneda: d.moneda };
+    const datosCuenta = { modalidad: estado.modalidad, plan: estado.plan, tu_nombre: d.tu_nombre, nombre: d.nombre, telefono: d.telefono, moneda: d.moneda, terminos: estado.terminos };
     try {
       if (!soloCuenta) {
         const { data, error } = await sb.auth.signUp({ email: d.email, password: d.clave,
@@ -207,7 +212,7 @@ function paso3() {
 
 async function crearCuenta(d) {
   const r = await q(sb.rpc("d360_crear_cuenta", { p_modalidad: d.modalidad, p_nombre: d.nombre, p_tu_nombre: d.tu_nombre,
-    p_plan: d.plan, p_telefono: d.telefono || null, p_moneda: d.moneda || "NIO" }));
+    p_plan: d.plan, p_telefono: d.telefono || null, p_moneda: d.moneda || "NIO", p_terminos: d.terminos || null }));
   try { localStorage.removeItem(PEND); } catch (_) {}
   elegirCuenta(r.cuenta_id);
   document.querySelector(".pasos").remove();
