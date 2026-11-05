@@ -45,7 +45,7 @@ export async function render(el, ctx, { params }) {
         .sort((a, b) => a.aprob - b.aprob);
       const riesgo = {}; rep.forEach((x) => { (riesgo[x.estudiante_id] ||= { sec: x.seccion, asig: [] }).asig.push(E.asignatura(x.asignatura_id)?.nombre); });
       const ids = Object.keys(riesgo);
-      const est = ids.length ? await q(sb.from("estudiantes").select("id,nombres,apellidos,contacto_nombre,contacto_telefono").in("id", ids)) : [];
+      const est = (ids.length ? await q(sb.from("estudiantes").select("id,nombres,apellidos,contacto_nombre,contacto_telefono").in("id", ids)) : []).filter((e) => riesgo[e.id]);
       const per = E.periodos.find((p) => p.id === periodo);
       cont.replaceChildren(cab,
         h("h2", `Rendimiento · ${per?.nombre}`),

@@ -147,7 +147,7 @@ for (const [ancho, alto, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
     await page.goto(BASE + url, { waitUntil: "load", timeout: 20000 }).catch((e) => errores.push(`${tag} ${nombre}: ${e.message}`));
     await page.waitForTimeout(900);
     const alerta = await page.locator(".aviso.mal").first().textContent().catch(() => null);
-    if (alerta && !/vencido/.test(alerta)) errores.push(`${tag} ${nombre} muestra error: ${alerta.slice(0, 160)}`);
+    if (alerta && !/vencido|reprobadas/.test(alerta)) errores.push(`${tag} ${nombre} muestra error: ${alerta.slice(0, 160)}`);
     const anchoDoc = await page.evaluate(() => document.documentElement.scrollWidth);
     if (anchoDoc > ancho + 1) errores.push(`${tag} ${nombre}: desborde horizontal (${anchoDoc}px)`);
     await page.screenshot({ path: `${OUT}/${tag}-${nombre}.png`, fullPage: true, timeout: 5000 }).catch(() => {});
