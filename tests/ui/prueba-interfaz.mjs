@@ -52,6 +52,26 @@ const F = {
   pagos: [{ id: "pg1", cuenta_id: C, estudiante_id: E(2), cargo_id: "cg2", monto: 200, metodo: "efectivo", fecha: hoy, recibo: 1, anulado: false, cargos: { concepto: "Matrícula · Álgebra" } }],
   certificados: [{ id: "ct1", cuenta_id: C, estudiante_id: E(2), curso_id: "c1", tipo: "certificado", titulo: "Álgebra intensiva", folio: "K7M2QP-26-ABC123", emitido: hoy, datos: { curso: "Álgebra intensiva", detalle: "Duración: 40 horas" }, anulado: false }],
 };
+// Datos del colegio (se usan cuando la modalidad simulada es "colegio")
+const GR = "66666666-6666-6666-6666-666666666661", P1 = "77777777-7777-7777-7777-777777777771", P2 = "77777777-7777-7777-7777-777777777772";
+const AS1 = "88888888-8888-8888-8888-888888888881", AS2 = "88888888-8888-8888-8888-888888888882";
+const FC = {
+  niveles: [{ id: "n1", cuenta_id: C, nombre: "Secundaria", orden: 1 }],
+  grados: [{ id: GR, cuenta_id: C, nivel_id: "n1", nombre: "7mo grado", orden: 1, matricula: 1100, colegiatura: 1750 }],
+  grupos: [{ id: G1, cuenta_id: C, nombre: "7mo A", grado_id: GR, estado: "activo", cupo: 30, turno: "matutino", aula_id: "au1" }],
+  asignaturas: [{ id: AS1, cuenta_id: C, nombre: "Matemática", grado_id: GR, activo: true }, { id: AS2, cuenta_id: C, nombre: "Lengua y Literatura", grado_id: GR, activo: true }],
+  periodos: [{ id: P1, cuenta_id: C, nombre: "I Corte", inicio: "2026-02-01", fin: "2026-04-10", orden: 1 }, { id: P2, cuenta_id: C, nombre: "IV Corte", inicio: "2026-09-15", fin: "2026-11-28", orden: 2 }],
+  aulas: [{ id: "au1", cuenta_id: C, nombre: "Aula 101", capacidad: 32 }], sedes: [],
+  grupo_docentes: [{ id: "gd1", grupo_id: G1, miembro_id: "m2", asignatura_id: AS1, es_guia: true, miembros: { nombre: "Asistente Uno" } }],
+  miembros: [{ id: "m1", user_id: U, nombre: "Ana Martínez", rol: "director", activo: true }, { id: "m2", nombre: "Prof. Julio Herrera", rol: "docente", activo: true, especialidad: "Matemática" }, { id: "t1", nombre: "Mariana Pérez", rol: "tutor", activo: true }],
+  horarios: [{ id: "h1", grupo_id: G1, asignatura_id: AS1, miembro_id: "m2", aula_id: "au1", dia, hora_inicio: "07:00:00", hora_fin: "07:45:00", grupos: { nombre: "7mo A", estado: "activo" } }],
+  evaluaciones: [{ id: EV1, cuenta_id: C, grupo_id: G1, asignatura_id: AS1, periodo_id: P2, titulo: "Examen de corte", tipo: "examen", fecha: hoy, peso: 40, puntaje_max: 100 }],
+  boletin_comentarios: [{ id: "bc1", estudiante_id: E(1), periodo_id: P2, conducta: "AA", comentario: "Muy responsable." }],
+  comunicados: [{ id: "co1", cuenta_id: C, titulo: "Entrega de boletines", cuerpo: "El viernes a las 4:00 p. m.", audiencia: "tutores", publicado: hoy + "T10:00:00Z" }],
+  tutores_estudiantes: [{ miembro_id: "t1", estudiante_id: E(1), parentesco: "Madre", estudiantes: { id: E(1), nombres: "Ana", apellidos: "López", codigo: "NE-001" }, miembros: { id: "t1", nombre: "Mariana Pérez", telefono: "8899", activo: true } }],
+  cuentas: [{ id: C, nombre: "Colegio Nueva Esperanza", codigo: "DEMOCO", moneda: "NIO", config: { nota_minima: 60, escala_cualitativa: true, lema: "Educando con valores" } }],
+  asistencia_docentes: [],
+};
 const RPC = {
   d360_mis_cuentas: [{ cuenta_id: C, nombre: "Clases de la Prof. Ana", modalidad: "profesor", codigo: "K7M2QP", rol: "propietario", miembro_id: "m1", miembro_nombre: "Ana Martínez",
     plan_id: "prof_premium", plan_nombre: "Premium", estado: "prueba", vence: "2026-12-01", dias_gracia: 5, operativa: true, funciones: planes[2].funciones, onboarding_completo: false, moneda: "NIO" }],
@@ -62,6 +82,11 @@ const RPC = {
   d360_carga_instructores: [{ miembro_id: "m2", nombre: "Asistente Uno", especialidad: "Matemática", activo: true, grupos: 1, estudiantes: 3, horas_semana: 1.5 }],
   d360_informe_operativo: { ingresos_mes: [{ mes: hoy.slice(0, 7), total: 200, pagos: 1 }], metodos: { efectivo: 200 }, matriculas_mes: [{ mes: hoy.slice(0, 7), nuevas: 2, retiradas: 0 }],
     cursos: [{ id: "c1", nombre: "Álgebra intensiva", activas: 1, total: 2, completadas: 1, retiradas: 0 }], morosos: [{ id: E(1), nombre: "Ana López", telefono: "8888", contacto_telefono: "7777", saldo: 720, desde: "2026-10-05", cobros: 1 }], por_vencer: 300 },
+  d360_resumen_colegio: { periodo: { id: P2, nombre: "IV Corte" }, nota_minima: 60, estudiantes_activos: 3, matriculados_anio: 3, docentes: 2, personal: 1, familias: 1, niveles: 1, grados: 1, secciones: 1,
+    asistencia_hoy: 92, asistencia_30d: 91, docentes_ausentes_hoy: 1, secciones_con_lista_hoy: 0, por_grado: [{ id: GR, nombre: "7mo grado", nivel: "Secundaria", secciones: 1, estudiantes: 3 }],
+    ingresos_mes: 5000, pendiente_cobro: 3500, vencido_cobro: 1750, familias_morosas: 1, notas_registradas: 6, reprobados: 1, estudiantes_en_riesgo: 1, promedio_general: 78.5 },
+  d360_notas_seccion: [{ estudiante_id: E(1), asignatura_id: AS1, promedio: 88, recuperacion: null, final: 88, evaluadas: 1, total: 1 }, { estudiante_id: E(2), asignatura_id: AS1, promedio: 44, recuperacion: 65, final: 65, evaluadas: 1, total: 1 },
+    { estudiante_id: E(1), asignatura_id: AS2, promedio: 92, final: 92 }, { estudiante_id: E(3), asignatura_id: AS1, promedio: 52, final: 52 }],
   d360_verificar_certificado: { valido: true, folio: "K7M2QP-26-ABC123", titulo: "Álgebra intensiva", estudiante: "Luis Pérez", institucion: "Academia Prueba", emitido: hoy, tipo: "certificado" },
   d360_admin_metricas: { cuentas: 1, por_modalidad: { profesor: 1 }, por_estado: { prueba: 1 }, mrr_usd: 0, ingresos_mes: {}, ingresos_12m: [] },
   d360_admin_cuentas: [{ cuenta_id: C, nombre: "Clases de la Prof. Ana", modalidad: "profesor", codigo: "K7M2QP", propietario_email: "ana@ejemplo.com", plan_id: "prof_premium", plan_nombre: "Premium", estado: "prueba", vence: "2026-12-01", dias_gracia: 5, estudiantes: 3, miembros: 2, creado: hoy }],
@@ -81,11 +106,11 @@ async function preparar(page, conSesion, modalidad = "profesor", rol = "propieta
       body = RPC[fn] ?? null;
       if (fn === "d360_mis_cuentas") body = body.map((c) => ({ ...c, modalidad, rol, nombre: modalidad === "academia" ? "Academia Horizonte" : c.nombre,
         plan_nombre: modalidad === "academia" ? "Profesional" : c.plan_nombre,
-        funciones: modalidad === "academia" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, tareas: true } : c.funciones }));
+        funciones: modalidad === "colegio" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, portal_familias: true, boletines: true, sedes: true } : modalidad === "academia" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, tareas: true } : c.funciones }));
     }
     else if (u.pathname.startsWith("/rest/v1/")) {
       const t = u.pathname.split("/").pop();
-      body = route.request().method() === "GET" ? (F[t] ?? []) : [];
+      body = route.request().method() === "GET" ? ((modalidad === "colegio" && FC[t]) || F[t] || []) : [];
       // Aplica filtros simples col=eq.valor (como PostgREST)
       for (const [k, v] of u.searchParams) if (v.startsWith("eq.") && Array.isArray(body) && body.some((x) => k in x)) body = body.filter((x) => String(x[k]) === v.slice(3));
       if (single) body = body[0] ?? null;
@@ -97,7 +122,11 @@ async function preparar(page, conSesion, modalidad = "profesor", rol = "propieta
 
 const errores = [];
 const ACAD = ["inicio", "estudiantes", `estudiantes/${E(1)}`, "cursos", "grupos", `grupos/${G1}`, "instructores", "asistencia", "calificaciones", "tareas", "calendario", "matriculas", "finanzas", "finanzas?vista=pagos", "certificados", "informes", "informes?tipo=matriculas", "informes?tipo=academico", "equipo", "cuenta"];
+const COL = ["inicio", "estructura", "estructura?vista=plan", "estructura?vista=docentes", "estructura?vista=aulas", "institucion", "estudiantes", `estudiantes/${E(1)}`, "matriculas", "docentes", "docentes?vista=asistencia", "horarios", "asistencia", "calificaciones", "calificaciones?vista=cuadro", "boletines", "boletines?vista=comentarios", "familias", "comunicados", "informes", "informes?tipo=asistencia", "informes?tipo=matricula", "informes?tipo=finanzas", "finanzas", "certificados", "equipo", "cuenta"];
 const PANTALLAS = [
+  ...COL.map((r) => [`colegio-${r.replace(/[/?=]/g, "_").slice(0, 40)}`, `/app/colegio.html#/${r}`, true, "colegio", "director"]),
+  ...["inicio", "calificaciones", "boletines", "horarios"].map((r) => [`colegio-docente-${r}`, `/app/colegio.html#/${r}`, true, "colegio", "docente"]),
+  ...["inicio", "notas", "asistencia", "avisos", "pagos"].map((r) => [`familias-${r}`, `/app/familias.html#/${r}`, true, "colegio", "tutor"]),
   ...ACAD.map((r) => [`academia-${r.replace(/[/?=]/g, "_").slice(0, 40)}`, `/app/academia.html#/${r}`, true, "academia", "propietario"]),
   ...["inicio", "finanzas", "matriculas", "informes"].map((r) => [`academia-finanzas-${r}`, `/app/academia.html#/${r}`, true, "academia", "finanzas"]),
   ...["inicio", "grupos", "asistencia", "calificaciones"].map((r) => [`academia-instructor-${r}`, `/app/academia.html#/${r}`, true, "academia", "docente"]),

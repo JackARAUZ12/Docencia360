@@ -10,6 +10,9 @@ const RESPALDO = [
   { perfil: "academia-direccion", modalidad: "academia", titulo: "Academia · Dirección", detalle: "Ve todo: cursos, grupos, matrículas, finanzas, certificados e informes." },
   { perfil: "academia-caja", modalidad: "academia", titulo: "Academia · Caja", detalle: "Matrículas, cobros, recibos y morosidad, sin tocar notas." },
   { perfil: "academia-instructor", modalidad: "academia", titulo: "Academia · Instructor", detalle: "Solo sus grupos: pasa lista y califica." },
+  { perfil: "colegio-direccion", modalidad: "colegio", titulo: "Colegio · Dirección", detalle: "Estructura, matrícula, horarios, boletines, finanzas, comunicados e informes." },
+  { perfil: "colegio-docente", modalidad: "colegio", titulo: "Colegio · Docente", detalle: "Matemática de secundaria y maestro guía de 7mo A." },
+  { perfil: "colegio-familia", modalidad: "colegio", titulo: "Colegio · Familia", detalle: "El portal de padres: notas, asistencia, avisos y pagos." },
 ];
 
 export async function entrarDemo(perfil) {
@@ -39,14 +42,14 @@ export async function abrirSelectorDemo() {
         b.classList.add("cargando"); err.classList.add("oculto");
         try { await entrarDemo(p.perfil); }
         catch (x) { err.textContent = mensajeError(x); err.classList.remove("oculto"); m.el.querySelectorAll(".demo-opcion").forEach((y) => (y.disabled = false)); b.classList.remove("cargando"); }
-      } }, h("strong", p.titulo.replace(/^Academia · /, "")), h("span", p.detalle)))) : null;
+      } }, h("strong", p.titulo.replace(/^(Academia|Colegio) · /, "")), h("span", p.detalle)))) : null;
   };
   const m = modal("Ver una demostración", h("div",
     h("p.suave", "Entra a una cuenta llena de datos de ejemplo. Puedes pasar lista, poner notas, matricular y cobrar. Los datos se reinician cada noche."),
     err,
     grupo("profesor", "Profesor independiente"),
     grupo("academia", "Academia (elige con qué rol entrar)"),
-    h("div", h("h3", { style: "font-size:1rem;margin-bottom:.4rem" }, "Colegio"), h("p.tenue", "Muy pronto."))),
+    grupo("colegio", "Colegio (elige con qué rol entrar)")),
     [{ texto: "Cerrar", clase: "btn-sec" }]);
   setTimeout(() => m.el.querySelector(".demo-opcion")?.focus(), 30);
 }

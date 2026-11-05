@@ -46,7 +46,7 @@ export async function render(el, ctx) {
 
   el.append(
     ctx.titulo("Equipo y accesos", h("button.btn", { onclick: nuevo }, h("span", { html: ICONOS.mas_add }), "Nuevo usuario")),
-    h("div.aviso", h("strong", `Código de la institución: ${cuenta.codigo}. `), "Cada persona entra con este código y su código personal. Los instructores se gestionan en «Instructores»."),
+    h("div.aviso", h("strong", `Código de la institución: ${cuenta.codigo}. `), "Cada persona entra con este código y su código personal. " + (ctx.modalidad === "colegio" ? "Los docentes se gestionan en «Docentes» y las familias en «Padres y tutores»." : "Los instructores se gestionan en «Instructores».")),
     h("section.hoja", tabla([
       { t: "Persona", v: (m) => [h("strong", m.nombre), h("div.tenue", [m.telefono, m.email].filter(Boolean).join(" · "))] },
       { t: "Rol", v: (m) => [ROLES[m.rol]?.[0] || m.rol, h("div.tenue", ROLES[m.rol]?.[1])] },

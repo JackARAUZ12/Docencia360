@@ -299,3 +299,4 @@ dialog.modal { border-radius: 16px; }
 .modal-cab h2 { font-size: 1.2rem; }
 .modal-pie { border-radius: 0 0 16px 16px; }
 .modal-cuerpo h3 { margin-top: 1.25rem; font-size: 1rem; color: var(--texto-2); }
+@media (max-width: 520px) { .cifra b { font-size: 1.5rem; overflow-wrap: anywhere; } }

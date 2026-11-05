@@ -115,3 +115,54 @@ Las acciones posteriores también son funciones del servidor:
 
 ### Automatización adicional
 `d360_recordatorios_cobro()` se ejecuta a diario a las 00:10 (hora de Nicaragua) y avisa a la administración de los cobros que vencen en 3 días.
+
+## Etapa 3: Colegios
+
+### Estructura
+- **Niveles, grados y secciones.** Cada grado tiene su arancel (`matricula`, `colegiatura`). Una sección es un `grupo` con `grado_id`, turno, aula, sede y cupo.
+- **Plan de estudios:** `asignaturas.grado_id`.
+- **Asignación de docentes:** `grupo_docentes` guarda la sección, la asignatura y el docente, con `es_guia` para el maestro guía.
+- **Cortes evaluativos:** `periodos`, que pueden cerrarse.
+
+### Permisos por asignatura
+`d360_puede_evaluar(cuenta, grupo, asignatura)` define quién califica:
+- En un colegio, el docente de Matemática de 7mo A solo crea evaluaciones y notas de Matemática en 7mo A.
+- En las asignaciones sin asignatura (profesor y academia), el docente sigue calificando todo el grupo.
+- Cuando un corte está cerrado, solo la dirección puede modificar sus notas (disparador `t_corte_cerrado`).
+
+### Notas y boletines
+- `d360_notas_seccion(sección, corte)` calcula el promedio ponderado de cada estudiante en cada asignatura.
+- La evaluación de tipo `recuperacion` reemplaza la nota del corte si es mayor.
+- Se aprueba con `config.nota_minima` (60 por defecto).
+- La escala cualitativa del MINED es configurable: AA 90–100, AS 76–89, AF 60–75, AI menos de 60.
+- El boletín reúne, por cada estudiante:
+  - las notas de todos los cortes hasta el elegido y el promedio;
+  - la asistencia de cada corte;
+  - la conducta y el comentario del maestro guía (`boletin_comentarios`);
+  - el logo y las firmas.
+- Se imprime o guarda en PDF por sección.
+
+### Matrícula escolar
+- `d360_matricular_colegio` matricula una vez por año. Genera la matrícula y N colegiaturas (de febrero a noviembre por defecto) con beca o descuento.
+- `d360_trasladar_seccion` cambia de sección sin perder el historial.
+
+### Familias
+- `d360_vincular_tutor` crea el acceso del tutor (rol `tutor`, con su código personal) y lo vincula a uno o varios estudiantes.
+- El portal `app/familias.html` es de solo lectura y muestra notas, asistencia, avisos y pagos.
+- RLS garantiza que cada familia ve solo lo de sus hijos. Las pruebas verifican, entre otras cosas, que un tutor no ve a otros estudiantes ni al personal.
+
+### Archivos
+- Bucket privado `d360` con una carpeta por cuenta (`<cuenta_id>/...`): fotos de estudiantes y logo.
+- Solo la gestión de esa cuenta puede subir. La demo no puede subir archivos.
+- Las imágenes se reducen a 600 px antes de subirlas.
+
+### Demo de colegio
+`d360_sembrar_demo_colegio()` crea el Colegio Nueva Esperanza:
+- 7 secciones de 4to a 9no y 175 estudiantes;
+- 11 docentes, con horarios sin choques;
+- 4 cortes con notas y recuperaciones;
+- colegiaturas y pagos, con algunas familias atrasadas;
+- una familia con dos hijos y acceso al portal;
+- comunicados.
+
+Se reinicia cada noche a las 00:25, hora de Nicaragua.

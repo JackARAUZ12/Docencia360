@@ -12,7 +12,9 @@ Toda la gestión educativa, en un solo lugar. SaaS para **profesores independien
 | Panel **Profesor independiente** (todos sus módulos) | ✅ Etapa 1 |
 | Panel maestro (dueño del SaaS) | ✅ Etapa 1 |
 | Panel **Academias** (matrículas, finanzas, instructores, certificados, informes) | ✅ Etapa 2 |
-| Panel **Colegios** y portal de familias | ⏳ Etapa 3 (la base de datos ya lo soporta) |
+| Panel **Colegios** (estructura, horarios, notas por corte, boletines, matrícula escolar) | ✅ Etapa 3 |
+| **Portal de familias** para padres y tutores | ✅ Etapa 3 |
+| Cuentas de **demostración** (profesor, academia y colegio, por rol) | ✅ |
 | Cobro en línea con tarjeta | ❌ No implementado: los pagos se registran a mano en el panel maestro |
 
 ## Tecnología
@@ -33,7 +35,8 @@ cuentas.html          Elegir cuenta si perteneces a varias
 verificar.html        Verificación pública de certificados por folio
 app/profesor.html     Panel del profesor (módulos en assets/js/profesor/)
 app/academia.html     Panel de academias (módulos en assets/js/academia/)
-app/colegio.html      Aviso: etapa 3
+app/colegio.html      Panel de colegios (módulos en assets/js/colegio/)
+app/familias.html     Portal de padres y tutores (assets/js/familias/)
 admin/index.html      Panel maestro (solo plataforma_admins)
 assets/css/           Sistema de diseño (d360.css) + estilos por modalidad
 assets/js/core/       Conexión, sesión, componentes, iconos, núcleo de paneles
@@ -60,6 +63,8 @@ psql -d prueba -f supabase/tests/stub_supabase.sql
 psql -d prueba -f supabase/migrations/<cada archivo en orden>
 psql -d prueba -f supabase/tests/rls_test.sql
 psql -d prueba -f supabase/tests/academia_test.sql
+# o todo junto, con Postgres 16 instalado:
+bash supabase/tests/correr.sh
 ```
 
 ```bash

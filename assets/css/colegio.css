@@ -1,0 +1,47 @@
+/* Panel de colegios: misma estructura que academias, identidad en color vino.
+   Incluye la cuadrícula de horarios, el cuadro de notas y el boletín imprimible. */
+.m-colegio .a-lateral { background: #4A1527; }
+.m-colegio { --acento: #6E1F3A; --acento-suave: #F3E3E8; }
+:root[data-theme="dark"] .m-colegio { --acento: #E58BA8; --acento-suave: #3A1A25; }
+
+/* Horario semanal */
+.horario { display: grid; grid-template-columns: 4.2rem repeat(5, minmax(120px, 1fr)); border-top: 2px solid var(--texto); min-width: 680px; }
+.horario > div { border-bottom: 1px solid var(--renglon); border-right: 1px solid var(--renglon); padding: .45rem; min-height: 64px; font-size: .88rem; }
+.horario .cab { font-weight: 700; min-height: 0; background: var(--papel-2); text-align: center; }
+.horario .hora { font-variant-numeric: tabular-nums; color: var(--texto-2); font-size: .8rem; }
+.horario .clase { background: var(--acento-suave); border-left: 3px solid var(--acento); border-radius: 6px; padding: .3rem .4rem; height: 100%; }
+.horario .clase strong { display: block; font-size: .85rem; }
+.horario .clase span { color: var(--texto-2); font-size: .78rem; }
+.horario .libre { color: var(--texto-3); font-size: .78rem; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.horario .libre:hover { background: var(--papel-2); }
+
+/* Cuadro de notas por sección */
+.cuadro th.rot { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; height: 120px; vertical-align: bottom; font-size: .8rem; }
+.cuadro td.n { text-align: center; font-variant-numeric: tabular-nums; }
+.cuadro td.rep { background: var(--correccion-suave); color: var(--correccion); font-weight: 700; }
+.cuali { display: inline-block; min-width: 2.2rem; text-align: center; font-weight: 700; font-size: .78rem; border-radius: 4px; padding: .05rem .25rem; }
+.cuali.AA { background: #E1F1E9; color: #1F7552; } .cuali.AS { background: #E3EEF8; color: #1D4F7A; }
+.cuali.AF { background: #FBF0D6; color: #8A5A00; } .cuali.AI { background: #F8E6E3; color: #B3362A; }
+
+/* Boletín imprimible: una hoja por estudiante */
+.boletin { background: #fff; color: #17212B; padding: 1.5rem 1.75rem; border: 1px solid #d5dbd7; border-radius: 6px; margin-bottom: 1.5rem; font-size: .92rem; }
+.boletin .cab { display: grid; grid-template-columns: 64px 1fr auto; gap: 1rem; align-items: center; border-bottom: 3px double #4A1527; padding-bottom: .75rem; margin-bottom: .9rem; }
+.boletin .cab img, .boletin .cab .escudo { width: 64px; height: 64px; object-fit: contain; border-radius: 8px; }
+.boletin .cab .escudo { background: #4A1527; color: #fff; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 1.4rem; }
+.boletin h3 { margin: 0; font-size: 1.15rem; }
+.boletin .datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .25rem 1rem; margin-bottom: .8rem; }
+.boletin .datos b { font-weight: 700; }
+.boletin table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.boletin th, .boletin td { border: 1px solid #c9d0cc; padding: .3rem .45rem; text-align: center; }
+.boletin th:first-child, .boletin td:first-child { text-align: left; }
+.boletin th { background: #F3E3E8; font-size: .8rem; }
+.boletin .rep { color: #B3362A; font-weight: 700; }
+.boletin .pie { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 2.2rem; text-align: center; font-size: .82rem; }
+.boletin .pie span { border-top: 1px solid #17212B; padding-top: .3rem; }
+.boletin .leyenda { font-size: .75rem; color: #4F5D69; margin-top: .6rem; }
+@media print { .boletin { border: 0; page-break-after: always; margin: 0; padding: 0; } }
+
+.matriz { border-collapse: collapse; }
+.matriz th, .matriz td { padding: .4rem .5rem; border-bottom: 1px solid var(--renglon); text-align: left; }
+.matriz select { min-height: 36px; padding: .25rem .5rem; font-size: .9rem; }
+.foto-est { width: 96px; height: 96px; border-radius: 12px; object-fit: cover; background: var(--papel-2); display: grid; place-items: center; color: var(--texto-3); font-family: var(--display); font-size: 2rem; font-weight: 800; }

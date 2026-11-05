@@ -13,9 +13,9 @@ P="psql -h $D -p $PORT -U postgres -q"
 preparar() {
   $P -c "drop database if exists t" -c "create database t" >/dev/null
   $P -d t -f tests/stub_supabase.sql >/dev/null 2>&1
-  for f in migrations/2026110[23]_[01][0-9]*.sql; do
+  for f in migrations/202611*_[0-9][0-9]_*.sql; do
     case $f in *_00_*) continue;; esac                       # limpieza de la versión anterior: solo en producción
-    if [[ $f == *05_* ]]; then sed '/plataforma_admins/,$d' $f | $P -d t -v ON_ERROR_STOP=1 >/dev/null || echo "MIGRACIÓN FALLÓ: $f"
+    if [[ $f == *_05_* ]]; then sed '/plataforma_admins/,$d' $f | $P -d t -v ON_ERROR_STOP=1 >/dev/null || echo "MIGRACIÓN FALLÓ: $f"
     else sed '/cron.schedule/d' $f | $P -d t -v ON_ERROR_STOP=1 >/dev/null || echo "MIGRACIÓN FALLÓ: $f"; fi
   done
 }

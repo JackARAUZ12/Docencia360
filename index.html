@@ -77,7 +77,7 @@
         <div class="modos-lista" role="tablist" aria-label="Tipo de cuenta">
           <button class="modo-btn" role="tab" id="tab-profesor" aria-controls="panel-modo" aria-selected="true" data-modo="profesor"><strong>Profesor independiente</strong>Clases particulares, tutorías y cursos propios.</button>
           <button class="modo-btn" role="tab" id="tab-academia" aria-controls="panel-modo" aria-selected="false" data-modo="academia"><strong>Academia o centro de cursos</strong>Inglés, música, computación, reforzamiento.</button>
-          <button class="modo-btn" role="tab" id="tab-colegio" aria-controls="panel-modo" aria-selected="false" data-modo="colegio"><strong>Colegio <span class="pronto">Muy pronto</span></strong>Grados, secciones, boletines y familias.</button>
+          <button class="modo-btn" role="tab" id="tab-colegio" aria-controls="panel-modo" aria-selected="false" data-modo="colegio"><strong>Colegio o instituto</strong>Grados, secciones, boletines y portal de familias.</button>
         </div>
         <div class="modo-panel" id="panel-modo" role="tabpanel" aria-labelledby="tab-profesor"></div>
       </div>
@@ -235,16 +235,16 @@ const MODOS = {
   },
   colegio: {
     t: "La gestión completa del colegio",
-    d: "Estamos terminando esta modalidad. Puedes ver los precios abajo; avísanos y te contactamos cuando esté lista.",
-    f: ["Niveles, grados, secciones y turnos", "Horarios sin choques de docentes ni aulas", "Boletines por período con firma", "Portal para padres y tutores", "Colegiaturas, becas y descuentos", "Comunicados por sección o para todo el colegio"],
-    cta: null,
+    d: "Para colegios con cientos o miles de estudiantes: cada docente califica su asignatura y cada familia ve lo de sus hijos.",
+    f: ["Niveles, grados, secciones, turnos y aulas", "Horarios sin choques de docentes ni aulas", "Notas por corte con recuperaciones y escala del MINED", "Boletines listos para imprimir, con conducta y firmas", "Portal para padres y tutores desde el teléfono", "Colegiaturas, becas, recibos y morosidad"],
+    cta: ["registro.html?modalidad=colegio", "Registrar mi colegio"],
     vista: () => h("div.vista",
-      h("div.vcab", h("span", "Boletín · 7mo A · I Semestre"), h("span.tenue", "Vista previa")),
-      h("table", h("thead", h("tr", h("th", "Asignatura"), h("th", "I parcial"), h("th", "II parcial"), h("th", "Final"))),
+      h("div.vcab", h("span", "Boletín · 7mo A"), h("span.tenue", "Escala del MINED")),
+      h("table", h("thead", h("tr", h("th", "Asignatura"), h("th", "I corte"), h("th", "II corte"), h("th", "Promedio"))),
         h("tbody",
-          h("tr", h("td", "Lengua y Literatura"), h("td", "88"), h("td", "91"), h("td.bien", "90")),
-          h("tr", h("td", "Matemática"), h("td", "72"), h("td", "79"), h("td.bien", "76")),
-          h("tr", h("td", "Ciencias Naturales"), h("td", "95"), h("td", "93"), h("td.bien", "94"))))),
+          h("tr", h("td", "Lengua y Literatura"), h("td", "88 AS"), h("td", "91 AA"), h("td.bien", "90 AA")),
+          h("tr", h("td", "Matemática"), h("td", "52 AI"), h("td", "71 AF"), h("td.bien", "62 AF")),
+          h("tr", h("td", "Ciencias Naturales"), h("td", "95 AA"), h("td", "93 AA"), h("td.bien", "94 AA"))))),
   },
 };
 const panel = document.getElementById("panel-modo");
