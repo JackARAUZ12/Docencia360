@@ -9,28 +9,52 @@
 <link rel="icon" href="assets/img/icono.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/css/d360.css">
 <style>
-  .reg { max-width: 760px; margin: 0 auto; padding: 1.5rem 16px 4rem; }
-  .reg header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; }
-  .pasos { display: flex; gap: 1.25rem; margin-bottom: 1.5rem; font-size: .92rem; color: var(--texto-3); flex-wrap: wrap; }
-  .pasos [aria-current="step"] { color: var(--texto); font-weight: 700; }
+  .reg { max-width: 1080px; margin: 0 auto; padding: 1.25rem 16px 4rem; }
+  .reg header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem; gap: 1rem; padding-right: 52px; }
+  .reg-cuerpo { display: grid; gap: 2rem; grid-template-columns: minmax(0, 1fr); align-items: start; }
+  @media (min-width: 900px) { .reg-cuerpo { grid-template-columns: minmax(0, 1fr) 320px; gap: 3rem; } }
+  .pasos { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-bottom: 1.75rem; counter-reset: p; }
+  .pasos span { counter-increment: p; font-size: .9rem; color: var(--texto-3); padding-top: .6rem; border-top: 4px solid var(--renglon); }
+  .pasos span::before { content: counter(p) ". "; }
+  .pasos span.hecho { color: var(--texto-2); border-top-color: var(--tinta); }
+  .pasos [aria-current="step"] { color: var(--texto); font-weight: 700; border-top-color: var(--amarilla, #F2C94C); }
   .opciones { display: grid; gap: .75rem; }
-  .opcion { display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; text-align: left; padding: 1rem 1.1rem; border: 1px solid var(--renglon-fuerte); border-radius: var(--radio); background: var(--papel); cursor: pointer; font: inherit; color: var(--texto); width: 100%; }
-  .opcion:hover:not([disabled]) { border-color: var(--acento); }
-  .opcion[aria-pressed="true"] { border: 2px solid var(--acento); box-shadow: 0 0 0 3px var(--acento-suave); }
+  .opcion { display: grid; grid-template-columns: 26px 1fr auto; gap: 1rem; align-items: start; text-align: left; padding: 1.1rem 1.2rem; border: 1.5px solid var(--renglon-fuerte); border-radius: 14px; background: var(--papel); cursor: pointer; font: inherit; color: var(--texto); width: 100%; transition: border-color .15s, box-shadow .15s; }
+  .opcion:hover:not([disabled]) { border-color: var(--tinta); }
+  .opcion[aria-pressed="true"] { border: 2px solid var(--tinta); box-shadow: 0 0 0 4px var(--tinta-suave); padding: calc(1.1rem - .5px) calc(1.2rem - .5px); }
   .opcion[disabled] { opacity: .6; cursor: not-allowed; }
-  .opcion .ini { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--acento-suave); color: var(--acento); }
-  .opcion .precio { text-align: right; font-weight: 700; white-space: nowrap; }
-  .opcion .precio small { display: block; font-weight: 400; color: var(--texto-3); }
-  .opcion ul { margin: .35rem 0 0; padding-left: 1.1rem; color: var(--texto-2); font-size: .92rem; }
-  .navegar { display: flex; justify-content: space-between; gap: .75rem; margin-top: 1.5rem; }
+  .opcion .marca-sel { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--renglon-fuerte); margin-top: .15rem; display: grid; place-items: center; }
+  .opcion[aria-pressed="true"] .marca-sel { border-color: var(--tinta); background: var(--tinta); }
+  .opcion[aria-pressed="true"] .marca-sel::after { content: ""; width: 8px; height: 5px; border-left: 2px solid var(--papel); border-bottom: 2px solid var(--papel); transform: rotate(-45deg) translate(1px, -1px); }
+  .opcion strong { font-family: var(--display); font-size: 1.15rem; }
+  .opcion .precio { text-align: right; white-space: nowrap; }
+  .opcion .precio b { display: block; font-family: var(--display); font-size: 1.35rem; font-weight: 800; letter-spacing: -.02em; }
+  .opcion .precio small { display: block; color: var(--texto-3); }
+  .opcion ul { margin: .5rem 0 0; padding: 0; list-style: none; color: var(--texto-2); font-size: .93rem; }
+  .opcion li { padding-left: 1.3rem; position: relative; margin-top: .2rem; }
+  .opcion li::before { content: ""; position: absolute; left: 2px; top: .45rem; width: 9px; height: 5px; border-left: 2px solid #1F7552; border-bottom: 2px solid #1F7552; transform: rotate(-45deg); }
+  @media (max-width: 560px) { .opcion { grid-template-columns: 22px 1fr; } .opcion .precio { grid-column: 2; text-align: left; } }
+  .navegar { display: flex; justify-content: space-between; gap: .75rem; margin-top: 1.75rem; }
+  .navegar .btn { min-width: 140px; }
+  .resumen-reg { position: sticky; top: 1.5rem; background: var(--pizarra, #1E3A32); color: #F4F6F2; border-radius: 16px; padding: 1.5rem; }
+  .resumen-reg h2 { font-size: 1.15rem; color: #F4F6F2; }
+  .resumen-reg dl { margin: 0; }
+  .resumen-reg dt { font-size: .85rem; color: rgba(244,246,242,.65); margin-top: .9rem; }
+  .resumen-reg dd { margin: .1rem 0 0; font-weight: 700; }
+  .resumen-reg .total { font-family: var(--display); font-size: 1.8rem; font-weight: 800; letter-spacing: -.02em; }
+  .resumen-reg ol { margin: 1.25rem 0 0; padding: 1rem 0 0 1.1rem; border-top: 1px solid rgba(255,255,255,.15); color: rgba(244,246,242,.8); font-size: .92rem; }
+  .resumen-reg li { margin-bottom: .35rem; }
+  @media (max-width: 899px) { .resumen-reg { position: static; order: 2; } }
 </style>
 </head>
 <body>
 <div class="reg">
   <header><span id="marca"></span><a href="entrar.html">Ya tengo cuenta</a></header>
-  <nav class="pasos" aria-label="Pasos"><span data-p="1">1. Tipo de cuenta</span><span data-p="2">2. Plan</span><span data-p="3">3. Tus datos</span></nav>
-  <div id="aviso"></div>
-  <main id="contenido"></main>
+  <nav class="pasos" aria-label="Pasos"><span data-p="1">Tipo de cuenta</span><span data-p="2">Plan</span><span data-p="3">Tus datos</span></nav>
+  <div class="reg-cuerpo">
+    <div><div id="aviso"></div><main id="contenido"></main></div>
+    <aside class="resumen-reg" id="resumen" aria-live="polite"></aside>
+  </div>
 </div>
 <script src="assets/vendor/supabase.js"></script>
 <script type="module">
@@ -75,7 +99,28 @@ if (pre && CONFIG.modalidadesAbiertas.includes(pre)) estado.modalidad = pre;
 if (qp.get("plan")) estado.plan = qp.get("plan");
 
 function marcarPaso(n) {
-  document.querySelectorAll("[data-p]").forEach((s) => Number(s.dataset.p) === n ? s.setAttribute("aria-current", "step") : s.removeAttribute("aria-current"));
+  document.querySelectorAll("[data-p]").forEach((s) => {
+    const p = Number(s.dataset.p);
+    p === n ? s.setAttribute("aria-current", "step") : s.removeAttribute("aria-current");
+    s.classList.toggle("hecho", p < n);
+  });
+  pintarResumen();
+}
+
+const NOMBRE_MOD = { profesor: "Profesor independiente", academia: "Academia o centro de cursos", colegio: "Colegio" };
+function pintarResumen() {
+  const r = document.getElementById("resumen"); if (!r) return;
+  const plan = estado.planes.find((p) => p.id === estado.plan);
+  r.replaceChildren(
+    h("h2", "Tu elección"),
+    h("dl",
+      h("dt", "Tipo de cuenta"), h("dd", estado.modalidad ? NOMBRE_MOD[estado.modalidad] : "Por elegir"),
+      h("dt", "Plan"), h("dd", plan ? plan.nombre : "Por elegir"),
+      plan ? [h("dt", "Pagas al mes"), h("dd.total", dinero(plan.precio_nio, "NIO").replace(/\.00$/, "")), h("dd", { style: "font-weight:400;color:rgba(244,246,242,.7)" }, `o ${dinero(plan.precio_usd, "USD")}`)] : null),
+    h("ol",
+      h("li", "Creas tu cuenta y recibes tus códigos de acceso."),
+      h("li", estado.dias > 0 ? `Usas tu cuenta ${estado.dias} días de prueba.` : "Pagas el primer mes por transferencia o depósito."),
+      h("li", estado.dias > 0 ? "Al terminar la prueba, eliges seguir y pagas." : "Activamos tu cuenta el mismo día y empiezas a trabajar.")));
 }
 
 function paso1() {
@@ -87,7 +132,7 @@ function paso1() {
       const abierta = CONFIG.modalidadesAbiertas.includes(m.id);
       return h("button.opcion", { type: "button", disabled: !abierta, "aria-pressed": String(estado.modalidad === m.id),
         onclick: () => { estado.modalidad = m.id; estado.plan = null; paso2(); } },
-        h("span.ini", m.ini), h("span", h("strong", m.t), h("br"), h("span.suave", m.d)),
+        h("span.marca-sel"), h("span", h("strong", m.t), h("br"), h("span.suave", m.d)),
         h("span.precio", abierta ? "Elegir" : h("span.estado.ojo", "Próximamente")));
     })),
   );
@@ -97,13 +142,14 @@ function paso2() {
   marcarPaso(2); limpiar();
   const lista = estado.planes.filter((p) => p.modalidad === estado.modalidad);
   if (!estado.plan) estado.plan = lista[1]?.id || lista[0]?.id;
-  const lim = (v, txt) => (v == null ? `${txt} sin límite` : v === 0 ? null : `Hasta ${v} ${txt}`);
+  pintarResumen();
+  const lim = (v, txt) => (v == null ? `${txt.charAt(0).toUpperCase() + txt.slice(1)} sin límite` : v === 0 ? null : `Hasta ${v} ${txt}`);
   cont.replaceChildren(
     h("h1", "Elige tu plan"),
     h("p.suave", estado.dias > 0 ? `Empiezas con ${estado.dias} días de prueba del plan que elijas.` : "Tu cuenta se activa al confirmar el pago del primer mes. Puedes cambiar de plan después."),
     h("div.opciones", lista.map((p) => h("button.opcion", { type: "button", "aria-pressed": String(estado.plan === p.id),
-      onclick: (ev) => { estado.plan = p.id; cont.querySelectorAll(".opcion").forEach((o) => o.setAttribute("aria-pressed", String(o === ev.currentTarget))); } },
-      h("span.ini", p.nombre[0]),
+      onclick: (ev) => { estado.plan = p.id; cont.querySelectorAll(".opcion").forEach((o) => o.setAttribute("aria-pressed", String(o === ev.currentTarget))); pintarResumen(); } },
+      h("span.marca-sel"),
       h("span", h("strong", p.nombre), h("br"), h("span.suave", p.resumen),
         h("ul", [lim(p.max_estudiantes, "estudiantes"), lim(p.max_grupos, "grupos"),
                  p.funciones?.reportes_pdf ? "Informes en PDF" : null,
@@ -112,7 +158,7 @@ function paso2() {
                  p.funciones?.certificados ? "Certificados con folio" : null,
                  p.funciones?.portal_familias ? "Portal de familias" : null,
                  p.funciones?.asistentes ? "1 asistente con su propio acceso" : null].filter(Boolean).map((t) => h("li", t)))),
-      h("span.precio", dinero(p.precio_nio, "NIO"), h("small", `${dinero(p.precio_usd, "USD")} al mes`))))),
+      h("span.precio", h("b", dinero(p.precio_nio, "NIO").replace(/\.00$/, "")), h("small", `al mes · ${dinero(p.precio_usd, "USD")}`))))),
     h("div.navegar", h("button.btn.btn-sec", { onclick: paso1 }, "Atrás"), h("button.btn", { onclick: paso3 }, "Continuar")),
   );
 }
@@ -165,6 +211,7 @@ async function crearCuenta(d) {
   try { localStorage.removeItem(PEND); } catch (_) {}
   elegirCuenta(r.cuenta_id);
   document.querySelector(".pasos").remove();
+  document.getElementById("resumen")?.remove();
   cont.replaceChildren(
     h("h1", h("span.resaltado", r.estado === "pendiente" ? "Tu cuenta está creada" : "Tu cuenta está lista")),
     r.estado === "pendiente" ? h("div.aviso.ojo",

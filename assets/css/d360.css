@@ -283,3 +283,19 @@ main:focus { outline: none; }
 .acceso-form .btn:not(.btn-sec) { background: var(--pizarra); color: #fff; }
 :root[data-theme="dark"] .acceso-form .btn:not(.btn-sec) { background: var(--amarilla); color: #14212B; }
 @media (min-width: 900px) { .acceso-form #marca { display: none; } }
+
+/* =====================================================================
+   Formularios y color de marca unificados
+   ===================================================================== */
+:root { --tinta: #1E3A32; --tinta-suave: #E3EEE8; --radio-sm: 10px; }
+:root[data-theme="dark"] { --tinta: #8FC9B0; --tinta-suave: #1B3029; }
+.fila { align-items: start; }
+.campo > span { font-size: .93rem; }
+input, select, textarea { border-radius: 10px; background: var(--papel); transition: border-color .15s, box-shadow .15s; }
+input::placeholder, textarea::placeholder { color: var(--texto-3); }
+input:hover:not(:focus), select:hover:not(:focus), textarea:hover:not(:focus) { border-color: var(--texto-3); }
+.btn { border-radius: 10px; }
+dialog.modal { border-radius: 16px; }
+.modal-cab h2 { font-size: 1.2rem; }
+.modal-pie { border-radius: 0 0 16px 16px; }
+.modal-cuerpo h3 { margin-top: 1.25rem; font-size: 1rem; color: var(--texto-2); }
