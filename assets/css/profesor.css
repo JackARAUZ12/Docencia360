@@ -106,3 +106,43 @@
 .p-barra [aria-current="page"] { color: var(--pizarra); }
 .p-barra [aria-current="page"] svg { filter: drop-shadow(0 3px 0 #F2C94C); }
 :root[data-theme="dark"] .p-barra [aria-current="page"] { color: #F2C94C; }
+
+/* ---------- Auditoría de usabilidad (profesor) ---------- */
+.dos-col > .hoja + .hoja { margin-top: 0; }
+/* Barra de filtros: grupo, fecha y vista en una línea cuando cabe */
+.barra-filtros { display: flex; flex-wrap: wrap; gap: .6rem .75rem; align-items: center; margin-bottom: 1rem; }
+.barra-filtros > select { flex: 1 1 220px; max-width: 380px; }
+.barra-filtros > input[type="date"] { flex: 0 1 180px; width: auto; }
+@media (max-width: 560px) { .barra-filtros > select { flex-basis: 100%; max-width: none; } .barra-filtros > input[type="date"] { flex: 1 1 140px; } }
+/* Segmentos sin saltos de línea en el teléfono */
+@media (max-width: 640px) {
+  .segmentos { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+  .segmentos::-webkit-scrollbar { display: none; }
+  .segmentos button { white-space: nowrap; flex: none; }
+  .p-titulo { align-items: flex-start; }
+  .p-titulo .acciones { width: 100%; }
+  .p-titulo .acciones .btn { flex: 1 1 auto; justify-content: center; }
+  .cifras .cifra:nth-last-child(-n+2):nth-child(odd), .cifras .cifra:last-child { border-bottom: 0; }
+}
+/* Primeros pasos */
+.pasos-guia { list-style: none; margin: 0; padding: 0; counter-reset: paso; }
+.pasos-guia li { display: flex; align-items: center; gap: .75rem; padding: .7rem 0; border-bottom: 1px solid var(--renglon); }
+.pasos-guia li:last-child { border-bottom: 0; }
+.pasos-guia .num { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--papel-2); border: 1px solid var(--renglon-fuerte); }
+.pasos-guia li.hecho .num { background: var(--aprobado); border-color: var(--aprobado); color: var(--papel); }
+.pasos-guia li.hecho .titulo { color: var(--texto-3); text-decoration: line-through; }
+.pasos-guia .crece { flex: 1; min-width: 0; }
+.pasos-guia .titulo { font-weight: 700; }
+.barra-progreso { height: 8px; background: var(--papel-2); border-radius: 99px; overflow: hidden; margin: .5rem 0 1rem; }
+.barra-progreso > span { display: block; height: 100%; background: var(--aprobado); border-radius: 99px; }
+/* Calificar por evaluación (pensado para el teléfono) */
+.calificar { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--texto); }
+.calificar li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .25rem .75rem; align-items: center; padding: .6rem 0; border-bottom: 1px solid var(--renglon); }
+.calificar .nombre { font-weight: 700; overflow-wrap: anywhere; }
+.calificar .campo-nota { display: flex; align-items: center; gap: .35rem; }
+.calificar input { width: 88px; text-align: right; font-size: 1.1rem; min-height: 46px; font-variant-numeric: tabular-nums; }
+.calificar input.cambiado, .cuaderno input.cambiado { border-color: var(--atencion); background: var(--atencion-suave); }
+.pie-fijo { display: flex; justify-content: flex-end; align-items: center; gap: .75rem; flex-wrap: wrap; margin-top: 1rem; position: sticky; bottom: 0; padding: .6rem 0; background: linear-gradient(transparent, var(--papel) 35%); }
+@media (max-width: 959px) { .pie-fijo { bottom: calc(64px + env(safe-area-inset-bottom)); } }
+/* Lista de integrantes compacta */
+.integrantes li .tenue { font-size: .85rem; }

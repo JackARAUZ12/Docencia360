@@ -2,6 +2,7 @@
 import { sb, q } from "../core/sb.js";
 import { h, tabla, formularioModal, confirmar, modal, fecha, hora, DIAS, nombreCompleto } from "../core/ui.js";
 import { ICONOS } from "../core/iconos.js";
+import { CAMPOS_ESTUDIANTE } from "./estudiantes.js";
 
 const ESTADO = { planificado: "info", activo: "ok", finalizado: "", cancelado: "mal" };
 
@@ -9,14 +10,21 @@ async function editarGrupo(ctx, g) {
   const [asig, cursos] = await Promise.all([ctx.datos.asignaturas(), ctx.datos.cursos()]);
   formularioModal(g ? "Editar grupo" : "Nuevo grupo", [
     { name: "nombre", label: "Nombre del grupo", required: true, placeholder: "Ej.: Matemática 9no — sábados", maxlength: 100, full: true },
-    { name: "asignatura_id", label: "Asignatura", type: "select", placeholder: "Sin asignatura", options: asig.filter((a) => a.activo).map((a) => [a.id, a.nombre]) },
+    { name: "asignatura_id", label: "Asignatura", type: "select", placeholder: asig.length ? "Sin asignatura" : "Aún no tienes asignaturas", options: asig.filter((a) => a.activo).map((a) => [a.id, a.nombre]) },
+    !g && ctx.modalidad === "profesor" ? { name: "asignatura_nueva", label: "…o escribe una asignatura nueva", placeholder: "Ej.: Matemática", maxlength: 100, help: "Opcional. Se crea al guardar." } : null,
     { name: "curso_id", label: "Curso", type: "select", placeholder: "Sin curso", options: cursos.filter((c) => c.activo).map((c) => [c.id, c.nombre]) },
     { name: "cupo", label: "Cupo máximo", type: "number", min: 1, max: 1000 },
     { name: "estado", label: "Estado", type: "select", options: [["activo", "Activo"], ["planificado", "Planificado"], ["finalizado", "Finalizado"], ["cancelado", "Cancelado"]], value: "activo" },
     { name: "fecha_inicio", label: "Inicia", type: "date" },
     { name: "fecha_fin", label: "Termina", type: "date" },
-  ], g, async (d, cerrar) => {
+  ].filter(Boolean), g, async (d, cerrar) => {
     if (d.fecha_inicio && d.fecha_fin && d.fecha_fin < d.fecha_inicio) throw new Error("La fecha de fin no puede ser anterior al inicio.");
+    const nueva = (d.asignatura_nueva || "").trim(); delete d.asignatura_nueva;
+    if (nueva) {
+      const existe = asig.find((a) => a.nombre.toLowerCase() === nueva.toLowerCase());
+      d.asignatura_id = existe ? existe.id : (await q(sb.from("asignaturas").insert({ cuenta_id: ctx.id, nombre: nueva }).select("id").single())).id;
+      ctx.datos.invalidar("asignaturas");
+    }
     let id = g?.id;
     if (g) await q(sb.from("grupos").update(d).eq("id", g.id));
     else id = (await q(sb.from("grupos").insert({ ...d, cuenta_id: ctx.id }).select("id").single())).id;
@@ -25,8 +33,9 @@ async function editarGrupo(ctx, g) {
   });
 }
 
-export async function render(el, ctx, { partes }) {
+export async function render(el, ctx, { partes, params }) {
   if (partes[0]) return detalle(el, ctx, partes[0]);
+  if (params?.get("nuevo") === "1" && ctx.esGestor) { history.replaceState(null, "", "#/grupos"); setTimeout(() => editarGrupo(ctx, null), 50); }
   const academia = ctx.modalidad !== "profesor";
   const [grupos, conteos, horarios, docentes] = await Promise.all([
     ctx.gruposVisibles(true),
@@ -75,10 +84,24 @@ async function detalle(el, ctx, id) {
     cerrar(); ctx.toast("Horario agregado"); ctx.recargar();
   }, { boton: "Agregar" });
 
+  const ya = new Set(activos.map((m) => m.estudiante_id));
+  const libres = todos.filter((e) => e.estado === "activo" && !ya.has(e.id));
+  // Registrar un estudiante nuevo y dejarlo en este grupo
+  const nuevoEnGrupo = () => formularioModal("Nuevo estudiante en " + g.nombre, CAMPOS_ESTUDIANTE.filter((c) => c.name !== "estado"), null, async (d, cerrar) => {
+    const est = await q(sb.from("estudiantes").insert({ ...d, cuenta_id: ctx.id }).select("id").single());
+    await q(sb.from("grupo_estudiantes").insert({ grupo_id: id, estudiante_id: est.id, cuenta_id: ctx.id, estado: "activo" }));
+    ctx.datos.invalidar("estudiantes"); cerrar(); ctx.toast("Estudiante registrado en el grupo"); ctx.recargar();
+  }, { boton: "Guardar y agregar" });
+  const importarEnGrupo = async () => (await import("./importar.js")).abrirImportacion(ctx, ctx.recargar, { grupo: id });
+  const opcionesAgregar = () => {
+    const m = modal("Agregar estudiantes", h("div",
+      h("p.suave", "¿Cómo quieres agregarlos?"),
+      h("div", { style: "display:grid;gap:.6rem" },
+        libres.length ? h("button.btn.btn-sec", { type: "button", onclick: () => { m.cerrar(); agregarEstudiantes(); } }, `Elegir de mis estudiantes (${libres.length} disponibles)`) : null,
+        h("button.btn.btn-sec", { type: "button", onclick: () => { m.cerrar(); nuevoEnGrupo(); } }, "Registrar un estudiante nuevo"),
+        h("button.btn.btn-sec", { type: "button", onclick: () => { m.cerrar(); importarEnGrupo(); } }, "Importar una lista de Excel o CSV"))));
+  };
   const agregarEstudiantes = () => {
-    const ya = new Set(activos.map((m) => m.estudiante_id));
-    const libres = todos.filter((e) => e.estado === "activo" && !ya.has(e.id));
-    if (!libres.length) return ctx.toast("Todos tus estudiantes activos ya están en este grupo. Registra nuevos en Estudiantes.", "mal");
     const buscar = h("input", { type: "search", placeholder: "Buscar", "aria-label": "Buscar estudiante" });
     const lista = h("div", libres.map((e) => h("label.check", { dataset: { n: nombreCompleto(e).toLowerCase() } }, h("input", { type: "checkbox", value: e.id }), nombreCompleto(e))));
     buscar.addEventListener("input", () => lista.querySelectorAll("label").forEach((l) => l.classList.toggle("oculto", !l.dataset.n.includes(buscar.value.toLowerCase()))));
@@ -109,16 +132,17 @@ async function detalle(el, ctx, id) {
     h("div.dos-col",
       h("section.hoja",
         h("div.hoja-titulo", h("h2", `Estudiantes (${activos.length}${g.cupo ? ` de ${g.cupo}` : ""})`),
-          !ctx.esGestor && !ctx.esFinanzas ? null : academia ? h("a.btn.btn-sm", { href: `#/matriculas?grupo=${id}` }, "Matricular") : h("button.btn.btn-sm", { onclick: agregarEstudiantes }, "Agregar")),
-        tabla([
-          { t: "Estudiante", v: (m) => h("a.fila-enlace", { href: `#/estudiantes/${m.estudiante_id}` }, nombreCompleto(m.estudiantes)) },
-          { t: "Desde", v: (m) => fecha(m.desde) },
-          { t: "", clase: "acciones", v: (m) => m.estado === "activo"
+          !ctx.esGestor && !ctx.esFinanzas ? null : academia ? h("a.btn.btn-sm", { href: `#/matriculas?grupo=${id}` }, "Matricular") : h("button.btn.btn-sm", { onclick: opcionesAgregar }, "Agregar")),
+        miembros.length ? h("ul.lista.integrantes", miembros.map((m) => h("li",
+          h("div.crece", h("a.titulo", { href: `#/estudiantes/${m.estudiante_id}`, style: "color:inherit;display:block" }, nombreCompleto(m.estudiantes)),
+            h("div.tenue", `Desde ${fecha(m.desde)}`)),
+          m.estado === "activo"
             ? (academia || !ctx.esGestor ? h("span.estado.ok", "Activo") : h("button.btn.btn-texto.btn-sm", { onclick: async () => {
                 if (!(await confirmar("Retirar", `¿Retirar a ${m.estudiantes.nombres} del grupo? Se conserva su historial.`, { boton: "Retirar" }))) return;
                 await q(sb.from("grupo_estudiantes").update({ estado: "retirado" }).eq("grupo_id", id).eq("estudiante_id", m.estudiante_id)); ctx.recargar(); } }, "Retirar"))
-            : h("span.estado.mal", "Retirado") },
-        ], miembros, { vacio: "Este grupo aún no tiene estudiantes." })),
+            : h("span.estado.mal", "Retirado"))))
+          : h("div.vacio", h("p", "Este grupo aún no tiene estudiantes."),
+              !academia && ctx.esGestor ? h("button.btn", { type: "button", onclick: opcionesAgregar }, "Agregar estudiantes") : null)),
       h("section.hoja",
         h("div.hoja-titulo", h("h2", "Horario semanal"), ctx.esGestor ? h("button.btn.btn-sm", { onclick: agregarHorario }, "Agregar") : null),
         horarios.length ? h("ul.agenda", horarios.map((x) => h("li",

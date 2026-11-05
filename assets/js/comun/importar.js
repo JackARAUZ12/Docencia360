@@ -92,7 +92,7 @@ export function plantillaCSV() {
 }
 
 /** Abre el asistente de importación. */
-export async function abrirImportacion(ctx, alTerminar) {
+export async function abrirImportacion(ctx, alTerminar, { grupo = null } = {}) {
   const cuerpo = h("div.importar");
   const m = modal("Importar estudiantes", cuerpo);
   m.el.classList.add("ancho");
@@ -126,7 +126,7 @@ export async function abrirImportacion(ctx, alTerminar) {
     let cabecera = Object.keys(mapa).length > 0;
     if (!cabecera) mapa = {};
     let orden = "nombres";
-    const destino = await opcionesDestino(ctx);
+    const destino = await opcionesDestino(ctx, grupo);
 
     const titulos = () => Array.from({ length: ancho }, (_, i) => `${letra(i)}${cabecera && texto(filas[0][i]) ? " · " + texto(filas[0][i]) : ""}`);
     const resumen = h("div"), revision = h("div");
@@ -215,7 +215,7 @@ export async function abrirImportacion(ctx, alTerminar) {
 }
 
 /** Opciones de destino según la modalidad: grupo (profesor), sección con matrícula (colegio) o nada (academia). */
-async function opcionesDestino(ctx) {
+async function opcionesDestino(ctx, grupoInicial = null) {
   if (ctx.modalidad === "academia") {
     return { nodo: h("p.aviso", "Los estudiantes quedan registrados. Después, inscríbelos desde ", h("strong", "Matrículas"), " para generar sus cobros."), valor: () => ({}) };
   }
@@ -244,6 +244,6 @@ async function opcionesDestino(ctx) {
     };
   }
   const grupos = (await ctx.datos.grupos()).filter((g) => ["activo", "planificado"].includes(g.estado));
-  const sel = h("select", h("option", { value: "" }, "Ninguno por ahora"), grupos.map((g) => h("option", { value: g.id }, g.nombre)));
+  const sel = h("select", h("option", { value: "" }, "Ninguno por ahora"), grupos.map((g) => h("option", { value: g.id, selected: g.id === grupoInicial }, g.nombre)));
   return { nodo: h("label.campo", h("span", "Inscribir en el grupo"), sel), valor: () => ({ grupo: sel.value }) };
 }

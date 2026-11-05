@@ -139,7 +139,9 @@ const PANTALLAS = [
   ...["resumen", "cuentas", "planes", "promociones", "actividad", "parametros"].map((r) => [`admin-${r}`, `/admin/index.html#/${r}`, true]),
 ];
 const browser = await chromium.launch();
-for (const [ancho, alto, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
+const VISTAS = process.env.ANCHOS ? process.env.ANCHOS.split(",").map((x) => { const [w, hh, t] = x.split(/[x:]/); return [Number(w), Number(hh), t]; })
+  : [[390, 844, "movil"], [1366, 900, "pc"]];
+for (const [ancho, alto, tag] of VISTAS) {
   const ctxB = await browser.newContext({ viewport: { width: ancho, height: alto } });
   for (const [nombre, url, conSesion, modalidad, rol] of PANTALLAS.filter(([n]) => !process.env.SOLO || process.env.SOLO.split(",").some((x) => n.startsWith(x)))) {
     const page = await ctxB.newPage();
@@ -164,7 +166,7 @@ for (const [ancho, alto, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   page.on("pageerror", (e) => errores.push(`importar: ${e.message}`));
   await preparar(page, true, "profesor", "propietario");
   await page.goto(BASE + "/app/profesor.html#/estudiantes", { waitUntil: "load" });
-  await page.getByRole("button", { name: "Importar de Excel" }).click();
+  await page.getByRole("button", { name: "Importar Excel" }).click();
   const csv = "Nombre completo;Fecha de nacimiento;Sexo\r\nAna María López Pérez;04/03/2013;F\r\nLuis Mora;31/02/2012;M\r\n;;\r\nYa Existe;;\r\n";
   await page.locator("dialog input[type=file]").setInputFiles({ name: "lista.csv", mimeType: "text/csv", buffer: Buffer.from(csv, "utf8") });
   await page.waitForTimeout(400);
@@ -179,6 +181,43 @@ for (const [ancho, alto, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   await page.screenshot({ path: `${OUT}/movil-importar-resultado.png`, fullPage: true });
   const ancho = await page.evaluate(() => document.documentElement.scrollWidth);
   if (ancho > 391) errores.push(`importar: desborde horizontal (${ancho}px)`);
+  await ctxB.close();
+}
+// Ciclo del profesor en el teléfono: calificar por evaluación, agregar al grupo, aviso de cambios sin guardar
+{
+  const ctxB = await browser.newContext({ viewport: { width: 360, height: 740 } });
+  const page = await ctxB.newPage();
+  page.on("pageerror", (e) => errores.push(`ciclo: ${e.message}`));
+  await preparar(page, true, "profesor", "propietario");
+  await page.goto(BASE + "/app/profesor.html#/calificaciones", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".calificar li", { timeout: 8000 }).catch(() => errores.push("ciclo: en el teléfono no abre «Por evaluación»"));
+  const filas = await page.locator(".calificar li").count();
+  if (filas < 1) errores.push("ciclo: la vista por evaluación no lista estudiantes");
+  await page.locator(".calificar input").first().fill("77");
+  if (!/Guardar 1 nota/.test(await page.locator(".pie-fijo .btn").innerText())) errores.push("ciclo: no cuenta la nota cambiada");
+  await page.screenshot({ path: `${OUT}/ciclo-calificar.png`, fullPage: false });
+  await page.getByRole("button", { name: "Cuadro completo" }).click();
+  await page.waitForTimeout(300);
+  if (!(await page.getByText("Notas sin guardar").isVisible())) errores.push("ciclo: no avisa notas sin guardar al cambiar de vista");
+  await page.getByRole("button", { name: "Cancelar" }).click();
+  await page.goto(BASE + `/app/profesor.html#/grupos/${G1}`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Agregar", exact: true }).first().click();
+  await page.waitForTimeout(300);
+  if (!(await page.getByRole("button", { name: "Registrar un estudiante nuevo" }).isVisible())) errores.push("ciclo: el grupo no ofrece registrar un estudiante nuevo");
+  if (!(await page.getByRole("button", { name: /Importar una lista/ }).isVisible())) errores.push("ciclo: el grupo no ofrece importar");
+  await page.screenshot({ path: `${OUT}/ciclo-agregar.png`, fullPage: false });
+  await page.keyboard.press("Escape");
+  await page.goto(BASE + "/app/profesor.html#/asistencia", { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".pase li", { timeout: 8000 }).catch(() => {});
+  await page.locator(".pase .opc button").first().click();
+  const opciones = await page.locator(".barra-filtros select option").count();
+  if (opciones > 1) {
+    await page.locator(".barra-filtros select").selectOption({ index: 1 });
+    await page.waitForTimeout(300);
+    if (!(await page.getByText("Cambios sin guardar").isVisible())) errores.push("ciclo: no avisa asistencia sin guardar al cambiar de grupo");
+  }
+  const ancho = await page.evaluate(() => document.documentElement.scrollWidth);
+  if (ancho > 361) errores.push(`ciclo: desborde horizontal (${ancho}px)`);
   await ctxB.close();
 }
 await browser.close();

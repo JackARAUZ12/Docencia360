@@ -18,22 +18,33 @@ export async function render(el, ctx) {
   const activos = grupos.filter((g) => g.estado === "activo");
   const nombre = ctx.cuenta.miembro_nombre.split(" ")[0];
 
-  // Cuenta nueva: guía de primeros pasos en lugar de un panel vacío
+  // Primeros pasos: el ciclo completo de trabajo, marcado con datos reales
+  const hay = async (t) => (await q(sb.from(t).select("id").eq("cuenta_id", ctx.id).limit(1))).length > 0;
+  const [hayHorario, hayLista, hayEval] = await Promise.all([hay("horarios"), hay("asistencias"), hay("evaluaciones")]);
+  const g1 = activos[0];
+  const pasos = [
+    { hecho: activos.length > 0, t: "Crea tu primer grupo", d: "Un grupo reúne a los estudiantes de una misma clase. La asignatura la escribes ahí mismo.", href: "#/grupos?nuevo=1", b: "Crear grupo" },
+    { hecho: resumen.estudiantes_activos > 0, t: "Agrega a tus estudiantes", d: "Uno por uno o todos de una vez desde Excel.", href: g1 ? `#/grupos/${g1.id}` : "#/estudiantes", b: "Agregar" },
+    { hecho: hayHorario, t: "Ponle horario al grupo", d: "Así Inicio te recuerda a qué grupo pasar lista cada día.", href: g1 ? `#/grupos/${g1.id}` : "#/grupos", b: "Poner horario" },
+    { hecho: hayLista, t: "Pasa lista", d: "Toca P, A, T o J por estudiante, o marca a todos presentes.", href: "#/asistencia", b: "Pasar lista" },
+    { hecho: hayEval, t: "Crea una evaluación y pon notas", d: "El promedio se calcula solo.", href: "#/calificaciones?nuevo=1", b: "Crear evaluación" },
+  ];
+  const hechos = pasos.filter((p) => p.hecho).length;
+  const claveGuia = `d360-guia-oculta-${ctx.id}`;
+  let guiaOculta = false; try { guiaOculta = localStorage.getItem(claveGuia) === "1"; } catch (_) {}
+  const siguiente = pasos.findIndex((p) => !p.hecho);
+  const guia = (completa) => h("section.hoja", { style: completa ? "" : "margin-bottom:1rem" },
+    h("div.hoja-titulo", h("h2", completa ? "Deja listo tu espacio" : `Primeros pasos · ${hechos} de ${pasos.length}`),
+      completa ? null : h("button.btn.btn-texto.btn-sm", { type: "button", onclick: (e) => { try { localStorage.setItem(claveGuia, "1"); } catch (_) {} e.target.closest("section").remove(); } }, "Ocultar")),
+    h("div.barra-progreso", { role: "progressbar", "aria-valuemin": 0, "aria-valuemax": pasos.length, "aria-valuenow": hechos }, h("span", { style: `width:${(hechos / pasos.length) * 100}%` })),
+    h("ol.pasos-guia", pasos.map((p, i) => h("li" + (p.hecho ? ".hecho" : ""),
+      h("span.num", p.hecho ? "✓" : String(i + 1)),
+      h("div.crece", h("div.titulo", p.t), p.hecho ? null : h("div.tenue", p.d)),
+      p.hecho ? null : h("a.btn.btn-sm" + (i === siguiente ? "" : ".btn-sec"), { href: p.href }, p.b)))));
+
+  // Cuenta nueva: la guía en lugar de un panel vacío
   if (!activos.length || !resumen.estudiantes_activos) {
-    const pasos = [
-      [ctx.datos && (await ctx.datos.asignaturas()).length > 0, "Crea tu primera asignatura o curso", "#/cursos"],
-      [activos.length > 0, "Crea un grupo y ponle horario", "#/grupos"],
-      [resumen.estudiantes_activos > 0, "Registra a tus estudiantes", "#/estudiantes"],
-      [false, "Pasa lista en tu primera clase", "#/asistencia"],
-    ];
-    el.append(
-      h("h1", `Hola, ${nombre}`),
-      h("p.suave", "Deja listo tu espacio en cuatro pasos. Toma pocos minutos."),
-      h("ol.lista", pasos.map(([hecho, texto, href], i) => h("li",
-        h("span.estado" + (hecho ? ".ok" : ""), hecho ? "Listo" : `Paso ${i + 1}`),
-        h("div.crece", h("div.titulo", texto)),
-        hecho ? null : h("a.btn.btn-sm", { href }, "Empezar")))),
-    );
+    el.append(h("h1", `Hola, ${nombre}`), h("p.suave", "Estos son los pasos para empezar. Toman pocos minutos."), guia(true));
     return;
   }
 
@@ -45,6 +56,7 @@ export async function render(el, ctx) {
 
   el.append(
     h("div.p-titulo", h("div", h("p.tenue", { style: "margin:0" }, diaLargo(hoy)), h("h1", `Hola, ${nombre}`))),
+    hechos < pasos.length && !guiaOculta ? guia(false) : null,
     notifs.length ? h("div", notifs.map((n) => h("div.aviso.ojo", h("strong", n.titulo + ". "), n.cuerpo || "",
       n.enlace ? [" ", h("a", { href: n.enlace }, "Ver")] : null,
       " ", h("button.btn.btn-texto.btn-sm", { onclick: async (e) => { await sb.from("notificaciones").update({ leida: true }).eq("id", n.id); e.target.closest(".aviso").remove(); } }, "Entendido")))) : null,
@@ -52,7 +64,7 @@ export async function render(el, ctx) {
       h("div.cifra", h("b", resumen.estudiantes_activos), h("span", "estudiantes activos")),
       h("div.cifra", h("b", resumen.grupos_activos), h("span", "grupos activos")),
       h("div.cifra", h("b", resumen.asistencia_30d == null ? "—" : `${resumen.asistencia_30d}%`), h("span", "asistencia, últimos 30 días")),
-      h("div.cifra" + (resumen.evaluaciones_sin_nota ? ".alerta" : ""), h("b", resumen.evaluaciones_sin_nota), h("span", "evaluaciones sin calificar"))),
+      h("a.cifra" + (resumen.evaluaciones_sin_nota ? ".alerta" : ""), { href: "#/calificaciones?vista=evaluacion", style: "color:inherit;text-decoration:none" }, h("b", resumen.evaluaciones_sin_nota), h("span", "evaluaciones sin calificar ›"))),
     h("div.dos-col", { style: "margin-top:1.5rem" },
       h("section.hoja",
         h("div.hoja-titulo", h("h2", "Hoy")),
@@ -63,13 +75,14 @@ export async function render(el, ctx) {
                   conLista.has(c.grupo_id) ? h("span.estado.ok", "Lista tomada")
                     : h("a.btn.btn-sm", { href: `#/asistencia?grupo=${c.grupo_id}`, style: "margin-top:.35rem" }, "Pasar lista")))),
               eventos.filter((e) => e.fecha === hoy).map((e) => h("li", h("span.h", hora(e.hora_inicio) || "Día"), h("div", h("strong", e.titulo), h("div.tenue", e.tipo)))),
-              evals.filter((e) => e.fecha === hoy).map((e) => h("li", h("span.h", "—"), h("div", h("strong", e.titulo), h("div.tenue", `${e.tipo} · ${e.grupos?.nombre}`)))))
+              evals.filter((e) => e.fecha === hoy).map((e) => h("li", h("span.h", e.tipo === "tarea" ? "Tarea" : "Prueba"), h("div", h("strong", e.titulo), h("div.tenue", e.grupos?.nombre),
+                h("a.btn.btn-sm.btn-sec", { href: `#/calificaciones?grupo=${e.grupo_id}&evaluacion=${e.id}`, style: "margin-top:.35rem" }, "Poner notas")))))
           : h("p.suave", "No tienes clases programadas para hoy."),
         sinLista.length > 1 ? h("p.tenue", `${sinLista.length} grupos de hoy aún sin lista.`) : null),
       h("section.hoja",
         h("div.hoja-titulo", h("h2", "Próximos 7 días")),
         evals.filter((e) => e.fecha > hoy).length || eventos.filter((e) => e.fecha > hoy).length
-          ? h("ul.lista", [...evals.filter((e) => e.fecha > hoy).map((e) => ({ f: e.fecha, t: e.titulo, d: `${e.tipo === "tarea" ? "Entrega de tarea" : "Evaluación"} · ${e.grupos?.nombre}`, href: `#/calificaciones?grupo=${e.grupo_id}` })),
+          ? h("ul.lista", [...evals.filter((e) => e.fecha > hoy).map((e) => ({ f: e.fecha, t: e.titulo, d: `${e.tipo === "tarea" ? "Entrega de tarea" : "Evaluación"} · ${e.grupos?.nombre}`, href: `#/calificaciones?grupo=${e.grupo_id}&evaluacion=${e.id}` })),
                            ...eventos.filter((e) => e.fecha > hoy).map((e) => ({ f: e.fecha, t: e.titulo, d: e.tipo, href: "#/calendario" }))]
               .sort((a, b) => a.f.localeCompare(b.f))
               .map((x) => h("li", h("span.estado.info", fechaCorta(x.f)), h("div.crece", h("a.titulo", { href: x.href, style: "color:inherit" }, x.t), h("div.tenue", x.d)))))

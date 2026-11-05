@@ -1,6 +1,6 @@
 // Asistencia: pase de lista rápido (pensado para el teléfono) e historial.
 import { sb, q } from "../core/sb.js";
-import { h, tabla, hoyISO, sumarDias, fecha, diaLargo, nombreCompleto } from "../core/ui.js";
+import { h, tabla, hoyISO, sumarDias, fecha, diaLargo, nombreCompleto, confirmar } from "../core/ui.js";
 
 const OPC = [["presente", "P", "Presente"], ["ausente", "A", "Ausente"], ["tarde", "T", "Tarde"], ["justificado", "J", "Justificado"]];
 
@@ -14,17 +14,31 @@ export async function render(el, ctx, { params }) {
   let fechaSel = params.get("fecha") || hoyISO();
   let vista = params.get("vista") === "historial" ? "historial" : "lista";
 
-  const selGrupo = h("select", { "aria-label": "Grupo", onchange: (e) => { grupoId = e.target.value; pintar(); } },
+  // Cambios sin guardar: se avisa antes de cambiar de grupo, fecha o pantalla
+  let sucio = false;
+  const seguro = async () => !sucio || await confirmar("Cambios sin guardar", "Marcaste asistencia que aún no guardas. Si continúas, se perderá.", { boton: "Continuar sin guardar", peligro: true });
+  const alSalir = (e) => { if (sucio) { e.preventDefault(); e.returnValue = ""; } };
+  addEventListener("beforeunload", alSalir);
+  addEventListener("hashchange", () => removeEventListener("beforeunload", alSalir), { once: true });
+  const irGrupo = (id) => { grupoId = id; selGrupo.value = id; history.replaceState(null, "", `#/asistencia?grupo=${id}`); pintar(); };
+
+  const selGrupo = h("select", { "aria-label": "Grupo", onchange: async (e) => {
+    if (!(await seguro())) { e.target.value = grupoId; return; }
+    irGrupo(e.target.value); } },
     grupos.map((g) => h("option", { value: g.id, selected: g.id === grupoId }, g.nombre)));
-  const selFecha = h("input", { type: "date", value: fechaSel, max: hoyISO(), "aria-label": "Fecha", onchange: (e) => { fechaSel = e.target.value || hoyISO(); pintar(); } });
+  const selFecha = h("input", { type: "date", value: fechaSel, max: hoyISO(), "aria-label": "Fecha", onchange: async (e) => {
+    if (!(await seguro())) { e.target.value = fechaSel; return; }
+    fechaSel = e.target.value || hoyISO(); pintar(); } });
   const segs = h("div.segmentos", { role: "group" }, [["lista", "Pasar lista"], ["historial", "Historial"]].map(([v, t]) =>
-    h("button", { type: "button", "aria-pressed": String(v === vista), onclick: (e) => {
-      vista = v; segs.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget)));
+    h("button", { type: "button", "aria-pressed": String(v === vista), onclick: async (e) => {
+      const b = e.currentTarget;
+      if (v !== vista && !(await seguro())) return;
+      vista = v; e = { currentTarget: b }; segs.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget)));
       selFecha.classList.toggle("oculto", v !== "lista"); pintar(); } }, t)));
   const cuerpo = h("div");
 
   el.append(ctx.titulo("Asistencia"),
-    h("div", { style: "display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem" }, h("div", { style: "flex:1;min-width:200px;max-width:360px" }, selGrupo), selFecha, segs),
+    h("div.barra-filtros", selGrupo, selFecha, segs),
     cuerpo);
   if (vista !== "lista") selFecha.classList.add("oculto");
 
@@ -40,7 +54,7 @@ export async function render(el, ctx, { params }) {
     const marcas = {}; const notas = {};
     previos.forEach((p) => { marcas[p.estudiante_id] = p.estado; notas[p.estudiante_id] = p.nota || ""; });
     const yaTomada = previos.length > 0;
-    let sucio = false;
+    sucio = false;
 
     const items = miembros.map((m) => {
       const id = m.estudiante_id;
@@ -77,9 +91,13 @@ export async function render(el, ctx, { params }) {
         await q(sb.from("asistencias").upsert(filas, { onConflict: "grupo_id,estudiante_id,fecha" }));
         sucio = false; ctx.toast("Asistencia guardada");
         estadoLista.replaceChildren(h("span.estado.ok", "Lista guardada"));
+        const i = grupos.findIndex((g) => g.id === grupoId);
+        const sig = grupos[(i + 1) % grupos.length];
+        siguiente.replaceChildren(grupos.length > 1 ? h("button.btn.btn-sec", { type: "button", onclick: () => irGrupo(sig.id) }, `Siguiente: ${sig.nombre} →`) : null);
       } catch (e) { ctx.toast(e.message, "mal"); }
       finally { guardar.disabled = false; }
     } }, "Guardar asistencia");
+    const siguiente = h("span");
     const estadoLista = h("span", yaTomada ? h("span.estado.ok", "Lista ya tomada · puedes corregirla") : h("span.estado.ojo", "Sin tomar"));
 
     cuerpo.replaceChildren(h("section.hoja",
@@ -88,7 +106,7 @@ export async function render(el, ctx, { params }) {
         h("button.btn.btn-sec.btn-sm", { onclick: () => { miembros.forEach((m) => { if (!marcas[m.estudiante_id]) marcas[m.estudiante_id] = "presente"; }); pintarMarcas(); } }, "Marcar los demás como presentes"),
         h("span.tenue", { style: "align-self:center" }, "P presente · A ausente · T tarde · J justificado")),
       h("ul.pase", items),
-      h("div", { style: "display:flex;justify-content:flex-end;margin-top:1rem;position:sticky;bottom:calc(72px + env(safe-area-inset-bottom));" }, guardar)));
+      h("div.pie-fijo", siguiente, guardar)));
 
     function pintarMarcas() {
       items.forEach((li, i) => {
@@ -97,7 +115,6 @@ export async function render(el, ctx, { params }) {
       });
       sucio = true; contar();
     }
-    addEventListener("beforeunload", (e) => { if (sucio) e.preventDefault(); }, { once: true });
   }
 
   async function historial() {

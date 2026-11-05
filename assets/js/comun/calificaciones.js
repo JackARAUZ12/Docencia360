@@ -2,6 +2,7 @@
 // El promedio lo calcula el servidor (d360_promedios_grupo).
 import { sb, q } from "../core/sb.js";
 import { h, formularioModal, confirmar, fechaCorta, hoyISO, nombreCompleto, nota, descargarCSV } from "../core/ui.js";
+const ESTRECHA = () => matchMedia("(max-width: 700px)").matches;
 import { ICONOS } from "../core/iconos.js";
 
 export const TIPOS = [["examen", "Examen"], ["tarea", "Tarea"], ["proyecto", "Proyecto"], ["practica", "Práctica"], ["participacion", "Participación"], ["otro", "Otro"]];
@@ -17,9 +18,10 @@ export function editarEvaluacion(ctx, grupoId, ev, alGuardar, tipoInicial) {
     { name: "descripcion", label: "Indicaciones", type: "textarea", full: true },
   ], ev, async (d, cerrar) => {
     d.peso = d.peso ?? 0;
+    let id = ev?.id;
     if (ev) await q(sb.from("evaluaciones").update(d).eq("id", ev.id));
-    else await q(sb.from("evaluaciones").insert({ ...d, cuenta_id: ctx.id, grupo_id: grupoId }));
-    cerrar(); ctx.toast("Guardado"); alGuardar?.();
+    else id = (await q(sb.from("evaluaciones").insert({ ...d, cuenta_id: ctx.id, grupo_id: grupoId }).select("id").single()))?.id;
+    cerrar(); ctx.toast(ev ? "Guardado" : "Evaluación creada: ya puedes poner las notas"); alGuardar?.(id);
   });
 }
 
@@ -30,12 +32,25 @@ export async function render(el, ctx, { params }) {
     return;
   }
   let grupoId = grupos.some((g) => g.id === params.get("grupo")) ? params.get("grupo") : grupos.find((g) => g.estado === "activo")?.id || grupos[0].id;
-  const sel = h("select", { "aria-label": "Grupo", style: "max-width:360px", onchange: (e) => { grupoId = e.target.value; history.replaceState(null, "", `#/calificaciones?grupo=${grupoId}`); pintar(); } },
+  let evalSel = params.get("evaluacion") || null;
+  let vista = params.get("vista") || (evalSel || ESTRECHA() ? "evaluacion" : "cuadro");
+  let pendientes = 0;
+  const seguro = async () => !pendientes || await confirmar("Notas sin guardar", `Tienes ${pendientes} nota(s) sin guardar. Si continúas, se perderán.`, { boton: "Continuar sin guardar", peligro: true });
+  const segs = h("div.segmentos", { role: "group", "aria-label": "Vista" }, [["evaluacion", "Por evaluación"], ["cuadro", "Cuadro completo"]].map(([v, t]) =>
+    h("button", { type: "button", "aria-pressed": String(v === vista), onclick: async (e) => {
+      const b = e.currentTarget; if (v === vista || !(await seguro())) return;
+      vista = v; segs.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); pintar(); } }, t)));
+  const sel = h("select", { "aria-label": "Grupo", onchange: async (e) => {
+    if (!(await seguro())) { e.target.value = grupoId; return; }
+    grupoId = e.target.value; evalSel = null; history.replaceState(null, "", `#/calificaciones?grupo=${grupoId}`); pintar(); } },
     grupos.map((g) => h("option", { value: g.id, selected: g.id === grupoId }, g.nombre + (g.estado !== "activo" ? ` (${g.estado})` : ""))));
   const cuerpo = h("div");
   el.append(ctx.titulo("Calificaciones",
-    h("button.btn", { onclick: () => editarEvaluacion(ctx, grupoId, null, pintar) }, h("span", { html: ICONOS.mas_add }), "Nueva evaluación")),
-    h("div", { style: "margin-bottom:1rem" }, sel), cuerpo);
+    h("button.btn", { onclick: () => editarEvaluacion(ctx, grupoId, null, irA) }, h("span", { html: ICONOS.mas_add }), "Nueva evaluación")),
+    h("div.barra-filtros", sel, segs), cuerpo);
+  if (params.get("nuevo") === "1") { history.replaceState(null, "", `#/calificaciones?grupo=${grupoId}`); setTimeout(() => editarEvaluacion(ctx, grupoId, null, irA), 50); }
+  // Tras crear una evaluación, se abre lista para calificarla
+  function irA(id) { if (id) { evalSel = id; vista = "evaluacion"; segs.querySelectorAll("button").forEach((x, i) => x.setAttribute("aria-pressed", String(i === 0))); } pintar(); }
 
   async function pintar() {
     cuerpo.replaceChildren(h("p.tenue", "Cargando…"));
@@ -53,15 +68,36 @@ export async function render(el, ctx, { params }) {
     if (!evals.length) {
       cuerpo.replaceChildren(h("div.vacio", h("h3", "Sin evaluaciones en este grupo"),
         h("p", "Crea exámenes, tareas o proyectos. Si les pones peso, el promedio se calcula con esa ponderación."),
-        h("button.btn", { onclick: () => editarEvaluacion(ctx, grupoId, null, pintar) }, "Crear la primera")));
+        h("button.btn", { onclick: () => editarEvaluacion(ctx, grupoId, null, irA) }, "Crear la primera")));
       return;
     }
     if (!miembros.length) {
       cuerpo.replaceChildren(h("div.aviso.ojo", "Este grupo no tiene estudiantes activos. ", h("a", { href: `#/grupos/${grupoId}` }, "Agregar estudiantes")));
+      return;
     }
 
     const cambios = new Map();
+    pendientes = 0;
     const guardar = h("button.btn", { disabled: true, onclick: guardarCambios }, "Guardar notas");
+    // Casilla de nota: valida el rango y registra el cambio
+    const casilla = (ev, m, extra = {}) => {
+      const k = `${ev.id}|${m.estudiante_id}`;
+      const v = valor[k];
+      return h("input", { type: "number", inputMode: "decimal", min: 0, max: ev.puntaje_max, step: "0.01", enterKeyHint: "next",
+        value: v == null ? "" : Number(v), "aria-label": `${ev.titulo}: ${nombreCompleto(m.estudiantes)}`, ...extra,
+        onkeydown: (e) => { if (e.key === "Enter") { e.preventDefault(); const t = [...cuerpo.querySelectorAll("input[type=number]")]; t[t.indexOf(e.target) + 1]?.focus(); } },
+        oninput: (e) => {
+          const n = e.target.value === "" ? null : Number(e.target.value);
+          if (n != null && (n < 0 || n > Number(ev.puntaje_max))) { e.target.setCustomValidity(`Entre 0 y ${Number(ev.puntaje_max)}`); e.target.reportValidity(); return; }
+          e.target.setCustomValidity("");
+          e.target.classList.toggle("cambiado", n !== (v == null ? null : Number(v)));
+          if (n === (v == null ? null : Number(v))) cambios.delete(k); else cambios.set(k, { ev, est: m.estudiante_id, n });
+          pendientes = cambios.size;
+          guardar.disabled = cambios.size === 0;
+          guardar.textContent = cambios.size ? `Guardar ${cambios.size} nota(s)` : "Guardar notas";
+        } });
+    };
+    if (vista === "evaluacion") return porEvaluacion();
     const tablaNotas = h("div.tabla-envoltura",
       h("table.registro.cuaderno",
         h("thead", h("tr",
@@ -72,21 +108,7 @@ export async function render(el, ctx, { params }) {
           h("th.derecha", "Promedio"))),
         h("tbody", miembros.map((m) => h("tr",
           h("td", h("a.fila-enlace", { href: `#/estudiantes/${m.estudiante_id}` }, nombreCompleto(m.estudiantes))),
-          evals.map((ev) => {
-            const k = `${ev.id}|${m.estudiante_id}`;
-            const v = valor[k];
-            return h("td.derecha", h("input", { type: "number", inputMode: "decimal", min: 0, max: ev.puntaje_max, step: "0.01",
-              value: v == null ? "" : Number(v), "aria-label": `${ev.titulo}: ${nombreCompleto(m.estudiantes)}`,
-              oninput: (e) => {
-                const n = e.target.value === "" ? null : Number(e.target.value);
-                if (n != null && (n < 0 || n > Number(ev.puntaje_max))) { e.target.setCustomValidity(`Entre 0 y ${Number(ev.puntaje_max)}`); e.target.reportValidity(); return; }
-                e.target.setCustomValidity("");
-                e.target.classList.toggle("cambiado", n !== (v == null ? null : Number(v)));
-                if (n === (v == null ? null : Number(v))) cambios.delete(k); else cambios.set(k, { ev, est: m.estudiante_id, n });
-                guardar.disabled = cambios.size === 0;
-                guardar.textContent = cambios.size ? `Guardar ${cambios.size} nota(s)` : "Guardar notas";
-              } }));
-          }),
+          evals.map((ev) => h("td.derecha", casilla(ev, m))),
           h("td.derecha", nota(promedio[m.estudiante_id]?.promedio)))))));
 
     cuerpo.replaceChildren(
@@ -102,6 +124,27 @@ export async function render(el, ctx, { params }) {
         tablaNotas,
         h("p.tenue", { style: "margin-top:.75rem" }, "Escala 0–100. Aprobado desde 60. Toca el título de una evaluación para editarla o borrarla.")));
 
+    function porEvaluacion() {
+      const sinNota = (ev) => miembros.filter((m) => valor[`${ev.id}|${m.estudiante_id}`] == null).length;
+      if (!evals.some((e) => e.id === evalSel)) evalSel = (evals.find((e) => sinNota(e) > 0 && e.fecha <= hoyISO()) || evals[evals.length - 1]).id;
+      const ev = evals.find((e) => e.id === evalSel);
+      const selEval = h("select", { "aria-label": "Evaluación", onchange: async (e) => {
+        if (!(await seguro())) { e.target.value = evalSel; return; }
+        evalSel = e.target.value; pintar(); } },
+        evals.map((e) => h("option", { value: e.id, selected: e.id === evalSel }, `${e.titulo} · ${fechaCorta(e.fecha)}${sinNota(e) ? ` · faltan ${sinNota(e)}` : " · completa"}`)));
+      const faltan = sinNota(ev);
+      cuerpo.replaceChildren(
+        h("section.hoja",
+          h("div.barra-filtros", selEval,
+            h("button.btn.btn-texto.btn-sm", { type: "button", onclick: () => menuEval(ev) }, "Editar evaluación")),
+          h("p.tenue", { style: "margin:-.25rem 0 .75rem" }, `Sobre ${Number(ev.puntaje_max)} puntos${Number(ev.peso) ? ` · vale ${Number(ev.peso)}% del promedio` : ""} · `,
+            faltan ? h("strong", `faltan ${faltan} de ${miembros.length}`) : "todos calificados"),
+          miembros.length ? h("ul.calificar", miembros.map((m) => h("li",
+            h("div", h("div.nombre", nombreCompleto(m.estudiantes)), h("div.tenue", "Promedio: ", nota(promedio[m.estudiante_id]?.promedio))),
+            h("div.campo-nota", casilla(ev, m), h("span.tenue", `/ ${Number(ev.puntaje_max)}`))))) : null,
+          h("div.pie-fijo", guardar)));
+    }
+
     async function guardarCambios() {
       guardar.disabled = true;
       const upserts = [], borrar = [];
@@ -112,7 +155,7 @@ export async function render(el, ctx, { params }) {
       try {
         if (upserts.length) await q(sb.from("calificaciones").upsert(upserts, { onConflict: "evaluacion_id,estudiante_id" }));
         for (const b of borrar) await q(sb.from("calificaciones").delete().eq("evaluacion_id", b.ev).eq("estudiante_id", b.est));
-        ctx.toast("Notas guardadas"); pintar();
+        pendientes = 0; ctx.toast("Notas guardadas"); pintar();
       } catch (e) { ctx.toast(e.message, "mal"); guardar.disabled = false; }
     }
   }
