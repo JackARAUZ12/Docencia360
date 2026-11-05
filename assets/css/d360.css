@@ -323,3 +323,6 @@ dialog.modal.ancho { width: min(96vw, 860px); }
 .legal .indice ol { margin: .25rem 0 0; padding-left: 1.25rem; columns: 2 220px; }
 .legal footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--renglon); color: var(--texto-3); font-size: .95rem; }
 .casilla.acepto { align-items: flex-start; margin: .25rem 0 1.25rem; line-height: 1.45; } .casilla.acepto input { margin-top: .2rem; flex: none; width: 1.1rem; height: 1.1rem; }
+/* Cifras: el número se ajusta al ancho de su celda para que montos largos (C$5,000.00) no se encimen */
+.cifra { min-width: 0; container-type: inline-size; }
+.cifra b { font-size: clamp(1.2rem, 16cqi, 2rem); overflow-wrap: anywhere; }

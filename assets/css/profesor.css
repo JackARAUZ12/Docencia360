@@ -20,7 +20,7 @@
 .p-cabecera .cuenta { min-width: 0; text-align: right; }
 .p-cabecera .cuenta strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.p-main { padding: 1.25rem 16px calc(96px + env(safe-area-inset-bottom)); max-width: 1100px; width: 100%; }
+.p-main { padding: 1.25rem 16px calc(96px + env(safe-area-inset-bottom)); max-width: 1100px; width: 100%; margin-inline: auto; }
 @media (min-width: 960px) { .p-main { padding: 2rem 2rem 3rem; } }
 .p-titulo { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
 .p-titulo h1 { margin: 0; }
