@@ -280,7 +280,7 @@ async function seccionCodigos(el) {
       : h("div.aviso.ojo", h("strong", "El registro está abierto: "), "cualquiera puede crear una cuenta sin código. Para exigirlo, pon ", h("code", "true"),
           " en el parámetro «publico.registro_con_codigo» en ", h("a", { href: "#/parametros" }, "Parámetros"), "."),
     h("section.hoja", tabla([
-      { t: "Código", v: (c) => [h("strong", { style: "font-family:ui-monospace,monospace;letter-spacing:.04em" }, c.codigo), c.nota ? h("div.tenue", c.nota) : null] },
+      { t: "Código", v: (c) => [h("strong", { style: "font-family:ui-monospace,monospace;letter-spacing:.04em;white-space:nowrap" }, c.codigo), c.nota ? h("div.tenue", c.nota) : null] },
       { t: "Para", v: (c) => [MOD[c.modalidad] || "Cualquier tipo", h("div.tenue", c.plan_nombre ? `Plan ${c.plan_nombre}` : "Plan a elección")] },
       { t: "Usos", v: (c) => `${c.usos} / ${c.usos_max}` },
       { t: "Vence", v: (c) => (c.vence ? fecha(c.vence) : "No vence") },
