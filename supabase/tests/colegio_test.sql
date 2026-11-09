@@ -1,5 +1,6 @@
 -- Pruebas de la modalidad colegio
 \set ON_ERROR_STOP 1
+update config_global set valor = 'false' where clave = 'publico.registro_con_codigo';   -- estas pruebas no tratan del código de registro
 update config_global set valor = '14' where clave = 'publico.dias_prueba';
 insert into auth.users(id,email) values ('00000000-0000-0000-0000-0000000000c1','dir@test'),('00000000-0000-0000-0000-0000000000c2','mate@test'),
   ('00000000-0000-0000-0000-0000000000c3','lengua@test'),('00000000-0000-0000-0000-0000000000c4','mama@test'),('00000000-0000-0000-0000-0000000000c9','admin@test');

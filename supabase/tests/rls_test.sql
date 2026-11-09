@@ -1,5 +1,6 @@
 -- Pruebas de aislamiento y permisos. Cada bloque falla con excepción si algo está mal.
 \set ON_ERROR_STOP 1
+update config_global set valor = 'false' where clave = 'publico.registro_con_codigo';   -- estas pruebas no tratan del código de registro
 -- Estas pruebas usan cuentas en período de prueba (escritura habilitada)
 update config_global set valor = '14' where clave = 'publico.dias_prueba';
 insert into auth.users(id,email) values

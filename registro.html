@@ -13,7 +13,7 @@
   .reg header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem; gap: 1rem; padding-right: 52px; }
   .reg-cuerpo { display: grid; gap: 2rem; grid-template-columns: minmax(0, 1fr); align-items: start; }
   @media (min-width: 900px) { .reg-cuerpo { grid-template-columns: minmax(0, 1fr) 320px; gap: 3rem; } }
-  .pasos { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-bottom: 1.75rem; counter-reset: p; }
+  .pasos { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: .5rem; margin-bottom: 1.75rem; counter-reset: p; }
   .pasos span { counter-increment: p; font-size: .9rem; color: var(--texto-3); padding-top: .6rem; border-top: 4px solid var(--renglon); }
   .pasos span::before { content: counter(p) ". "; }
   .pasos span.hecho { color: var(--texto-2); border-top-color: var(--tinta); }
@@ -45,12 +45,14 @@
   .resumen-reg ol { margin: 1.25rem 0 0; padding: 1rem 0 0 1.1rem; border-top: 1px solid rgba(255,255,255,.15); color: rgba(244,246,242,.8); font-size: .92rem; }
   .resumen-reg li { margin-bottom: .35rem; }
   @media (max-width: 899px) { .resumen-reg { position: static; order: 2; } }
+  .codigo-acceso { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.25rem; letter-spacing: .08em; text-transform: uppercase; }
+  .sin-codigo { margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--renglon); }
 </style>
 </head>
 <body>
 <div class="reg">
   <header><span id="marca"></span><a href="entrar.html">Ya tengo cuenta</a></header>
-  <nav class="pasos" aria-label="Pasos"><span data-p="1">Tipo de cuenta</span><span data-p="2">Plan</span><span data-p="3">Tus datos</span></nav>
+  <nav class="pasos" aria-label="Pasos"><span data-p="0">Código</span><span data-p="1">Tipo de cuenta</span><span data-p="2">Plan</span><span data-p="3">Tus datos</span></nav>
   <div class="reg-cuerpo">
     <div><div id="aviso"></div><main id="contenido"></main></div>
     <aside class="resumen-reg" id="resumen" aria-live="polite"></aside>
@@ -77,7 +79,7 @@ const MODALIDADES = [
   { id: "colegio",  t: "Colegio o institución", d: "Grados, secciones, docentes, boletines y familias.", ini: "C" },
 ];
 const PEND = "d360-registro-pendiente";
-const estado = { modalidad: null, plan: null, planes: [], dias: 0, whatsapp: "", terminos: "" };
+const estado = { modalidad: null, plan: null, planes: [], dias: 0, whatsapp: "", terminos: "", requiere: true, codigo: null, fijo: {} };
 const sesion = await sesionActual();
 const soloCuenta = !!sesion;   // ya tiene usuario: solo falta crear la cuenta
 
@@ -87,7 +89,9 @@ const [planes, cfg] = await Promise.all([
   q(sb.from("config_global").select("clave,valor").like("clave", "publico.%")),
 ]).catch((e) => { mostrar(mensajeError(e)); return [[], []]; });
 estado.planes = planes;
-for (const c of cfg) { if (c.clave === "publico.dias_prueba") estado.dias = Number(c.valor) || 0; if (c.clave === "publico.contacto_whatsapp") estado.whatsapp = String(c.valor || "").replace(/\D/g, ""); if (c.clave === "publico.terminos_version") estado.terminos = String(c.valor || ""); }
+for (const c of cfg) { if (c.clave === "publico.dias_prueba") estado.dias = Number(c.valor) || 0; if (c.clave === "publico.contacto_whatsapp") estado.whatsapp = String(c.valor || "").replace(/\D/g, ""); if (c.clave === "publico.terminos_version") estado.terminos = String(c.valor || ""); if (c.clave === "publico.registro_con_codigo") estado.requiere = c.valor !== false && c.valor !== "false"; }
+// Sin código obligatorio (lo decide el panel maestro) el paso «Código» no aparece
+if (!estado.requiere) document.querySelector("[data-p=\"0\"]").remove();
 
 // Si vuelve tras confirmar su correo, completar con lo que había elegido
 let pendiente = null;
@@ -97,6 +101,7 @@ if (soloCuenta && (await misCuentas()).length && !qp.get("nueva")) { location.re
 const pre = qp.get("modalidad");
 if (pre && CONFIG.modalidadesAbiertas.includes(pre)) estado.modalidad = pre;
 if (qp.get("plan")) estado.plan = qp.get("plan");
+const codigoUrl = qp.get("codigo") || "";
 
 function marcarPaso(n) {
   document.querySelectorAll("[data-p]").forEach((s) => {
@@ -114,6 +119,7 @@ function pintarResumen() {
   r.replaceChildren(
     h("h2", "Tu elección"),
     h("dl",
+      estado.codigo ? [h("dt", "Código de acceso"), h("dd", estado.codigo)] : null,
       h("dt", "Tipo de cuenta"), h("dd", estado.modalidad ? NOMBRE_MOD[estado.modalidad] : "Por elegir"),
       h("dt", "Plan"), h("dd", plan ? plan.nombre : "Por elegir"),
       plan ? [h("dt", "Pagas al mes"), h("dd.total", dinero(plan.precio_nio, "NIO").replace(/\.00$/, "")), h("dd", { style: "font-weight:400;color:rgba(244,246,242,.7)" }, `o ${dinero(plan.precio_usd, "USD")}`)] : null),
@@ -123,24 +129,82 @@ function pintarResumen() {
       h("li", estado.dias > 0 ? "Al terminar la prueba, eliges seguir y pagas." : "Activamos tu cuenta el mismo día y empiezas a trabajar.")));
 }
 
+const MOTIVO = {
+  invalido: "Ese código de acceso no existe. Revísalo: tiene la forma D360-XXXX-XXXX.",
+  usado: "Ese código de acceso ya fue utilizado. Solicita uno nuevo.",
+  vencido: "Ese código de acceso venció. Solicita uno nuevo.",
+  desactivado: "Ese código de acceso fue desactivado. Solicita uno nuevo.",
+};
+function paso0(msg) {
+  marcarPaso(0); msg ? mostrar(msg) : limpiar();
+  const input = h("input.codigo-acceso", { name: "codigo", required: true, autocomplete: "off", spellcheck: "false", autocapitalize: "characters",
+    placeholder: "D360-XXXX-XXXX", maxLength: 20, value: estado.codigo || pendiente?.codigo || codigoUrl });
+  const form = h("form", { novalidate: true },
+    h("label.campo", h("span", "Código de acceso"), input, h("small", "Te lo entrega el equipo de Docencia360.")),
+    h("div.navegar", h("span"), h("button.btn", { type: "submit" }, "Continuar")));
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault(); limpiar();
+    const v = input.value.trim();
+    if (v.replace(/[^A-Za-z0-9]/g, "").length < 12) return mostrar("Escribe el código completo: tiene la forma D360-XXXX-XXXX.");
+    const b = form.querySelector("[type=submit]"); b.disabled = true; b.textContent = "Verificando…";
+    try {
+      const r = await q(sb.rpc("d360_validar_codigo_registro", { p_codigo: v }));
+      if (!r?.ok) return mostrar(r?.motivo === "bloqueado" ? `Demasiados intentos. Espera ${r.minutos || 15} minutos y vuelve a intentarlo.` : MOTIVO[r?.motivo] || MOTIVO.invalido);
+      if (r.requiere === false) { estado.requiere = false; return paso1(); }
+      estado.codigo = r.codigo; estado.fijo = { modalidad: r.modalidad || null, plan: r.plan || null };
+      if (r.modalidad) estado.modalidad = r.modalidad;
+      if (r.plan) estado.plan = r.plan;
+      else if (estado.plan && !estado.planes.some((p) => p.id === estado.plan && p.modalidad === estado.modalidad)) estado.plan = null;
+      siguienteTrasCodigo();
+    } catch (err) { mostrar(mensajeError(err)); }
+    finally { b.disabled = false; b.textContent = "Continuar"; }
+  });
+  input.addEventListener("input", () => { input.value = input.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""); });
+  const msj = encodeURIComponent("Hola, deseo obtener un código de acceso para crear mi cuenta en Docencia360.");
+  cont.replaceChildren(
+    h("h1", "Código de acceso"),
+    h("p.suave", "Para crear una cuenta en Docencia360 necesitas un código de acceso proporcionado por nuestro equipo."),
+    form,
+    h("div.sin-codigo",
+      h("p", h("strong", "¿No tienes código?")),
+      estado.whatsapp
+        ? [h("p.suave", "Solicítalo por WhatsApp y te respondemos en breve."),
+           h("a.btn.btn-sec", { href: `https://wa.me/${estado.whatsapp}?text=${msj}`, target: "_blank", rel: "noopener" }, "Solicitar código por WhatsApp")]
+        : h("p.suave", "Pídelo al equipo de Docencia360 por los medios de contacto de la página principal."),
+      h("p.suave", { style: "margin-top:1rem" }, "¿Solo quieres conocer el sistema? ", h("a", { href: "index.html?demo=1" }, "Mira una demostración"), " sin registrarte.")));
+  input.focus();
+}
+// Después del código: saltar lo que el código ya decidió
+function siguienteTrasCodigo() {
+  if (!estado.modalidad) return paso1();
+  if (!estado.plan) return paso2();
+  paso3();
+}
+const atrasDesde = (n) => {
+  if (n === 3) return estado.fijo.plan ? (estado.fijo.modalidad ? (estado.requiere ? paso0 : paso1) : paso1) : paso2;
+  if (n === 2) return estado.fijo.modalidad ? (estado.requiere ? paso0 : paso1) : paso1;
+  return paso0;
+};
+
 function paso1() {
   marcarPaso(1); limpiar();
   cont.replaceChildren(
     h("h1", "¿Cómo vas a usar Docencia360?"),
     h("p.suave", "Cada tipo de cuenta tiene su propio panel. ¿Quieres verlo antes? ", h("a", { href: "index.html?demo=1" }, "Mira una demostración"), "."),
     h("div.opciones", MODALIDADES.map((m) => {
-      const abierta = CONFIG.modalidadesAbiertas.includes(m.id);
+      const abierta = CONFIG.modalidadesAbiertas.includes(m.id) && (!estado.fijo.modalidad || estado.fijo.modalidad === m.id);
       return h("button.opcion", { type: "button", disabled: !abierta, "aria-pressed": String(estado.modalidad === m.id),
-        onclick: () => { estado.modalidad = m.id; estado.plan = null; paso2(); } },
+        onclick: () => { estado.modalidad = m.id; estado.plan = estado.fijo.plan; estado.plan ? paso3() : paso2(); } },
         h("span.marca-sel"), h("span", h("strong", m.t), h("br"), h("span.suave", m.d)),
-        h("span.precio", abierta ? "Elegir" : h("span.estado.ojo", "Próximamente")));
+        h("span.precio", abierta ? "Elegir" : h("span.estado.ojo", CONFIG.modalidadesAbiertas.includes(m.id) ? "No incluido en tu código" : "Próximamente")));
     })),
+    estado.requiere ? h("div.navegar", h("button.btn.btn-sec", { type: "button", onclick: () => paso0() }, "Atrás"), h("span")) : null,
   );
 }
 
 function paso2() {
   marcarPaso(2); limpiar();
-  const lista = estado.planes.filter((p) => p.modalidad === estado.modalidad);
+  const lista = estado.planes.filter((p) => p.modalidad === estado.modalidad && (!estado.fijo.plan || p.id === estado.fijo.plan));
   if (!estado.plan) estado.plan = lista[1]?.id || lista[0]?.id;
   pintarResumen();
   const lim = (v, txt) => (v == null ? `${txt.charAt(0).toUpperCase() + txt.slice(1)} sin límite` : v === 0 ? null : `Hasta ${v} ${txt}`);
@@ -159,7 +223,7 @@ function paso2() {
                  p.funciones?.portal_familias ? "Portal de familias" : null,
                  p.funciones?.asistentes ? "1 asistente con su propio acceso" : null].filter(Boolean).map((t) => h("li", t)))),
       h("span.precio", h("b", dinero(p.precio_nio, "NIO").replace(/\.00$/, "")), h("small", `al mes · ${dinero(p.precio_usd, "USD")}`))))),
-    h("div.navegar", h("button.btn.btn-sec", { onclick: paso1 }, "Atrás"), h("button.btn", { onclick: paso3 }, "Continuar")),
+    h("div.navegar", h("button.btn.btn-sec", { onclick: () => atrasDesde(2)() }, "Atrás"), h("button.btn", { onclick: paso3 }, "Continuar")),
   );
 }
 
@@ -181,7 +245,7 @@ function paso3() {
       h("span", "Leí y acepto los ", h("a", { href: "terminos.html", target: "_blank", rel: "noopener" }, "términos de uso"), " y la ",
         h("a", { href: "privacidad.html", target: "_blank", rel: "noopener" }, "política de privacidad"),
         estado.modalidad === "profesor" ? "." : ", y declaro que mi institución cuenta con la autorización de las familias para registrar los datos de sus estudiantes.")),
-    h("div.navegar", h("button.btn.btn-sec", { type: "button", onclick: paso2 }, "Atrás"), h("button.btn", { type: "submit" }, "Crear mi cuenta")),
+    h("div.navegar", h("button.btn.btn-sec", { type: "button", onclick: () => atrasDesde(3)() }, "Atrás"), h("button.btn", { type: "submit" }, "Crear mi cuenta")),
   );
   form.addEventListener("submit", async (e) => {
     e.preventDefault(); limpiar();
@@ -190,7 +254,7 @@ function paso3() {
     if (!soloCuenta && (!d.email || (d.clave || "").length < 8)) return mostrar("Escribe un correo válido y una contraseña de al menos 8 caracteres.");
     if (!d.acepto) return mostrar("Para crear la cuenta, marca que aceptas los términos de uso y la política de privacidad.");
     const b = form.querySelector("[type=submit]"); b.disabled = true; b.textContent = "Creando…";
-    const datosCuenta = { modalidad: estado.modalidad, plan: estado.plan, tu_nombre: d.tu_nombre, nombre: d.nombre, telefono: d.telefono, moneda: d.moneda, terminos: estado.terminos };
+    const datosCuenta = { modalidad: estado.modalidad, plan: estado.plan, tu_nombre: d.tu_nombre, nombre: d.nombre, telefono: d.telefono, moneda: d.moneda, terminos: estado.terminos, codigo: estado.codigo };
     try {
       if (!soloCuenta) {
         const { data, error } = await sb.auth.signUp({ email: d.email, password: d.clave,
@@ -204,7 +268,7 @@ function paso3() {
         }
       }
       await crearCuenta(datosCuenta);
-    } catch (err) { mostrar(mensajeError(err)); }
+    } catch (err) { if (err.codigoRegistro) { estado.codigo = null; return paso0(err.message); } mostrar(mensajeError(err)); }
     finally { b.disabled = false; b.textContent = "Crear mi cuenta"; }
   });
   cont.replaceChildren(h("h1", "Tus datos"), form);
@@ -212,7 +276,11 @@ function paso3() {
 
 async function crearCuenta(d) {
   const r = await q(sb.rpc("d360_crear_cuenta", { p_modalidad: d.modalidad, p_nombre: d.nombre, p_tu_nombre: d.tu_nombre,
-    p_plan: d.plan, p_telefono: d.telefono || null, p_moneda: d.moneda || "NIO", p_terminos: d.terminos || null }));
+    p_plan: d.plan, p_telefono: d.telefono || null, p_moneda: d.moneda || "NIO", p_terminos: d.terminos || null, p_codigo: d.codigo || null }));
+  if (r?.error) {   // el código ya no sirve: la cuenta no se creó
+    try { localStorage.removeItem(PEND); } catch (_) {}
+    throw Object.assign(new Error(r.error), { codigoRegistro: true });
+  }
   try { localStorage.removeItem(PEND); } catch (_) {}
   elegirCuenta(r.cuenta_id);
   document.querySelector(".pasos").remove();
@@ -235,8 +303,13 @@ async function crearCuenta(d) {
 if (soloCuenta && pendiente) {
   // Volvió del enlace de confirmación: crear la cuenta con lo que ya eligió
   cont.replaceChildren(h("p.suave", "Creando tu espacio…"));
-  crearCuenta(pendiente).catch((e) => { mostrar(mensajeError(e)); estado.modalidad = pendiente.modalidad; estado.plan = pendiente.plan; paso3(); });
-} else if (estado.modalidad) { estado.plan ? paso3() : paso2(); }
+  crearCuenta(pendiente).catch((e) => {
+    estado.modalidad = pendiente.modalidad; estado.plan = pendiente.plan; estado.codigo = pendiente.codigo || null;
+    if (e.codigoRegistro || (estado.requiere && !estado.codigo)) { estado.codigo = null; return paso0(e.message); }
+    mostrar(mensajeError(e)); paso3();
+  });
+} else if (estado.requiere) paso0();
+else if (estado.modalidad) { estado.plan ? paso3() : paso2(); }
 else paso1();
 </script>
 </body>

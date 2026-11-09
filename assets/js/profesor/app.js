@@ -36,7 +36,7 @@ document.getElementById("app").replaceChildren(
       h("header.p-cabecera", marca(ruta("app/profesor.html")),
         h("div", { style: "display:flex;align-items:center;gap:.75rem;min-width:0" },
           h("div.cuenta", h("strong", ctx.cuenta.nombre), h("span.tenue", ctx.cuenta.miembro_nombre)), botonTema())),
-      h("div", { style: "padding:1rem 16px 0;max-width:1100px" }, avisoPlan(ctx)),
+      h("div.franja-panel", avisoPlan(ctx)),
       main)),
   h("nav.p-barra", { "aria-label": "Menú rápido" },
     RUTAS.filter((x) => EN_BARRA.includes(x.r)).map((x) => h("a", { href: "#/" + x.r, dataset: { r: x.r } }, icono(x.i), x.corto || x.t)),

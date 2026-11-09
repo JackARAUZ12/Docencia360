@@ -146,3 +146,6 @@
 @media (max-width: 959px) { .pie-fijo { bottom: calc(64px + env(safe-area-inset-bottom)); } }
 /* Lista de integrantes compacta */
 .integrantes li .tenue { font-size: .85rem; }
+/* Franja de demostración / aviso del plan: mismo ancho y centrado que el contenido */
+.franja-panel { max-width: 1100px; width: 100%; margin-inline: auto; padding: 1rem 16px 0; }
+@media (min-width: 960px) { .franja-panel { padding: 1rem 2rem 0; } }

@@ -17,7 +17,7 @@ const FUNCIONES = [["tareas", "Tareas"], ["calendario", "Calendario"], ["reporte
   ["boletines", "Boletines"], ["auditoria", "Auditoría"], ["sedes", "Sedes"]];
 
 const main = h("main", { id: "contenido" });
-const SECCIONES = [["resumen", "Resumen"], ["cuentas", "Cuentas"], ["planes", "Planes y precios"], ["promociones", "Promociones"], ["actividad", "Actividad"], ["parametros", "Parámetros"]];
+const SECCIONES = [["resumen", "Resumen"], ["cuentas", "Cuentas"], ["codigos", "Códigos de registro"], ["planes", "Planes y precios"], ["promociones", "Promociones"], ["actividad", "Actividad"], ["parametros", "Parámetros"]];
 document.getElementById("app").replaceChildren(
   h("header.adm-cab", h("div", marca(ruta("admin/index.html")), h("span.sello", "Panel maestro")),
     h("nav", SECCIONES.map(([r, t]) => h("a", { href: "#/" + r, dataset: { r } }, t)),
@@ -219,6 +219,81 @@ async function promociones(el) {
     ], ps, { vacio: "Sin promociones." })));
 }
 
+// ---------------- Códigos de registro ----------------
+// Como en Negocio360: para crear una cuenta hace falta un código que se genera aquí.
+// El servidor genera el código, lo valida con límite de intentos y lo gasta al crear la cuenta.
+const EST_COD = { disponible: ["ok", "Disponible"], usado: ["", "Agotado"], vencido: ["ojo", "Vencido"], desactivado: ["mal", "Desactivado"], invalido: ["mal", "No válido"] };
+const enlaceRegistro = (codigo) => new URL(ruta(`registro.html?codigo=${encodeURIComponent(codigo)}`), location.href).href;
+async function copiar(texto, aviso = "Copiado") {
+  try { await navigator.clipboard.writeText(texto); toast(aviso); }
+  catch { modal("Copia el texto", h("pre.det", { style: "white-space:pre-wrap" }, texto), [{ texto: "Cerrar" }]); }
+}
+function compartirCodigo(c) {
+  const enlace = enlaceRegistro(c.codigo);
+  const texto = `Tu código de acceso para crear tu cuenta en Docencia360 es: ${c.codigo}\nCrea tu cuenta aquí: ${enlace}`;
+  modal("Código de acceso", h("div",
+    h("p", "Entrégalo a la persona que va a crear la cuenta. Con él podrá registrarse",
+      c.modalidad ? ` como ${MOD[c.modalidad].toLowerCase()}` : "", c.plan_nombre ? ` en el plan ${c.plan_nombre}` : "", "."),
+    h("p", h("span.codigo-grande", { style: "font-size:1.4rem;letter-spacing:.08em;word-break:break-all" }, c.codigo)),
+    h("p.tenue", "Enlace directo (el código ya va escrito):"), h("p", { style: "word-break:break-all" }, h("a", { href: enlace, target: "_blank", rel: "noopener" }, enlace)),
+    h("div.botones", { style: "display:flex;flex-wrap:wrap;gap:.5rem" },
+      h("button.btn.btn-sec", { type: "button", onclick: () => copiar(c.codigo, "Código copiado") }, "Copiar código"),
+      h("button.btn.btn-sec", { type: "button", onclick: () => copiar(texto, "Mensaje copiado") }, "Copiar mensaje con enlace"),
+      h("a.btn", { href: `https://wa.me/?text=${encodeURIComponent(texto)}`, target: "_blank", rel: "noopener" }, "Enviar por WhatsApp"))),
+    [{ texto: "Cerrar" }]);
+}
+async function seccionCodigos(el) {
+  const [cods, ps, cfg] = await Promise.all([
+    q(sb.rpc("d360_admin_codigos")), planes(),
+    q(sb.from("config_global").select("valor").eq("clave", "publico.registro_con_codigo").maybeSingle()),
+  ]);
+  const requiere = cfg ? cfg.valor !== false && cfg.valor !== "false" : true;
+  const nuevo = () => formularioModal("Nuevo código de registro", [
+    { name: "modalidad", label: "Tipo de cuenta", type: "select", placeholder: "Cualquiera (la persona elige)", options: Object.entries(MOD) },
+    { name: "plan", label: "Plan", type: "select", placeholder: "La persona elige el plan",
+      options: ps.filter((p) => p.activo).map((p) => [p.id, `${MOD[p.modalidad]} · ${p.nombre}`]), help: "Si eliges un plan, el tipo de cuenta queda fijado por el plan." },
+    { name: "usos", label: "Cuentas que puede crear", type: "number", min: 1, max: 500, value: 1, required: true, help: "Normalmente 1: un código por cliente." },
+    { name: "vence", label: "Vence", type: "date", min: hoyISO(), help: "Déjalo vacío para que no venza." },
+    { name: "nota", label: "Nota interna", full: true, maxlength: 200, placeholder: "Ej.: Colegio San José, pedido por WhatsApp" },
+  ], null, async (d, cerrar) => {
+    const plan = ps.find((p) => p.id === d.plan);
+    if (plan && d.modalidad && plan.modalidad !== d.modalidad) throw new Error("El plan elegido no corresponde a ese tipo de cuenta.");
+    const r = await q(sb.rpc("d360_admin_crear_codigo", { p_modalidad: d.modalidad || null, p_plan: d.plan || null,
+      p_usos: Number(d.usos) || 1, p_vence: d.vence || null, p_nota: d.nota || null }));
+    cerrar(); await navegar();
+    compartirCodigo({ codigo: r.codigo, modalidad: plan?.modalidad || d.modalidad || null, plan_nombre: plan?.nombre || null });
+  }, { boton: "Generar código" });
+  const cambiarActivo = async (c, activo) => {
+    try { await q(sb.rpc("d360_admin_codigo_activo", { p_id: c.id, p_activo: activo })); toast(activo ? "Código activado" : "Código desactivado"); navegar(); }
+    catch (e) { toast(e.message, "mal"); }
+  };
+  const borrar = async (c) => {
+    if (!(await confirmar("Borrar código", `¿Borrar el código ${c.codigo}? Nadie lo ha usado todavía.`, { boton: "Borrar", peligro: true }))) return;
+    try { await q(sb.rpc("d360_admin_borrar_codigo", { p_id: c.id })); toast("Código borrado"); navegar(); }
+    catch (e) { toast(e.message, "mal"); }
+  };
+  const disponibles = cods.filter((c) => c.estado === "disponible").length;
+  el.append(h("div.hoja-titulo", h("h1", "Códigos de registro"), h("button.btn", { onclick: nuevo }, "Generar código")),
+    requiere
+      ? h("p.suave", "Para crear una cuenta en Docencia360 se necesita uno de estos códigos. Genera uno por cliente y entrégaselo por WhatsApp o en persona. ",
+          `${disponibles} disponible(s).`)
+      : h("div.aviso.ojo", h("strong", "El registro está abierto: "), "cualquiera puede crear una cuenta sin código. Para exigirlo, pon ", h("code", "true"),
+          " en el parámetro «publico.registro_con_codigo» en ", h("a", { href: "#/parametros" }, "Parámetros"), "."),
+    h("section.hoja", tabla([
+      { t: "Código", v: (c) => [h("strong", { style: "font-family:ui-monospace,monospace;letter-spacing:.04em" }, c.codigo), c.nota ? h("div.tenue", c.nota) : null] },
+      { t: "Para", v: (c) => [MOD[c.modalidad] || "Cualquier tipo", h("div.tenue", c.plan_nombre ? `Plan ${c.plan_nombre}` : "Plan a elección")] },
+      { t: "Usos", v: (c) => `${c.usos} / ${c.usos_max}` },
+      { t: "Vence", v: (c) => (c.vence ? fecha(c.vence) : "No vence") },
+      { t: "Estado", v: (c) => { const [cl, tx] = EST_COD[c.estado] || ["", c.estado]; return h("span.estado" + (cl ? "." + cl : ""), tx); } },
+      { t: "Cuentas creadas", v: (c) => (c.cuentas.length ? c.cuentas.map((k) => h("div", k.nombre, h("span.tenue", ` · ${fecha(k.creado)}`))) : h("span.tenue", "Ninguna")) },
+      { t: "", clase: "acciones", v: (c) => [
+          c.estado === "disponible" ? h("button.btn.btn-texto.btn-sm", { onclick: () => compartirCodigo(c) }, "Compartir") : null,
+          c.activo ? h("button.btn.btn-texto.btn-sm", { onclick: () => cambiarActivo(c, false) }, "Desactivar")
+                   : h("button.btn.btn-texto.btn-sm", { onclick: () => cambiarActivo(c, true) }, "Activar"),
+          c.usos === 0 && !c.cuentas.length ? h("button.btn.btn-texto.btn-sm", { onclick: () => borrar(c) }, "Borrar") : null] },
+    ], cods, { vacio: "Todavía no hay códigos. Genera el primero con «Generar código»." })));
+}
+
 // ---------------- Actividad ----------------
 async function actividad(el) {
   const filas = await q(sb.rpc("d360_admin_actividad", { p_limite: 200 }));
@@ -252,7 +327,7 @@ async function parametros(el) {
 }
 
 // ---------------- Router ----------------
-const VISTAS = { resumen, cuentas, planes: seccionPlanes, promociones, actividad, parametros };
+const VISTAS = { resumen, cuentas, codigos: seccionCodigos, planes: seccionPlanes, promociones, actividad, parametros };
 let nav = 0;
 async function navegar() {
   const r = location.hash.replace(/^#\/?/, "").split("?")[0] || "resumen";

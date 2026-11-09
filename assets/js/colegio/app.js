@@ -72,7 +72,7 @@ const app = h("div.a-app",
     h("header.a-cabecera",
       h("button.a-menu", { type: "button", "aria-label": "Abrir menú", onclick: () => app.classList.add("abierto"), html: ICONOS.menu }),
       h("div.crece", tituloRuta, h("div.tenue", ctx.cuenta.nombre)), botonTema()),
-    h("div", { style: "padding:1rem 16px 0;max-width:1240px" }, avisoPlan(ctx)),
+    h("div.franja-panel", avisoPlan(ctx)),
     main));
 document.getElementById("app").replaceChildren(app);
 

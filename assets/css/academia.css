@@ -69,3 +69,6 @@
 .a-velo { display: none; }
 @media (max-width: 1023px) { .a-app.abierto .a-velo { display: block; } }
 @media (min-width: 1024px) { .a-app > .a-lateral { grid-column: 1; } .a-app > div:last-child { grid-column: 2; } }
+/* Franja de demostración / aviso del plan: mismo ancho y centrado que el contenido */
+.a-app .franja-panel { max-width: 1240px; }
+@media (min-width: 960px) and (max-width: 1023px) { .a-app .franja-panel { padding: 1rem 16px 0; } }

@@ -1,5 +1,6 @@
 -- Pruebas de cuentas demo y alta sin prueba gratis
 \set ON_ERROR_STOP 1
+update config_global set valor = 'false' where clave = 'publico.registro_con_codigo';   -- estas pruebas no tratan del código de registro
 insert into auth.users(id,email) values ('00000000-0000-0000-0000-0000000000d0','dueno@test'),('00000000-0000-0000-0000-0000000000d1','demo-academia-direccion@demo.docencia360.app'),('00000000-0000-0000-0000-0000000000d2','nuevo@test');
 insert into plataforma_admins(user_id) values ('00000000-0000-0000-0000-0000000000d0');
 select d360_sembrar_demos();

@@ -28,7 +28,7 @@ const grupos = [
 ];
 const dia = ((new Date().getDay() + 6) % 7) + 1;
 const F = {
-  planes, config_global: [{ clave: "publico.dias_prueba", valor: 14 }, { clave: "publico.inactividad_minutos", valor: 60 }, { clave: "publico.tipo_cambio", valor: 36.62, descripcion: "Tipo de cambio", actualizado: hoy }, { clave: "publico.terminos_version", valor: "2026-11-05" }],
+  planes, config_global: [{ clave: "publico.dias_prueba", valor: 14 }, { clave: "publico.inactividad_minutos", valor: 60 }, { clave: "publico.tipo_cambio", valor: 36.62, descripcion: "Tipo de cambio", actualizado: hoy }, { clave: "publico.terminos_version", valor: "2026-11-05" }, { clave: "publico.registro_con_codigo", valor: true }],
   grupos, asignaturas: [{ id: "a1", cuenta_id: C, nombre: "Matemática", activo: true }], cursos: [{ id: "c1", cuenta_id: C, nombre: "Álgebra intensiva", mensualidad: 800, duracion_semanas: 8, modalidad_clase: "presencial", activo: true }],
   estudiantes: est,
   grupo_estudiantes: est.slice(0, 3).map((e) => ({ grupo_id: G1, estudiante_id: e.id, cuenta_id: C, estado: "activo", desde: "2026-02-01", estudiantes: e, grupos: { id: G1, nombre: "Matemática 9no", estado: "activo" } })),
@@ -92,6 +92,10 @@ const RPC = {
   d360_verificar_certificado: { valido: true, folio: "K7M2QP-26-ABC123", titulo: "Álgebra intensiva", estudiante: "Luis Pérez", institucion: "Academia Prueba", emitido: hoy, tipo: "certificado" },
   d360_admin_metricas: { cuentas: 1, por_modalidad: { profesor: 1 }, por_estado: { prueba: 1 }, mrr_usd: 0, ingresos_mes: {}, ingresos_12m: [] },
   d360_admin_cuentas: [{ cuenta_id: C, nombre: "Clases de la Prof. Ana", modalidad: "profesor", codigo: "K7M2QP", propietario_email: "ana@ejemplo.com", plan_id: "prof_premium", plan_nombre: "Premium", estado: "prueba", vence: "2026-12-01", dias_gracia: 5, estudiantes: 3, miembros: 2, creado: hoy }],
+  d360_admin_codigos: [
+    { id: "k1", codigo: "D360-AB12-CD34", modalidad: "colegio", plan_id: "col_avanzado", plan_nombre: "Avanzado", usos_max: 1, usos: 0, vence: "2026-12-31", activo: true, nota: "Colegio San José", creado: hoy, estado: "disponible", cuentas: [] },
+    { id: "k2", codigo: "D360-XY98-ZW76", modalidad: null, plan_id: null, plan_nombre: null, usos_max: 1, usos: 1, vence: null, activo: true, nota: null, creado: hoy, estado: "usado", cuentas: [{ id: C, nombre: "Clases de la Prof. Ana", creado: hoy }] }],
+  d360_admin_crear_codigo: { id: "k3", codigo: "D360-NUEV-O001" },
   d360_admin_actividad: [{ id: 1, creado: hoy + "T10:00:00Z", cuenta: "Clases de la Prof. Ana", accion: "acceso_codigo", entidad: "miembros", usuario: "Ana", detalle: { origen: "1.2.3.4" } }],
 };
 
@@ -106,6 +110,10 @@ async function preparar(page, conSesion, modalidad = "profesor", rol = "propieta
     if (u.pathname.startsWith("/rest/v1/rpc/")) {
       const fn = u.pathname.split("/").pop();
       body = RPC[fn] ?? null;
+      if (fn === "d360_validar_codigo_registro") {
+        const cod = (JSON.parse(route.request().postData() || "{}").p_codigo || "").toUpperCase();
+        body = cod === "D360-PRUE-BA01" ? { ok: true, requiere: true, codigo: cod, modalidad: "profesor", plan: "prof_basico" } : { ok: false, motivo: "usado" };
+      }
       if (fn === "d360_mis_cuentas") body = body.map((c) => ({ ...c, modalidad, rol, nombre: modalidad === "academia" ? "Academia Horizonte" : c.nombre,
         plan_nombre: modalidad === "academia" ? "Profesional" : c.plan_nombre,
         funciones: modalidad === "colegio" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, portal_familias: true, boletines: true, sedes: true } : modalidad === "academia" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, tareas: true } : c.funciones }));
@@ -136,7 +144,7 @@ const PANTALLAS = [
   ["index", "/index.html", false], ["terminos", "/terminos.html", false], ["privacidad", "/privacidad.html", false], ["entrar", "/entrar.html", false], ["registro", "/registro.html?modalidad=profesor", false],
   ...["inicio", "asistencia", "calificaciones", "estudiantes", `estudiantes/${E(1)}`, "grupos", `grupos/${G1}`, "tareas", "cursos", "calendario", "informes", `informes?estudiante=${E(1)}`, "cuenta", "mas"]
     .map((r) => [`profesor-${r.replace(/[/?=]/g, "_").slice(0, 40)}`, `/app/profesor.html#/${r}`, true]),
-  ...["resumen", "cuentas", "planes", "promociones", "actividad", "parametros"].map((r) => [`admin-${r}`, `/admin/index.html#/${r}`, true]),
+  ...["resumen", "cuentas", "codigos", "planes", "promociones", "actividad", "parametros"].map((r) => [`admin-${r}`, `/admin/index.html#/${r}`, true]),
 ];
 const browser = await chromium.launch();
 const VISTAS = process.env.ANCHOS ? process.env.ANCHOS.split(",").map((x) => { const [w, hh, t] = x.split(/[x:]/); return [Number(w), Number(hh), t]; })
@@ -157,6 +165,45 @@ for (const [ancho, alto, tag] of VISTAS) {
     await page.screenshot({ path: `${OUT}/${tag}-${nombre}.png`, fullPage: true, timeout: 5000 }).catch(() => {});
     await page.close();
   }
+  await ctxB.close();
+}
+// Registro con código de acceso: sin código no avanza; con código salta a «Tus datos» con el plan del código
+{
+  const ctxB = await browser.newContext({ viewport: { width: 360, height: 740 } });
+  const page = await ctxB.newPage();
+  page.on("pageerror", (e) => errores.push(`registro-codigo: ${e.message}`));
+  await preparar(page, false);
+  await page.goto(BASE + "/registro.html", { waitUntil: "load" });
+  await page.waitForSelector("input.codigo-acceso", { timeout: 8000 }).catch(() => errores.push("registro-codigo: no pide el código de acceso"));
+  await page.locator("input.codigo-acceso").fill("D360-USAD-O999");
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await page.waitForTimeout(400);
+  if (!/ya fue utilizado/.test(await page.locator("#aviso").innerText())) errores.push("registro-codigo: no avisa del código usado");
+  await page.screenshot({ path: `${OUT}/registro-codigo-error.png`, fullPage: true });
+  await page.locator("input.codigo-acceso").fill("d360-prue-ba01");
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await page.waitForTimeout(400);
+  const txt = await page.locator("body").innerText();
+  if (!/Tus datos/.test(txt) || !/D360-PRUE-BA01/.test(txt) || !/Básico/.test(txt)) errores.push("registro-codigo: con código bueno no pasa a «Tus datos» con su plan: " + txt.slice(0, 300));
+  await page.screenshot({ path: `${OUT}/registro-codigo-datos.png`, fullPage: true });
+  await page.getByRole("button", { name: "Atrás" }).click();
+  if (!(await page.locator("input.codigo-acceso").count())) errores.push("registro-codigo: «Atrás» no vuelve al código cuando el código fija tipo y plan");
+  const ancho = await page.evaluate(() => document.documentElement.scrollWidth);
+  if (ancho > 361) errores.push(`registro-codigo: desborde horizontal (${ancho}px)`);
+  // Panel maestro: generar un código y ver cómo compartirlo
+  const adm = await ctxB.newPage();
+  adm.on("pageerror", (e) => errores.push(`admin-codigos: ${e.message}`));
+  await preparar(adm, true);
+  await adm.goto(BASE + "/admin/index.html#/codigos", { waitUntil: "load" });
+  await adm.getByRole("button", { name: "Generar código" }).first().click();
+  await adm.locator("dialog [name=usos]").fill("1");
+  await adm.locator("dialog").getByRole("button", { name: "Generar código" }).click();
+  await adm.waitForTimeout(600);
+  const dlg = await adm.locator("dialog").last().innerText().catch(() => "");
+  if (!/D360-NUEV-O001/.test(dlg) || !/Enviar por WhatsApp/.test(dlg)) errores.push("admin-codigos: no muestra el código generado para compartir: " + dlg.slice(0, 200));
+  await adm.screenshot({ path: `${OUT}/admin-codigo-generado.png`, fullPage: false });
+  const anchoA = await adm.evaluate(() => document.documentElement.scrollWidth);
+  if (anchoA > 361) errores.push(`admin-codigos: desborde horizontal (${anchoA}px)`);
   await ctxB.close();
 }
 // Flujo de importación (profesor): elegir CSV, revisar, importar y ver el resultado
