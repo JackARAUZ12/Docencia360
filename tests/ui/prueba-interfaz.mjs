@@ -99,6 +99,7 @@ const RPC = {
   d360_admin_actividad: [{ id: 1, creado: hoy + "T10:00:00Z", cuenta: "Clases de la Prof. Ana", accion: "acceso_codigo", entidad: "miembros", usuario: "Ana", detalle: { origen: "1.2.3.4" } }],
 };
 
+let registroEnviado = null;
 const sesion = { access_token: "x.y.z", refresh_token: "r", token_type: "bearer", expires_in: 360000, expires_at: Math.floor(Date.now() / 1000) + 360000, user: { id: U, email: "ana@ejemplo.com", aud: "authenticated", role: "authenticated" } };
 
 async function preparar(page, conSesion, modalidad = "profesor", rol = "propietario") {
@@ -124,7 +125,14 @@ async function preparar(page, conSesion, modalidad = "profesor", rol = "propieta
       // Aplica filtros simples col=eq.valor (como PostgREST)
       for (const [k, v] of u.searchParams) if (v.startsWith("eq.") && Array.isArray(body) && body.some((x) => k in x)) body = body.filter((x) => String(x[k]) === v.slice(3));
       if (single) body = body[0] ?? null;
-    } else if (u.pathname.startsWith("/auth/v1/")) body = {};
+    } else if (u.pathname === "/functions/v1/registro-codigo") {
+      const datos = JSON.parse(route.request().postData() || "{}");
+      registroEnviado = datos;
+      const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+      const jwt = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: U, role: "authenticated", exp: Math.floor(Date.now() / 1000) + 3600 })}.firma`;
+      body = { cuenta: { cuenta_id: C, codigo_institucion: "K7M2QP", codigo_personal: "482915", estado: "pendiente", dias_prueba: 0 }, sesion: { access_token: jwt, refresh_token: "r" } };
+    } else if (u.pathname === "/auth/v1/user") body = sesion.user;
+    else if (u.pathname.startsWith("/auth/v1/")) body = {};
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
   if (conSesion) await page.addInitScript((s) => localStorage.setItem("d360-sesion", JSON.stringify(s)), sesion);
@@ -186,6 +194,23 @@ for (const [ancho, alto, tag] of VISTAS) {
   const txt = await page.locator("body").innerText();
   if (!/Tus datos/.test(txt) || !/D360-PRUE-BA01/.test(txt) || !/Básico/.test(txt)) errores.push("registro-codigo: con código bueno no pasa a «Tus datos» con su plan: " + txt.slice(0, 300));
   await page.screenshot({ path: `${OUT}/registro-codigo-datos.png`, fullPage: true });
+  // Completar datos: entra directo, sin «Revisa tu correo»
+  await page.locator("input[name=tu_nombre]").fill("Marta Ruiz");
+  await page.locator("input[name=nombre]").fill("Clases de Marta");
+  await page.locator("input[name=email]").fill("marta@ejemplo.com");
+  await page.locator("input[name=clave]").fill("clave-segura-1");
+  await page.locator("input[name=acepto]").check();
+  await page.getByRole("button", { name: "Crear mi cuenta" }).click();
+  await page.waitForTimeout(800);
+  const fin = await page.locator("body").innerText();
+  if (/Revisa tu correo/.test(fin) || !/Tu cuenta está creada/.test(fin) || !/482915/.test(fin)) errores.push("registro-codigo: no entra directo tras crear la cuenta: " + fin.slice(0, 300));
+  if (registroEnviado?.codigo !== "D360-PRUE-BA01" || registroEnviado?.plan !== "prof_basico" || registroEnviado?.email !== "marta@ejemplo.com") errores.push("registro-codigo: datos enviados al servidor incorrectos: " + JSON.stringify(registroEnviado));
+  await page.screenshot({ path: `${OUT}/registro-codigo-creada.png`, fullPage: true });
+  await page.evaluate(() => localStorage.clear());   // volver a empezar sin la sesión recién abierta
+  await page.goto(BASE + "/registro.html", { waitUntil: "load" });
+  await page.locator("input.codigo-acceso").fill("D360-PRUE-BA01");
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await page.waitForTimeout(400);
   await page.getByRole("button", { name: "Atrás" }).click();
   if (!(await page.locator("input.codigo-acceso").count())) errores.push("registro-codigo: «Atrás» no vuelve al código cuando el código fija tipo y plan");
   const ancho = await page.evaluate(() => document.documentElement.scrollWidth);

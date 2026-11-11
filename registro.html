@@ -256,6 +256,20 @@ function paso3() {
     const b = form.querySelector("[type=submit]"); b.disabled = true; b.textContent = "Creando…";
     const datosCuenta = { modalidad: estado.modalidad, plan: estado.plan, tu_nombre: d.tu_nombre, nombre: d.nombre, telefono: d.telefono, moneda: d.moneda, terminos: estado.terminos, codigo: estado.codigo };
     try {
+      if (!soloCuenta && estado.requiere && estado.codigo) {
+        // Con código de acceso: el servidor crea el usuario ya confirmado y la cuenta. Sin correo de confirmación.
+        const resp = await fetch(`${CONFIG.supabaseUrl}/functions/v1/registro-codigo`, {
+          method: "POST", headers: { "Content-Type": "application/json", apikey: CONFIG.supabaseKey },
+          body: JSON.stringify({ ...datosCuenta, email: d.email, clave: d.clave }) });
+        const res = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          if (res.motivo === "correo_existe") return mostrar(h("span", res.error, " ", h("a", { href: ruta("entrar.html?modo=correo") }, "Entrar con mi correo")));
+          throw Object.assign(new Error(res.error || "No pudimos crear la cuenta. Intenta de nuevo."), { codigoRegistro: !!res.codigo_registro });
+        }
+        const { error } = await sb.auth.setSession(res.sesion);
+        if (error) throw error;
+        return mostrarCreada(res.cuenta, datosCuenta);
+      }
       if (!soloCuenta) {
         const { data, error } = await sb.auth.signUp({ email: d.email, password: d.clave,
           options: { emailRedirectTo: ruta("registro.html?paso=cuenta"), data: { nombre: d.tu_nombre } } });
@@ -281,6 +295,10 @@ async function crearCuenta(d) {
     try { localStorage.removeItem(PEND); } catch (_) {}
     throw Object.assign(new Error(r.error), { codigoRegistro: true });
   }
+  mostrarCreada(r, d);
+}
+
+function mostrarCreada(r, d) {
   try { localStorage.removeItem(PEND); } catch (_) {}
   elegirCuenta(r.cuenta_id);
   document.querySelector(".pasos").remove();

@@ -4,7 +4,7 @@ insert into auth.users(id,email) values ('00000000-0000-0000-0000-0000000000f0',
   ('00000000-0000-0000-0000-0000000000f1','uno@test'),('00000000-0000-0000-0000-0000000000f2','dos@test'),
   ('00000000-0000-0000-0000-0000000000f3','tres@test');
 insert into plataforma_admins(user_id) values ('00000000-0000-0000-0000-0000000000f0');
-create temp table r(k text, v jsonb); grant all on r to authenticated, anon;
+create temp table r(k text, v jsonb); grant all on r to authenticated, anon, service_role;
 
 do $$ begin
   if not _d360_registro_requiere_codigo() then raise exception 'FALLO el registro con código no está activo por defecto'; end if;
@@ -110,4 +110,26 @@ do $$ declare res jsonb; begin
   res := d360_crear_cuenta('academia','Sin requisito','Tres','acad_inicial', p_terminos => '2026-11-05');
   if res->>'cuenta_id' is null then raise exception 'FALLO sin requisito %', res; end if;
   raise notice 'OK si el administrador apaga el requisito, se puede registrar sin código';
+end $$;
+
+-- Función del servidor (registro sin correo de confirmación): solo service_role, límite por la IP que recibe
+reset role; update config_global set valor = 'true' where clave = 'publico.registro_con_codigo';
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f0';
+insert into r select 'S', d360_admin_crear_codigo('colegio', 'col_avanzado', 1, null, 'Servidor');
+set role anon;
+do $$ begin
+  perform d360_srv_validar_codigo('D360-AAAA-AAAA', '1.1.1.1'); raise exception 'FALLO anon usa la función del servidor';
+exception when insufficient_privilege then raise notice 'OK nadie desde el navegador puede usar la validación del servidor'; end $$;
+set role authenticated;
+do $$ begin
+  perform d360_srv_validar_codigo('D360-AAAA-AAAA', '1.1.1.1'); raise exception 'FALLO authenticated usa la función del servidor';
+exception when insufficient_privilege then raise notice 'OK un usuario con sesión tampoco'; end $$;
+set role service_role;
+do $$ declare res jsonb; begin
+  res := d360_srv_validar_codigo(lower((select v->>'codigo' from r where k = 'S')), '20.0.0.1');
+  if not (res->>'ok')::boolean or res->>'modalidad' <> 'colegio' or res->>'plan' <> 'col_avanzado' then raise exception 'FALLO srv valida %', res; end if;
+  for i in 1..8 loop res := d360_srv_validar_codigo('D360-ZZZZ-ZZZ' || i, '20.0.0.2'); end loop;
+  if res->>'motivo' <> 'bloqueado' then raise exception 'FALLO srv no bloquea %', res; end if;
+  if not (d360_srv_validar_codigo((select v->>'codigo' from r where k = 'S'), '20.0.0.3')->>'ok')::boolean then raise exception 'FALLO srv bloquea otra IP'; end if;
+  raise notice 'OK el servidor valida el código con límite de intentos por la IP del visitante';
 end $$;
