@@ -10,14 +10,14 @@ Toda la gestión educativa, en un solo lugar. SaaS para **profesores independien
 | Acceso con código (institución + código personal) | ✅ Etapa 1 |
 | Registro, recuperación de contraseña, selector de cuentas | ✅ Etapa 1 |
 | Panel **Profesor independiente** (todos sus módulos) | ✅ Etapa 1 |
-| Panel maestro (dueño del SaaS) | ✅ Etapa 1 |
+| Panel de administrador (dueño del SaaS, entra por `admin/entrar.html`) | ✅ Etapa 1 |
 | Panel **Academias** (matrículas, finanzas, instructores, certificados, informes) | ✅ Etapa 2 |
 | Panel **Colegios** (estructura, horarios, notas por corte, boletines, matrícula escolar) | ✅ Etapa 3 |
 | **Portal de familias** para padres y tutores | ✅ Etapa 3 |
 | Cuentas de **demostración** (profesor, academia y colegio, por rol) | ✅ |
 | **Importar estudiantes** desde Excel (.xlsx) o CSV | ✅ |
 | Términos de uso y política de privacidad, con aceptación registrada | ✅ (revisar con un abogado) |
-| Cobro en línea con tarjeta | ❌ No implementado: los pagos se registran a mano en el panel maestro |
+| Cobro en línea con tarjeta | ❌ No implementado: los pagos se registran a mano en el panel de administrador |
 
 ## Tecnología
 
@@ -39,7 +39,8 @@ app/profesor.html     Panel del profesor (módulos en assets/js/profesor/)
 app/academia.html     Panel de academias (módulos en assets/js/academia/)
 app/colegio.html      Panel de colegios (módulos en assets/js/colegio/)
 app/familias.html     Portal de padres y tutores (assets/js/familias/)
-admin/index.html      Panel maestro (solo plataforma_admins)
+admin/entrar.html     Entrada del administrador (correo y contraseña)
+admin/index.html      Panel de administrador (solo plataforma_admins)
 assets/css/           Sistema de diseño (d360.css) + estilos por modalidad
 assets/js/core/       Conexión, sesión, componentes, iconos, núcleo de paneles
 assets/js/comun/      Módulos compartidos entre modalidades (estudiantes, grupos, asistencia, notas…)
@@ -55,7 +56,7 @@ docs/                 Arquitectura, seguridad y precios
 1. Sube el repositorio a un hosting estático (en GitHub Pages: Settings → Pages → rama principal).
 2. En Supabase → Authentication → URL Configuration, agrega la URL del sitio en **Site URL** y **Redirect URLs** (para confirmación de correo y recuperación).
 3. Opcional: en la Edge Function `acceso-codigo`, define el secreto `D360_ORIGENES` con tu dominio (por ejemplo `https://docencia360.com`) para restringir CORS.
-4. En el panel maestro → Parámetros, escribe tu número en `publico.contacto_whatsapp`, tu nombre o empresa en `publico.titular` y tu correo en `publico.correo_contacto` (aparecen en los términos y la privacidad).
+4. En el panel de administrador (`admin/entrar.html`) → Parámetros, escribe tu número en `publico.contacto_whatsapp`, tu nombre o empresa en `publico.titular` y tu correo en `publico.correo_contacto` (aparecen en los términos y la privacidad).
 
 ## Pruebas
 

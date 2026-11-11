@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<script>try{if(localStorage.getItem("d360-tema")==="oscuro")document.documentElement.dataset.theme="dark"}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Administrador · Docencia360</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="../assets/img/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/css/d360.css">
+<style>
+  .acceso-lado { background: #17212B; }
+  .sello { display: inline-block; font-size: .8rem; font-weight: 700; background: var(--texto); color: var(--papel); padding: .15rem .5rem; border-radius: 4px; margin-bottom: .75rem; }
+</style>
+</head>
+<body>
+<div class="acceso">
+  <aside class="acceso-lado" aria-hidden="true">
+    <div class="renglones"></div><div class="margen"></div>
+    <div id="marca-lado"></div>
+    <blockquote>Administración de Docencia360.</blockquote>
+    <p style="opacity:.75;max-width:34ch">Cuentas, pagos, códigos de registro, planes y precios.</p>
+  </aside>
+
+  <main class="acceso-form">
+    <div>
+      <div id="marca" style="margin-bottom:2rem"></div>
+      <span class="sello">Administrador</span>
+      <h1>Entrar como administrador</h1>
+      <p class="tenue">Solo para quien administra Docencia360. Profesores, academias y colegios entran por <a href="../entrar.html">la página de siempre</a>.</p>
+      <div id="aviso"></div>
+      <form id="f-admin" novalidate>
+        <label class="campo"><span>Correo</span><input id="email" type="email" autocomplete="username" required></label>
+        <label class="campo"><span>Contraseña</span><input id="clave" type="password" autocomplete="current-password" required></label>
+        <button class="btn btn-bloque" id="b-entrar">Entrar</button>
+        <p style="margin-top:1rem"><a href="../recuperar.html">Olvidé mi contraseña</a></p>
+      </form>
+    </div>
+  </main>
+</div>
+<script src="../assets/vendor/supabase.js"></script>
+<script type="module">
+import { botonTema } from "../assets/js/core/tema.js";
+{ const b = botonTema(); b.style.cssText = "position:fixed;top:12px;right:12px;z-index:50"; document.body.append(b); }
+import { sb, mensajeError } from "../assets/js/core/sb.js";
+import { marca, h } from "../assets/js/core/ui.js";
+import { sesionActual, ruta } from "../assets/js/core/sesion.js";
+
+document.getElementById("marca").append(marca(ruta("index.html")));
+document.getElementById("marca-lado").append(marca(ruta("index.html")));
+const aviso = document.getElementById("aviso");
+const mostrar = (msg, tipo = "mal") => aviso.replaceChildren(h(`div.aviso.${tipo}`, { role: "alert" }, msg));
+
+// El permiso lo decide el servidor (plataforma_admins); esta página solo pregunta.
+const esAdmin = async () => { const { data, error } = await sb.rpc("d360_es_plataforma_admin"); if (error) throw error; return data === true; };
+
+if (await sesionActual()) {
+  if (await esAdmin().catch(() => false)) location.replace(ruta("admin/index.html"));
+  else mostrar("La sesión abierta en este navegador no es de administrador. Entra con tu correo de administrador.", "ojo");
+}
+const params = new URLSearchParams(location.search);
+if (params.get("motivo") === "sin-permiso") mostrar("Esa cuenta no tiene permiso de administrador.");
+
+document.getElementById("f-admin").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("clave").value;
+  if (!email || !password) return mostrar("Escribe tu correo y tu contraseña.");
+  const b = document.getElementById("b-entrar"); b.disabled = true; b.textContent = "Entrando…";
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    if (!(await esAdmin())) {
+      await sb.auth.signOut();
+      return mostrar("Esa cuenta no tiene permiso de administrador.");
+    }
+    location.replace(ruta("admin/index.html"));
+  } catch (err) { mostrar(mensajeError(err)); }
+  finally { b.disabled = false; b.textContent = "Entrar"; }
+});
+document.getElementById("email").focus();
+</script>
+</body>
+</html>

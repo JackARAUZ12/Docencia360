@@ -141,7 +141,7 @@ const PANTALLAS = [
   ...["inicio", "finanzas", "matriculas", "informes"].map((r) => [`academia-finanzas-${r}`, `/app/academia.html#/${r}`, true, "academia", "finanzas"]),
   ...["inicio", "grupos", "asistencia", "calificaciones"].map((r) => [`academia-instructor-${r}`, `/app/academia.html#/${r}`, true, "academia", "docente"]),
   ["verificar", "/verificar.html?folio=K7M2QP-26-ABC123", false],
-  ["index", "/index.html", false], ["terminos", "/terminos.html", false], ["privacidad", "/privacidad.html", false], ["entrar", "/entrar.html", false], ["registro", "/registro.html?modalidad=profesor", false],
+  ["index", "/index.html", false], ["terminos", "/terminos.html", false], ["privacidad", "/privacidad.html", false], ["entrar", "/entrar.html", false], ["admin-entrar", "/admin/entrar.html", false], ["registro", "/registro.html?modalidad=profesor", false],
   ...["inicio", "asistencia", "calificaciones", "estudiantes", `estudiantes/${E(1)}`, "grupos", `grupos/${G1}`, "tareas", "cursos", "calendario", "informes", `informes?estudiante=${E(1)}`, "cuenta", "mas"]
     .map((r) => [`profesor-${r.replace(/[/?=]/g, "_").slice(0, 40)}`, `/app/profesor.html#/${r}`, true]),
   ...["resumen", "cuentas", "codigos", "planes", "promociones", "actividad", "parametros"].map((r) => [`admin-${r}`, `/admin/index.html#/${r}`, true]),

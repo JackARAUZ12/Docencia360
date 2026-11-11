@@ -1,4 +1,4 @@
-// Panel maestro de Docencia360 (solo plataforma_admins).
+// Panel de administrador de Docencia360 (solo plataforma_admins). Se entra por admin/entrar.html.
 // Cada acción está protegida en el servidor: RLS + funciones que
 // verifican d360_es_plataforma_admin(). Esta interfaz no decide permisos.
 import { sb, q } from "../core/sb.js";
@@ -6,9 +6,9 @@ import { h, marca, tabla, formularioModal, confirmar, modal, toast, fecha, diner
 import { sesionActual, salir, ruta } from "../core/sesion.js";
 import { botonTema } from "../core/tema.js";
 
-if (!(await sesionActual())) location.replace(ruta("entrar.html?modo=correo"));
+if (!(await sesionActual())) { location.replace(ruta("admin/entrar.html")); await new Promise(() => {}); }
 const { data: esAdmin } = await sb.rpc("d360_es_plataforma_admin");
-if (!esAdmin) { document.getElementById("app").replaceChildren(h("main", h("div.aviso.mal", "No tienes acceso a esta sección."), h("a", { href: ruta("entrar.html") }, "Volver"))); throw new Error("sin acceso"); }
+if (!esAdmin) { location.replace(ruta("admin/entrar.html")); await new Promise(() => {}); }   // sin cerrar la sesión de un profesor que llegó aquí por error
 
 const MOD = { profesor: "Profesor", academia: "Academia", colegio: "Colegio" };
 const EST = { pendiente: "ojo", prueba: "info", activa: "ok", vencida: "ojo", suspendida: "mal", cancelada: "mal" };
@@ -19,9 +19,9 @@ const FUNCIONES = [["tareas", "Tareas"], ["calendario", "Calendario"], ["reporte
 const main = h("main", { id: "contenido" });
 const SECCIONES = [["resumen", "Resumen"], ["cuentas", "Cuentas"], ["codigos", "Códigos de registro"], ["planes", "Planes y precios"], ["promociones", "Promociones"], ["actividad", "Actividad"], ["parametros", "Parámetros"]];
 document.getElementById("app").replaceChildren(
-  h("header.adm-cab", h("div", marca(ruta("admin/index.html")), h("span.sello", "Panel maestro")),
+  h("header.adm-cab", h("div", marca(ruta("admin/index.html")), h("span.sello", "Administrador")),
     h("nav", SECCIONES.map(([r, t]) => h("a", { href: "#/" + r, dataset: { r } }, t)),
-      h("a", { href: "#", onclick: (e) => { e.preventDefault(); salir(); } }, "Salir"), botonTema())),
+      h("a", { href: "#", onclick: (e) => { e.preventDefault(); salir(null, "admin/entrar.html"); } }, "Salir"), botonTema())),
   main);
 
 let planesCache;

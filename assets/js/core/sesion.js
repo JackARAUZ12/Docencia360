@@ -59,10 +59,10 @@ export async function protegerModalidad(modalidad) {
   return { user: s.user, cuenta, cuentas };
 }
 
-export async function salir(motivo) {
+export async function salir(motivo, destino = "entrar.html") {
   await sb.auth.signOut();
   try { localStorage.removeItem(CLAVE_CUENTA); } catch (_) {}
-  location.replace(ruta("entrar.html" + (motivo ? `?motivo=${motivo}` : "")));
+  location.replace(ruta(destino + (motivo ? `?motivo=${motivo}` : "")));
 }
 
 /** Cierra la sesión tras N minutos sin actividad (computadoras compartidas). */
