@@ -253,6 +253,7 @@ function paso3() {
     if (!d.tu_nombre?.trim() || !d.nombre?.trim()) return mostrar("Escribe tu nombre y el nombre de tu espacio.");
     if (!soloCuenta && (!d.email || (d.clave || "").length < 8)) return mostrar("Escribe un correo válido y una contraseña de al menos 8 caracteres.");
     if (!d.acepto) return mostrar("Para crear la cuenta, marca que aceptas los términos de uso y la política de privacidad.");
+    if (!estado.terminos) return mostrar("No pudimos cargar los datos del registro (términos vigentes). Revisa tu conexión y recarga la página.");
     const b = form.querySelector("[type=submit]"); b.disabled = true; b.textContent = "Creando…";
     const datosCuenta = { modalidad: estado.modalidad, plan: estado.plan, tu_nombre: d.tu_nombre, nombre: d.nombre, telefono: d.telefono, moneda: d.moneda, terminos: estado.terminos, codigo: estado.codigo };
     try {
