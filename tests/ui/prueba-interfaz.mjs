@@ -113,7 +113,7 @@ async function preparar(page, conSesion, modalidad = "profesor", rol = "propieta
       body = RPC[fn] ?? null;
       if (fn === "d360_validar_codigo_registro") {
         const cod = (JSON.parse(route.request().postData() || "{}").p_codigo || "").toUpperCase();
-        body = cod === "D360-PRUE-BA01" ? { ok: true, requiere: true, codigo: cod, modalidad: "profesor", plan: "prof_basico" } : { ok: false, motivo: "usado" };
+        body = cod === "D360-PRUE-BA01" ? { ok: true, requiere: true, codigo: cod, modalidad: "profesor", plan: "prof_basico", meses_pagados: 1 } : { ok: false, motivo: "usado" };
       }
       if (fn === "d360_mis_cuentas") body = body.map((c) => ({ ...c, modalidad, rol, nombre: modalidad === "academia" ? "Academia Horizonte" : c.nombre,
         plan_nombre: modalidad === "academia" ? "Profesional" : c.plan_nombre,
@@ -130,7 +130,7 @@ async function preparar(page, conSesion, modalidad = "profesor", rol = "propieta
       registroEnviado = datos;
       const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
       const jwt = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: U, role: "authenticated", exp: Math.floor(Date.now() / 1000) + 3600 })}.firma`;
-      body = { cuenta: { cuenta_id: C, codigo_institucion: "K7M2QP", codigo_personal: "482915", estado: "pendiente", dias_prueba: 0 }, sesion: { access_token: jwt, refresh_token: "r" } };
+      body = { cuenta: { cuenta_id: C, codigo_institucion: "K7M2QP", codigo_personal: "482915", estado: "activa", vence: "2026-12-11", plan_nombre: "Básico", dias_prueba: 0 }, sesion: { access_token: jwt, refresh_token: "r" } };
     } else if (u.pathname === "/auth/v1/user") body = sesion.user;
     else if (u.pathname.startsWith("/auth/v1/")) body = {};
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
@@ -192,7 +192,7 @@ for (const [ancho, alto, tag] of VISTAS) {
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.waitForTimeout(400);
   const txt = await page.locator("body").innerText();
-  if (!/Tus datos/.test(txt) || !/D360-PRUE-BA01/.test(txt) || !/Básico/.test(txt)) errores.push("registro-codigo: con código bueno no pasa a «Tus datos» con su plan: " + txt.slice(0, 300));
+  if (!/Tus datos/.test(txt) || !/D360-PRUE-BA01/.test(txt) || !/Básico/.test(txt) || !/Ya pagado: 1 mes/.test(txt)) errores.push("registro-codigo: con código bueno no pasa a «Tus datos» con su plan: " + txt.slice(0, 300));
   await page.screenshot({ path: `${OUT}/registro-codigo-datos.png`, fullPage: true });
   // Completar datos: entra directo, sin «Revisa tu correo»
   await page.locator("input[name=tu_nombre]").fill("Marta Ruiz");
@@ -203,7 +203,7 @@ for (const [ancho, alto, tag] of VISTAS) {
   await page.getByRole("button", { name: "Crear mi cuenta" }).click();
   await page.waitForTimeout(800);
   const fin = await page.locator("body").innerText();
-  if (/Revisa tu correo/.test(fin) || !/Tu cuenta está creada/.test(fin) || !/482915/.test(fin)) errores.push("registro-codigo: no entra directo tras crear la cuenta: " + fin.slice(0, 300));
+  if (/Revisa tu correo|Falta activarla/.test(fin) || !/Tu cuenta está lista/.test(fin) || !/Todo activo/.test(fin) || !/482915/.test(fin)) errores.push("registro-codigo: no entra directo tras crear la cuenta: " + fin.slice(0, 300));
   if (registroEnviado?.codigo !== "D360-PRUE-BA01" || registroEnviado?.plan !== "prof_basico" || registroEnviado?.email !== "marta@ejemplo.com") errores.push("registro-codigo: datos enviados al servidor incorrectos: " + JSON.stringify(registroEnviado));
   await page.screenshot({ path: `${OUT}/registro-codigo-creada.png`, fullPage: true });
   await page.evaluate(() => localStorage.clear());   // volver a empezar sin la sesión recién abierta
@@ -222,10 +222,14 @@ for (const [ancho, alto, tag] of VISTAS) {
   await adm.goto(BASE + "/admin/index.html#/codigos", { waitUntil: "load" });
   await adm.getByRole("button", { name: "Generar código" }).first().click();
   await adm.locator("dialog [name=usos]").fill("1");
+  await adm.locator("dialog").getByRole("button", { name: "Generar código" }).click();   // sin plan y con 1 mes pagado: debe avisar
+  await adm.waitForTimeout(300);
+  if (!/Elige el plan que pagó/.test(await adm.locator("dialog").innerText())) errores.push("admin-codigos: no exige el plan para un código pagado");
+  await adm.locator("dialog [name=plan]").selectOption("prof_basico");
   await adm.locator("dialog").getByRole("button", { name: "Generar código" }).click();
   await adm.waitForTimeout(600);
   const dlg = await adm.locator("dialog").last().innerText().catch(() => "");
-  if (!/D360-NUEV-O001/.test(dlg) || !/Enviar por WhatsApp/.test(dlg)) errores.push("admin-codigos: no muestra el código generado para compartir: " + dlg.slice(0, 200));
+  if (!/D360-NUEV-O001/.test(dlg) || !/Enviar por WhatsApp/.test(dlg) || !/Ya pagado/.test(dlg)) errores.push("admin-codigos: no muestra el código generado para compartir: " + dlg.slice(0, 200));
   await adm.screenshot({ path: `${OUT}/admin-codigo-generado.png`, fullPage: false });
   const anchoA = await adm.evaluate(() => document.documentElement.scrollWidth);
   if (anchoA > 361) errores.push(`admin-codigos: desborde horizontal (${anchoA}px)`);

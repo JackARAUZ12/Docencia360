@@ -133,3 +133,41 @@ do $$ declare res jsonb; begin
   if not (d360_srv_validar_codigo((select v->>'codigo' from r where k = 'S'), '20.0.0.3')->>'ok')::boolean then raise exception 'FALLO srv bloquea otra IP'; end if;
   raise notice 'OK el servidor valida el código con límite de intentos por la IP del visitante';
 end $$;
+
+-- Código ya pagado: la cuenta nace activa, con el pago registrado y su vencimiento
+reset role;
+insert into auth.users(id,email) values ('00000000-0000-0000-0000-0000000000f4','cuatro@test'),('00000000-0000-0000-0000-0000000000f5','cinco@test');
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f0';
+insert into r select 'PG', d360_admin_crear_codigo('academia', 'acad_profesional', 1, null, 'Pagó 3 meses', p_meses => 3);
+insert into r select 'PM', d360_admin_crear_codigo(null, 'prof_basico', 1, null, null, p_meses => 1, p_monto => 15, p_moneda => 'USD', p_metodo => 'efectivo');
+do $$ begin
+  begin perform d360_admin_crear_codigo('profesor', null, 1, null, null, p_meses => 1); raise exception 'FALLO pagado sin plan';
+  exception when raise_exception then raise notice 'OK un código ya pagado exige el plan'; end;
+  if (select monto from d360_admin_codigos() where codigo = (select v->>'codigo' from r where k = 'PG'))
+     <> (select precio_nio * 3 from planes where id = 'acad_profesional') then raise exception 'FALLO monto por defecto'; end if;
+  raise notice 'OK el panel muestra el monto (por defecto, precio del plan × meses)';
+end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f4';
+do $$ declare res jsonb; c uuid; begin
+  res := d360_crear_cuenta('academia','Academia Pagada','Cuatro','acad_profesional', p_terminos => '2026-11-05', p_codigo => (select v->>'codigo' from r where k = 'PG'));
+  c := (res->>'cuenta_id')::uuid;
+  if res->>'estado' <> 'activa' then raise exception 'FALLO no nace activa %', res; end if;
+  if (select estado from suscripciones where cuenta_id = c) <> 'activa'
+     or (select vence from suscripciones where cuenta_id = c) <> (current_date + interval '3 months')::date then raise exception 'FALLO suscripción'; end if;
+  if not d360_cuenta_operativa(c) then raise exception 'FALLO la cuenta no está operativa'; end if;
+  raise notice 'OK con código pagado la cuenta nace activa, operativa y vence en 3 meses';
+end $$;
+reset role;
+do $$ declare c uuid := (select id from cuentas where nombre = 'Academia Pagada'); p pagos_suscripcion; begin
+  select * into p from pagos_suscripcion where cuenta_id = c;
+  if p.id is null or p.monto <> (select precio_nio * 3 from planes where id = 'acad_profesional') or p.moneda <> 'NIO'
+     or p.registrado_por <> '00000000-0000-0000-0000-0000000000f0' or p.referencia not like 'Código D360-%' then raise exception 'FALLO pago %', row_to_json(p); end if;
+  raise notice 'OK el pago queda en el historial, a nombre del administrador que generó el código';
+end $$;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f5';
+do $$ declare res jsonb; begin
+  res := d360_crear_cuenta('profesor','Profe Pagado','Cinco','prof_premium', p_terminos => '2026-11-05', p_codigo => (select v->>'codigo' from r where k = 'PM'));
+  if res->>'estado' <> 'activa' or (select plan_id from suscripciones where cuenta_id = (res->>'cuenta_id')::uuid) <> 'prof_basico' then raise exception 'FALLO %', res; end if;
+  if (select monto::text || moneda || metodo from pagos_suscripcion where cuenta_id = (res->>'cuenta_id')::uuid) <> '15.00USDefectivo' then raise exception 'FALLO monto escrito'; end if;
+  raise notice 'OK respeta el monto, la moneda y el método que escribió el administrador';
+end $$;

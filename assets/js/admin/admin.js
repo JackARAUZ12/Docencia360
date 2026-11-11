@@ -230,10 +230,15 @@ async function copiar(texto, aviso = "Copiado") {
 }
 function compartirCodigo(c) {
   const enlace = enlaceRegistro(c.codigo);
-  const texto = `Tu código de acceso para crear tu cuenta en Docencia360 es: ${c.codigo}\nCrea tu cuenta aquí: ${enlace}`;
+  const pagado = c.meses_pagados > 0 ? ` Tu plan ${c.plan_nombre} ya está pagado por ${c.meses_pagados} mes(es): tu cuenta queda activa al crearla.` : "";
+  const texto = `Tu código de acceso para crear tu cuenta en Docencia360 es: ${c.codigo}${pagado}\nCrea tu cuenta aquí: ${enlace}`;
   modal("Código de acceso", h("div",
     h("p", "Entrégalo a la persona que va a crear la cuenta. Con él podrá registrarse",
       c.modalidad ? ` como ${MOD[c.modalidad].toLowerCase()}` : "", c.plan_nombre ? ` en el plan ${c.plan_nombre}` : "", "."),
+    c.meses_pagados > 0
+      ? h("div.aviso.ok", h("strong", "Ya pagado: "), `${c.meses_pagados} mes(es)`, c.monto != null ? ` · ${dinero(c.monto, c.moneda)}` : "",
+          ". Al crear la cuenta queda activa y el pago se registra solo en el historial.")
+      : h("div.aviso.ojo", "Sin pago incluido: la cuenta nacerá pendiente de pago (o en prueba). Regístralo después en «Cuentas»."),
     h("p", h("span.codigo-grande", { style: "font-size:1.4rem;letter-spacing:.08em;word-break:break-all" }, c.codigo)),
     h("p.tenue", "Enlace directo (el código ya va escrito):"), h("p", { style: "word-break:break-all" }, h("a", { href: enlace, target: "_blank", rel: "noopener" }, enlace)),
     h("div.botones", { style: "display:flex;flex-wrap:wrap;gap:.5rem" },
@@ -248,20 +253,31 @@ async function seccionCodigos(el) {
     q(sb.from("config_global").select("valor").eq("clave", "publico.registro_con_codigo").maybeSingle()),
   ]);
   const requiere = cfg ? cfg.valor !== false && cfg.valor !== "false" : true;
-  const nuevo = () => formularioModal("Nuevo código de registro", [
-    { name: "modalidad", label: "Tipo de cuenta", type: "select", placeholder: "Cualquiera (la persona elige)", options: Object.entries(MOD) },
-    { name: "plan", label: "Plan", type: "select", placeholder: "La persona elige el plan",
-      options: ps.filter((p) => p.activo).map((p) => [p.id, `${MOD[p.modalidad]} · ${p.nombre}`]), help: "Si eliges un plan, el tipo de cuenta queda fijado por el plan." },
+  const nuevo = () => formularioModal("Nuevo código de acceso", [
+    { type: "seccion", label: "Lo que pagó el cliente" },
+    { name: "plan", label: "Plan pagado", type: "select", placeholder: "Sin plan (la persona elige; solo sin pago)",
+      options: ps.filter((p) => p.activo).map((p) => [p.id, `${MOD[p.modalidad]} · ${p.nombre} · ${dinero(p.precio_nio, "NIO")} / ${dinero(p.precio_usd, "USD")} al mes`]) },
+    { name: "meses", label: "Meses pagados", type: "number", min: 0, max: 24, value: 1, required: true, help: "Con 1 o más, la cuenta nace activa. 0 = sin pago todavía." },
+    { name: "monto", label: "Monto recibido", type: "number", min: 0, step: "0.01", help: "Vacío = precio del plan × meses." },
+    { name: "moneda", label: "Moneda", type: "select", options: [["NIO", "Córdobas (C$)"], ["USD", "Dólares (US$)"]], value: "NIO" },
+    { name: "metodo", label: "Forma de pago", type: "select", options: [["transferencia", "Transferencia"], ["deposito", "Depósito"], ["efectivo", "Efectivo"], ["otro", "Otro"]], value: "transferencia" },
+    { type: "seccion", label: "Código" },
+    { name: "modalidad", label: "Tipo de cuenta", type: "select", placeholder: "El del plan (o la persona elige)", options: Object.entries(MOD) },
     { name: "usos", label: "Cuentas que puede crear", type: "number", min: 1, max: 500, value: 1, required: true, help: "Normalmente 1: un código por cliente." },
-    { name: "vence", label: "Vence", type: "date", min: hoyISO(), help: "Déjalo vacío para que no venza." },
-    { name: "nota", label: "Nota interna", full: true, maxlength: 200, placeholder: "Ej.: Colegio San José, pedido por WhatsApp" },
+    { name: "vence", label: "El código vence", type: "date", min: hoyISO(), help: "Vacío = no vence." },
+    { name: "nota", label: "Nota interna", full: true, maxlength: 200, placeholder: "Ej.: Colegio San José, pagó por transferencia BAC" },
   ], null, async (d, cerrar) => {
     const plan = ps.find((p) => p.id === d.plan);
+    const meses = Number(d.meses) || 0;
+    if (meses > 0 && !plan) throw new Error("Elige el plan que pagó el cliente (o pon 0 meses pagados).");
     if (plan && d.modalidad && plan.modalidad !== d.modalidad) throw new Error("El plan elegido no corresponde a ese tipo de cuenta.");
     const r = await q(sb.rpc("d360_admin_crear_codigo", { p_modalidad: d.modalidad || null, p_plan: d.plan || null,
-      p_usos: Number(d.usos) || 1, p_vence: d.vence || null, p_nota: d.nota || null }));
+      p_usos: Number(d.usos) || 1, p_vence: d.vence || null, p_nota: d.nota || null,
+      p_meses: meses, p_monto: d.monto, p_moneda: d.moneda || "NIO", p_metodo: d.metodo || "transferencia" }));
     cerrar(); await navegar();
-    compartirCodigo({ codigo: r.codigo, modalidad: plan?.modalidad || d.modalidad || null, plan_nombre: plan?.nombre || null });
+    const monto = meses > 0 ? (d.monto ?? Number(d.moneda === "USD" ? plan.precio_usd : plan.precio_nio) * meses) : null;
+    compartirCodigo({ codigo: r.codigo, modalidad: plan?.modalidad || d.modalidad || null, plan_nombre: plan?.nombre || null,
+      meses_pagados: meses, monto, moneda: d.moneda || "NIO" });
   }, { boton: "Generar código" });
   const cambiarActivo = async (c, activo) => {
     try { await q(sb.rpc("d360_admin_codigo_activo", { p_id: c.id, p_activo: activo })); toast(activo ? "Código activado" : "Código desactivado"); navegar(); }
@@ -275,13 +291,16 @@ async function seccionCodigos(el) {
   const disponibles = cods.filter((c) => c.estado === "disponible").length;
   el.append(h("div.hoja-titulo", h("h1", "Códigos de registro"), h("button.btn", { onclick: nuevo }, "Generar código")),
     requiere
-      ? h("p.suave", "Para crear una cuenta en Docencia360 se necesita uno de estos códigos. Genera uno por cliente y entrégaselo por WhatsApp o en persona. ",
+      ? h("p.suave", "Cuando un cliente te pague, genera su código con el plan y los meses pagados y envíaselo. Al crear su cuenta con el código, entra con todo activo y el pago queda registrado. ",
           `${disponibles} disponible(s).`)
       : h("div.aviso.ojo", h("strong", "El registro está abierto: "), "cualquiera puede crear una cuenta sin código. Para exigirlo, pon ", h("code", "true"),
           " en el parámetro «publico.registro_con_codigo» en ", h("a", { href: "#/parametros" }, "Parámetros"), "."),
     h("section.hoja", tabla([
       { t: "Código", v: (c) => [h("strong", { style: "font-family:ui-monospace,monospace;letter-spacing:.04em;white-space:nowrap" }, c.codigo), c.nota ? h("div.tenue", c.nota) : null] },
       { t: "Para", v: (c) => [MOD[c.modalidad] || "Cualquier tipo", h("div.tenue", c.plan_nombre ? `Plan ${c.plan_nombre}` : "Plan a elección")] },
+      { t: "Pago", v: (c) => (c.meses_pagados > 0
+          ? [h("span.estado.ok", `Pagado ${c.meses_pagados} mes(es)`), h("div.tenue", dinero(c.monto, c.moneda))]
+          : h("span.tenue", "Sin pago")) },
       { t: "Usos", v: (c) => `${c.usos} / ${c.usos_max}` },
       { t: "Vence", v: (c) => (c.vence ? fecha(c.vence) : "No vence") },
       { t: "Estado", v: (c) => { const [cl, tx] = EST_COD[c.estado] || ["", c.estado]; return h("span.estado" + (cl ? "." + cl : ""), tx); } },
