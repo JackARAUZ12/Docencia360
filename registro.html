@@ -220,6 +220,7 @@ function paso2() {
       h("span.marca-sel"),
       h("span", h("strong", p.nombre), h("br"), h("span.suave", p.resumen),
         h("ul", [lim(p.max_estudiantes, "estudiantes"), lim(p.max_grupos, "grupos"),
+                 p.funciones?.portal_estudiantes && p.max_estudiantes_portal ? `Exámenes y tareas en línea · ${p.max_estudiantes_portal} estudiantes con acceso` : null,
                  p.funciones?.reportes_pdf ? "Informes en PDF" : null,
                  p.modalidad !== "profesor" ? lim(p.max_docentes, "instructores") : null,
                  p.funciones?.finanzas ? "Matrículas, cobros y recibos" : null,

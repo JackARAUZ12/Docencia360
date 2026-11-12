@@ -14,7 +14,7 @@ const MOD = { profesor: "Profesor", academia: "Academia", colegio: "Colegio" };
 const EST = { pendiente: "ojo", prueba: "info", activa: "ok", vencida: "ojo", suspendida: "mal", cancelada: "mal" };
 const FUNCIONES = [["tareas", "Tareas"], ["calendario", "Calendario"], ["reportes_pdf", "Informes PDF"], ["exportar", "Exportar CSV"], ["asistentes", "Asistentes"],
   ["finanzas", "Finanzas"], ["certificados", "Certificados"], ["comunicados", "Comunicados"], ["portal_familias", "Portal familias"], ["horarios", "Horarios"],
-  ["boletines", "Boletines"], ["auditoria", "Auditoría"], ["sedes", "Sedes"]];
+  ["boletines", "Boletines"], ["auditoria", "Auditoría"], ["sedes", "Sedes"], ["portal_estudiantes", "Exámenes en línea"]];
 
 const main = h("main", { id: "contenido" });
 const SECCIONES = [["resumen", "Resumen"], ["cuentas", "Cuentas"], ["codigos", "Códigos de registro"], ["planes", "Planes y precios"], ["promociones", "Promociones"], ["actividad", "Actividad"], ["parametros", "Parámetros"]];
@@ -149,7 +149,7 @@ async function seccionPlanes(el) {
   const cfg = await q(sb.from("config_global").select("valor").eq("clave", "publico.tipo_cambio").maybeSingle());
   const tc = Number(cfg?.valor) || 36.62;
   el.append(h("h1", "Planes y precios"),
-    h("p.suave", `Los cambios se aplican de inmediato a la página de precios, al registro y a los límites de cada cuenta. Vacío = sin límite. Tipo de cambio de referencia: C$ ${tc}.`),
+    h("p.suave", `Los cambios se aplican de inmediato a la página de precios, al registro y a los límites de cada cuenta. Vacío = sin límite. «En línea» = estudiantes con acceso a exámenes y tareas en línea (0 = no incluido). Tipo de cambio de referencia: C$ ${tc}.`),
     ["profesor", "academia", "colegio"].map((mod) => h("section.hoja", h("h2", MOD[mod]),
       tabla([
         { t: "Plan", v: (p) => [h("strong", p.nombre), h("div.tenue", p.id)] },
@@ -158,10 +158,11 @@ async function seccionPlanes(el) {
         { t: "Estud.", v: (p) => campo(p, "max_estudiantes", "lim") },
         { t: mod === "profesor" ? "Asist." : "Docentes", v: (p) => campo(p, "max_docentes", "lim") },
         { t: "Grupos", v: (p) => campo(p, "max_grupos", "lim") },
+        mod === "profesor" ? { t: "En línea", v: (p) => campo(p, "max_estudiantes_portal", "lim", true) } : null,
         { t: "Admins", v: (p) => campo(p, "max_admins", "lim") },
         { t: "MB", v: (p) => campo(p, "almacenamiento_mb", "lim", true) },
         { t: "", clase: "acciones", v: (p) => h("button.btn.btn-texto.btn-sm", { onclick: () => funciones(p) }, "Funciones") },
-      ], ps.filter((p) => p.modalidad === mod)))));
+      ].filter(Boolean), ps.filter((p) => p.modalidad === mod)))));
 
   function campo(p, k, clase, obligatorio) {
     return h("input." + clase, { type: "number", min: 0, step: clase === "precio" ? "0.01" : "1", value: p[k] ?? "", "aria-label": `${p.nombre} ${k}`,

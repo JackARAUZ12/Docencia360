@@ -13,6 +13,8 @@ export async function render(el, ctx) {
     q(sb.rpc("d360_resumen_panel", { p_cuenta: ctx.id })),
   ]);
   const plan = planes.find((p) => p.id === sus.plan_id) || {};
+  const conAcceso = plan.max_estudiantes_portal
+    ? ((await sb.from("estudiantes_acceso").select("estudiante_id", { count: "exact", head: true }).eq("cuenta_id", ctx.id).eq("activo", true)).count ?? 0) : 0;
   const whatsapp = (cfg.find((c) => c.clave === "publico.contacto_whatsapp")?.valor || "").replace(/\D/g, "");
   const yo = miembros.find((m) => m.user_id === ctx.user.id);
   const asistentes = miembros.filter((m) => m.rol === "docente");
@@ -25,7 +27,10 @@ export async function render(el, ctx) {
     const f = p.funciones || {};
     const filas = [[lim(p.max_estudiantes, "Estudiantes activos"), true], [lim(p.max_grupos, "Grupos"), true],
       ["Asistencia, notas, tareas y calendario", true], ["Informes en PDF", !!f.reportes_pdf], ["Exportar listas a Excel (CSV)", !!f.exportar]];
-    if (ctx.modalidad === "profesor") filas.push([p.max_docentes ? `${p.max_docentes} asistente con su propio acceso` : "Asistente con su propio acceso", !!(f.asistentes && p.max_docentes)]);
+    if (ctx.modalidad === "profesor") {
+      filas.push([p.max_estudiantes_portal ? `Exámenes y tareas en línea · ${p.max_estudiantes_portal} estudiantes con acceso` : "Exámenes y tareas en línea con calificación automática", !!(f.portal_estudiantes && p.max_estudiantes_portal)]);
+      filas.push([p.max_docentes ? `${p.max_docentes} asistente con su propio acceso` : "Asistente con su propio acceso", !!(f.asistentes && p.max_docentes)]);
+    }
     else {
       filas.push([lim(p.max_docentes, ctx.modalidad === "academia" ? "Instructores" : "Docentes"), p.max_docentes !== 0]);
       filas.push(["Matrículas, cobros y recibos", !!f.finanzas], ["Certificados con folio", !!f.certificados], ["Portal de familias", !!f.portal_familias]);
@@ -50,6 +55,7 @@ export async function render(el, ctx) {
           !puedePagar ? null : h("ul.lista",   // el uso del plan es información del dueño
             uso(resumen.estudiantes_activos, plan.max_estudiantes, "Estudiantes activos"),
             uso(resumen.grupos_activos, plan.max_grupos, "Grupos activos"),
+            plan.max_estudiantes_portal ? uso(conAcceso, plan.max_estudiantes_portal, "Estudiantes con acceso en línea") : null,
             ctx.modalidad === "profesor"
               ? (plan.max_docentes ? uso(asistentes.filter((a) => a.activo).length, plan.max_docentes, "Asistentes") : null)
               : [uso(asistentes.filter((a) => a.activo).length, plan.max_docentes, "Instructores"),

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<script>try{if(localStorage.getItem("d360-tema")==="oscuro")document.documentElement.dataset.theme="dark"}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Examen en línea · Docencia360</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="assets/img/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/d360.css">
+<style>
+  .alumno { max-width: 720px; margin: 0 auto; padding: 1rem 16px calc(110px + env(safe-area-inset-bottom)); }
+  .alumno header { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin-bottom: 1.25rem; }
+  .cab-act { background: var(--pizarra, #1E3A32); color: #F4F6F2; border-radius: 16px; padding: 1.2rem 1.25rem; margin-bottom: 1rem; }
+  .cab-act h1 { color: #F4F6F2; font-size: clamp(1.4rem, 1.1rem + 1.2vw, 1.9rem); margin: .2rem 0 .4rem; }
+  .cab-act .tenue { color: rgba(244,246,242,.75); }
+  .datos-act { display: flex; flex-wrap: wrap; gap: .4rem 1rem; font-size: .92rem; color: rgba(244,246,242,.85); margin-top: .5rem; }
+  .pin-alumno { font-size: 2rem; letter-spacing: .5em; text-align: center; font-weight: 800; font-family: var(--display); }
+  .pregunta { background: var(--papel); border: 1px solid var(--renglon); border-radius: 14px; padding: 1rem 1.1rem; margin-bottom: .9rem; }
+  .pregunta .num { font-size: .82rem; font-weight: 800; color: var(--texto-3); text-transform: uppercase; letter-spacing: .06em; }
+  .pregunta .enun { font-weight: 700; font-size: 1.08rem; margin: .3rem 0 .8rem; white-space: pre-wrap; }
+  .pregunta.respondida { border-color: #9cc9b2; }
+  .elegir { display: grid; gap: .5rem; }
+  .elegir label { display: flex; gap: .7rem; align-items: center; padding: .75rem .9rem; border: 1.5px solid var(--renglon-fuerte); border-radius: 12px; cursor: pointer; min-height: 48px; }
+  .elegir label:has(input:checked) { border-color: var(--tinta); background: var(--tinta-suave); font-weight: 700; }
+  .elegir input { width: 20px; height: 20px; flex: none; }
+  .vf { grid-template-columns: 1fr 1fr; }
+  .pregunta textarea { min-height: 8rem; }
+  .barra-alumno { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--papel); border-top: 1px solid var(--renglon); padding: .7rem 16px calc(.7rem + env(safe-area-inset-bottom)); }
+  .barra-alumno > div { max-width: 720px; margin: 0 auto; display: flex; gap: .75rem; align-items: center; justify-content: space-between; }
+  .reloj { position: sticky; top: 0; z-index: 20; background: var(--papel); border-bottom: 1px solid var(--renglon); margin: 0 -16px 1rem; padding: .55rem 16px; display: flex; justify-content: space-between; font-weight: 700; }
+  .reloj.poco { background: #FBE4E1; color: #8A1C12; }
+  :root[data-theme="dark"] .reloj.poco { background: #4A1F1A; color: #FFD9D3; }
+  .resultado { text-align: center; padding: 2rem 1rem; }
+  .resultado .nota { font-family: var(--display); font-size: 3.4rem; font-weight: 800; line-height: 1; margin: .5rem 0; }
+</style>
+</head>
+<body>
+<div class="alumno">
+  <header><span id="marca"></span><span id="tema"></span></header>
+  <div id="aviso"></div>
+  <main id="contenido"><p class="suave">Cargando…</p></main>
+</div>
+<script src="assets/vendor/supabase.js"></script>
+<script type="module">
+import { botonTema } from "./assets/js/core/tema.js";
+import { sb, mensajeError } from "./assets/js/core/sb.js";
+import { h, marca, modal } from "./assets/js/core/ui.js";
+
+document.getElementById("marca").append(marca("index.html"));
+document.getElementById("tema").append(botonTema());
+const cont = document.getElementById("contenido");
+const aviso = document.getElementById("aviso");
+const mostrar = (m, t = "mal") => aviso.replaceChildren(h(`div.aviso.${t}`, { role: "alert" }, m));
+const limpiar = () => aviso.replaceChildren();
+const token = (new URLSearchParams(location.search).get("a") || "").trim().toLowerCase();
+const CLAVE = `d360-alumno-${token}`;
+const fechaHora = (iso) => new Date(iso).toLocaleString("es-NI", { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" });
+const rpc = async (fn, args) => { const { data, error } = await sb.rpc(fn, args); if (error) throw new Error(mensajeError(error)); return data; };
+
+const MOTIVO = {
+  codigo: "Ese código no es correcto. Revísalo o pídeselo a tu profesor.",
+  otro_grupo: "Tu código es correcto, pero no estás inscrito en el grupo de esta actividad. Avísale a tu profesor.",
+  formato: "El código tiene 6 números.",
+  cerrada: "Esta actividad ya cerró.",
+  pronto: "Esta actividad todavía no abre.",
+  cuenta_inactiva: "La cuenta de tu profesor no está activa en este momento.",
+  no_existe: "Este enlace no corresponde a ninguna actividad. Revisa que esté completo.",
+};
+
+let info, sesion = null, preguntas = [], respuestas = {}, pin = "", limite = null, desfase = 0, tGuardar, tReloj, enviando = false;
+
+async function inicio() {
+  if (!token) { cont.replaceChildren(h("div.vacio", h("p", "Abre el enlace o escanea el QR que te dio tu profesor."))); return; }
+  try { info = await rpc("d360_alumno_ver", { p_token: token }); }
+  catch (e) { cont.replaceChildren(h("div.aviso.mal", e.message)); return; }
+  if (!info.ok) { cont.replaceChildren(h("div.vacio", h("p", MOTIVO[info.motivo] || MOTIVO.no_existe))); return; }
+  document.title = `${info.titulo} · Docencia360`;
+  let guardado = null; try { guardado = JSON.parse(sessionStorage.getItem(CLAVE) || "null"); } catch (_) {}
+  if (guardado?.pin) { pin = guardado.pin; return entrar(false, true); }   // recargó la página: retomar
+  pantallaCodigo();
+}
+
+function cabecera() {
+  const d = [];
+  d.push(`${info.preguntas} pregunta(s) · ${Number(info.puntaje_max || 0).toLocaleString("es-NI")} puntos`);
+  d.push(info.duracion_min ? `${info.duracion_min} min para responder` : "Sin límite de tiempo");
+  if (info.cierra) d.push(`Cierra: ${fechaHora(info.cierra)}`);
+  return h("section.cab-act", h("div.tenue", `${info.institucion} · ${info.grupo}`), h("h1", info.titulo),
+    h("div.tenue", info.tipo === "examen" ? "Examen en línea" : "Tarea en línea"),
+    h("div.datos-act", d.map((x) => h("span", x))));
+}
+
+function pantallaCodigo() {
+  limpiar();
+  const estado = { pronto: info.abre ? `Abre el ${fechaHora(info.abre)}.` : MOTIVO.pronto, cerrada: MOTIVO.cerrada, cuenta_inactiva: MOTIVO.cuenta_inactiva }[info.estado];
+  const inp = h("input.pin-alumno", { inputmode: "numeric", autocomplete: "off", maxLength: 6, placeholder: "••••••", "aria-label": "Tu código personal de 6 números" });
+  inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, "").slice(0, 6); });
+  const form = h("form", { novalidate: true },
+    h("label.campo", h("span", "Tu código personal"), inp, h("small", "Son 6 números. Te lo dio tu profesor.")),
+    h("button.btn.btn-bloque", { type: "submit" }, "Entrar"));
+  form.addEventListener("submit", (e) => { e.preventDefault(); pin = inp.value; entrar(false); });
+  cont.replaceChildren(cabecera(),
+    info.instrucciones ? h("section.hoja", h("h2", "Instrucciones"), h("p", { style: "white-space:pre-wrap" }, info.instrucciones)) : null,
+    estado && info.estado !== "abierta" ? h("div.aviso.ojo", estado, " Si ya la respondiste, entra con tu código para ver tu resultado.") : null,
+    h("section.hoja", form));
+  inp.focus();
+}
+
+async function entrar(nuevo, silencioso) {
+  limpiar();
+  if (!/^\d{6}$/.test(pin)) return mostrar(MOTIVO.formato);
+  let r;
+  try { r = await rpc("d360_alumno_entrar", { p_token: token, p_codigo: pin, p_nuevo_intento: !!nuevo }); }
+  catch (e) { if (silencioso) return pantallaCodigo(); return mostrar(e.message); }
+  if (!r.ok) {
+    try { sessionStorage.removeItem(CLAVE); } catch (_) {}
+    if (silencioso) { pantallaCodigo(); }
+    return mostrar(r.motivo === "bloqueado" ? `Demasiados intentos. Espera ${r.minutos || 15} minutos.` : r.motivo === "pronto" && r.abre ? `Abre el ${fechaHora(r.abre)}.` : MOTIVO[r.motivo] || MOTIVO.codigo);
+  }
+  try { sessionStorage.setItem(CLAVE, JSON.stringify({ pin })); } catch (_) {}
+  if (r.resultado) return pantallaResultado(r.nombre, r.resultado);
+  sesion = r.sesion; preguntas = r.preguntas; respuestas = r.respuestas || {};
+  limite = r.limite ? new Date(r.limite).getTime() : null;
+  desfase = new Date(r.ahora).getTime() - Date.now();
+  pantallaPreguntas(r.nombre, r);
+}
+
+// ---------- Responder ----------
+const respondida = (p) => { const v = respuestas[p.id]; return v !== undefined && v !== null && String(v).trim() !== ""; };
+function pantallaPreguntas(nombre, r) {
+  const progreso = h("span.tenue");
+  const estadoGuardado = h("span.tenue", "");
+  const tarjetas = preguntas.map((p, i) => {
+    const t = h("section.pregunta" + (respondida(p) ? ".respondida" : ""), h("div.num", `Pregunta ${i + 1} · ${Number(p.puntos).toLocaleString("es-NI")} punto(s)`), h("div.enun", p.enunciado));
+    const cambiar = (v) => { if (v === "" || v == null) delete respuestas[p.id]; else respuestas[p.id] = v; t.classList.toggle("respondida", respondida(p)); contar(); programarGuardado(); };
+    if (p.tipo === "opcion") t.append(h("div.elegir", p.opciones.map((o, k) => h("label", h("input", { type: "radio", name: p.id, checked: respuestas[p.id] === k, onchange: () => cambiar(k) }), h("span", o)))));
+    else if (p.tipo === "vf") t.append(h("div.elegir.vf", [[true, "Verdadero"], [false, "Falso"]].map(([v, txt]) => h("label", h("input", { type: "radio", name: p.id, checked: respuestas[p.id] === v, onchange: () => cambiar(v) }), h("span", txt)))));
+    else if (p.tipo === "corta") t.append(h("input", { value: respuestas[p.id] ?? "", maxLength: 300, placeholder: "Tu respuesta", autocomplete: "off", "aria-label": `Respuesta a la pregunta ${i + 1}`, oninput: (e) => cambiar(e.target.value) }));
+    else t.append(h("textarea", { maxLength: 8000, placeholder: "Escribe tu respuesta…", "aria-label": `Respuesta a la pregunta ${i + 1}`, oninput: (e) => cambiar(e.target.value) }, respuestas[p.id] ?? ""));
+    return t;
+  });
+  function contar() { progreso.textContent = `${preguntas.filter(respondida).length} de ${preguntas.length} respondidas`; }
+  contar();
+  const reloj = limite ? h("div.reloj", { role: "timer", "aria-live": "off" }, h("span", "Tiempo restante"), h("span", { id: "restante" })) : null;
+  const btnEnviar = h("button.btn", { type: "button", onclick: () => confirmarEnvio() }, "Enviar respuestas");
+  cont.replaceChildren(reloj,
+    h("p", h("strong", `Hola, ${nombre}.`), " ", r.intentos > 1 ? `Intento ${r.intento} de ${r.intentos}. ` : "", "Tus respuestas se guardan solas mientras escribes."),
+    r.instrucciones ? h("div.aviso", { style: "white-space:pre-wrap" }, r.instrucciones) : null,
+    tarjetas,
+    h("div.barra-alumno", h("div", h("div", progreso, h("br"), estadoGuardado), btnEnviar)));
+  window.__estadoGuardado = estadoGuardado;
+  if (limite) { tick(); tReloj = setInterval(tick, 1000); }
+  addEventListener("beforeunload", avisoSalida);
+}
+const avisoSalida = (e) => { if (sesion && !enviando) { guardar(); e.preventDefault(); e.returnValue = ""; } };
+
+function tick() {
+  const resta = Math.max(0, Math.round((limite - (Date.now() + desfase)) / 1000));
+  const el = document.getElementById("restante"); if (!el) return;
+  el.textContent = `${Math.floor(resta / 60)}:${String(resta % 60).padStart(2, "0")}`;
+  el.parentElement.classList.toggle("poco", resta <= 120);
+  if (resta === 0) { clearInterval(tReloj); enviar(true); }
+}
+
+function programarGuardado() { clearTimeout(tGuardar); tGuardar = setTimeout(guardar, 1200); if (window.__estadoGuardado) window.__estadoGuardado.textContent = "Guardando…"; }
+async function guardar() {
+  if (!sesion || enviando) return;
+  try {
+    const r = await rpc("d360_alumno_guardar", { p_sesion: sesion, p_respuestas: respuestas });
+    if (window.__estadoGuardado) window.__estadoGuardado.textContent = r.ok ? "Guardado ✓" : r.motivo === "tiempo" ? "Se acabó el tiempo" : "No se pudo guardar";
+    if (!r.ok && r.motivo === "sesion") { mostrar("Tu sesión se abrió en otro dispositivo o ya se envió. Vuelve a entrar con tu código."); sesion = null; }
+  } catch (_) { if (window.__estadoGuardado) window.__estadoGuardado.textContent = "Sin conexión: se guardará al volver"; }
+}
+
+function confirmarEnvio() {
+  const faltan = preguntas.filter((p) => !respondida(p)).length;
+  modal("Enviar respuestas", h("p", faltan ? `Te faltan ${faltan} pregunta(s) por responder. Después de enviar ya no podrás cambiar tus respuestas.` : "Después de enviar ya no podrás cambiar tus respuestas."), [
+    { texto: "Seguir respondiendo", clase: "btn-sec" },
+    { texto: "Enviar", onclick: (c) => { c(); enviar(false); } },
+  ]);
+}
+
+async function enviar(porTiempo) {
+  if (enviando || !sesion) return;
+  enviando = true; clearTimeout(tGuardar); clearInterval(tReloj);
+  cont.querySelectorAll("input, textarea, button").forEach((x) => (x.disabled = true));
+  try {
+    const r = await rpc("d360_alumno_enviar", { p_sesion: sesion, p_respuestas: respuestas });
+    if (!r.ok) throw new Error("Tu sesión ya no es válida. Vuelve a entrar con tu código para ver si tu entrega quedó registrada.");
+    sesion = null; removeEventListener("beforeunload", avisoSalida);
+    pantallaResultado(null, r.resultado, porTiempo);
+  } catch (e) {
+    enviando = false; cont.querySelectorAll("input, textarea, button").forEach((x) => (x.disabled = false));
+    mostrar(e.message + " Tus respuestas están guardadas; intenta enviar de nuevo.");
+  }
+}
+
+function pantallaResultado(nombre, res, porTiempo) {
+  limpiar();
+  const quedan = res.quedan > 0 && info.estado === "abierta";
+  cont.replaceChildren(cabecera(), h("section.hoja.resultado",
+    h("h2", porTiempo ? "Se acabó el tiempo: tus respuestas se enviaron" : nombre ? `${nombre}, ya enviaste esta actividad` : "¡Respuestas enviadas!"),
+    res.mostrar_nota && res.puntaje != null && !res.pendiente
+      ? [h("div.nota", `${Number(res.puntaje).toLocaleString("es-NI")} / ${Number(res.puntaje_max).toLocaleString("es-NI")}`), h("p.suave", "Tu nota ya está registrada.")]
+      : res.pendiente ? h("p", "Tu profesor revisará algunas respuestas y luego verás tu nota en tus calificaciones.")
+      : h("p", "Tu profesor ya recibió tus respuestas."),
+    h("p.tenue", `Enviada: ${fechaHora(res.enviada)}`),
+    quedan ? h("button.btn", { onclick: () => entrar(true) }, `Hacer otro intento (te quedan ${res.quedan})`) : null));
+}
+
+inicio();
+</script>
+</body>
+</html>

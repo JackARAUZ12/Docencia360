@@ -8,7 +8,7 @@ import fs from "node:fs";
 const BASE = process.env.BASE || "http://localhost:8080";
 const OUT = process.env.OUT || "tests/ui/capturas";
 fs.mkdirSync(OUT, { recursive: true });
-import { preparar, registro, hoy, U, C, G1, G2, E, EV1, EV2, planes, sesion } from "./simulacion.mjs";
+import { preparar, registro, hoy, U, C, G1, G2, E, EV1, EV2, planes, sesion, A1, A2 } from "./simulacion.mjs";
 const errores = [];
 const ACAD = ["inicio", "estudiantes", `estudiantes/${E(1)}`, "cursos", "grupos", `grupos/${G1}`, "instructores", "asistencia", "calificaciones", "tareas", "calendario", "matriculas", "finanzas", "finanzas?vista=pagos", "certificados", "informes", "informes?tipo=matriculas", "informes?tipo=academico", "equipo", "cuenta"];
 const COL = ["inicio", "estructura", "estructura?vista=plan", "estructura?vista=docentes", "estructura?vista=aulas", "institucion", "estudiantes", `estudiantes/${E(1)}`, "matriculas", "docentes", "docentes?vista=asistencia", "horarios", "asistencia", "calificaciones", "calificaciones?vista=cuadro", "boletines", "boletines?vista=comentarios", "familias", "comunicados", "informes", "informes?tipo=asistencia", "informes?tipo=matricula", "informes?tipo=finanzas", "finanzas", "certificados", "equipo", "cuenta"];
@@ -20,8 +20,8 @@ const PANTALLAS = [
   ...["inicio", "finanzas", "matriculas", "informes"].map((r) => [`academia-finanzas-${r}`, `/app/academia.html#/${r}`, true, "academia", "finanzas"]),
   ...["inicio", "grupos", "asistencia", "calificaciones"].map((r) => [`academia-instructor-${r}`, `/app/academia.html#/${r}`, true, "academia", "docente"]),
   ["verificar", "/verificar.html?folio=K7M2QP-26-ABC123", false],
-  ["index", "/index.html", false], ["terminos", "/terminos.html", false], ["privacidad", "/privacidad.html", false], ["entrar", "/entrar.html", false], ["admin-entrar", "/admin/entrar.html", false], ["registro", "/registro.html?modalidad=profesor", false],
-  ...["inicio", "asistencia", "calificaciones", "estudiantes", `estudiantes/${E(1)}`, "grupos", `grupos/${G1}`, "tareas", "cursos", "calendario", "informes", `informes?estudiante=${E(1)}`, "cuenta", "mas"]
+  ["alumno", "/alumno.html?a=fisica2026", false], ["alumno-sin-enlace", "/alumno.html", false], ["index", "/index.html", false], ["terminos", "/terminos.html", false], ["privacidad", "/privacidad.html", false], ["entrar", "/entrar.html", false], ["admin-entrar", "/admin/entrar.html", false], ["registro", "/registro.html?modalidad=profesor", false],
+  ...["inicio", "asistencia", "calificaciones", "estudiantes", `estudiantes/${E(1)}`, "grupos", `grupos/${G1}`, "tareas", "cursos", "calendario", "informes", `informes?estudiante=${E(1)}`, "enlinea", `enlinea/${A1}`, `enlinea/${A2}`, "enlinea/accesos", "cuenta", "mas"]
     .map((r) => [`profesor-${r.replace(/[/?=]/g, "_").slice(0, 40)}`, `/app/profesor.html#/${r}`, true]),
   ...["resumen", "cuentas", "codigos", "planes", "promociones", "actividad", "parametros"].map((r) => [`admin-${r}`, `/admin/index.html#/${r}`, true]),
 ];
@@ -104,6 +104,63 @@ for (const [ancho, alto, tag] of VISTAS) {
   await adm.screenshot({ path: `${OUT}/admin-codigo-generado.png`, fullPage: false });
   const anchoA = await adm.evaluate(() => document.documentElement.scrollWidth);
   if (anchoA > 361) errores.push(`admin-codigos: desborde horizontal (${anchoA}px)`);
+  await ctxB.close();
+}
+// En línea: el estudiante entra con su código, responde y envía; el profesor comparte con QR y revisa
+{
+  const ctxB = await browser.newContext({ viewport: { width: 360, height: 740 } });
+  const page = await ctxB.newPage();
+  page.on("pageerror", (e) => errores.push(`alumno: ${e.message}`));
+  await preparar(page, false);
+  await page.goto(BASE + "/alumno.html?a=fisica2026", { waitUntil: "load" });
+  await page.waitForSelector("input.pin-alumno", { timeout: 8000 }).catch(() => errores.push("alumno: no pide el código"));
+  await page.locator("input.pin-alumno").fill("000000");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await page.waitForTimeout(400);
+  if (!/no es correcto/.test(await page.locator("#aviso").innerText())) errores.push("alumno: no avisa del código incorrecto");
+  await page.locator("input.pin-alumno").fill("123456");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await page.waitForSelector(".pregunta", { timeout: 8000 }).catch(() => errores.push("alumno: no muestra las preguntas"));
+  if ((await page.locator(".pregunta").count()) !== 4) errores.push("alumno: no muestra las 4 preguntas");
+  if (!(await page.locator("#restante").count())) errores.push("alumno: no muestra el reloj");
+  await page.locator(".pregunta").nth(0).locator("label").first().click();
+  await page.locator(".pregunta").nth(1).locator("label").first().click();
+  await page.locator(".pregunta").nth(2).locator("input").fill("10");
+  await page.locator(".pregunta").nth(3).locator("textarea").fill("Es la tendencia a seguir igual.");
+  if (!/4 de 4 respondidas/.test(await page.locator(".barra-alumno").innerText())) errores.push("alumno: no cuenta las respondidas");
+  await page.screenshot({ path: `${OUT}/alumno-respondiendo.png`, fullPage: true });
+  await page.getByRole("button", { name: "Enviar respuestas" }).click();
+  await page.locator("dialog").getByRole("button", { name: "Enviar", exact: true }).click();
+  await page.waitForTimeout(600);
+  const fin = await page.locator("body").innerText();
+  if (!/Respuestas enviadas/.test(fin)) errores.push("alumno: no confirma el envío: " + fin.slice(0, 200));
+  const env = registro.alumno || {};
+  if (Object.keys(env).length !== 4) errores.push("alumno: no envió las 4 respuestas: " + JSON.stringify(env));
+  await page.screenshot({ path: `${OUT}/alumno-enviado.png`, fullPage: true });
+  const ancho = await page.evaluate(() => document.documentElement.scrollWidth);
+  if (ancho > 361) errores.push(`alumno: desborde horizontal (${ancho}px)`);
+  // Profesor: compartir con QR, revisar, nueva pregunta
+  const prof = await ctxB.newPage();
+  prof.on("pageerror", (e) => errores.push(`enlinea: ${e.message}`));
+  await preparar(prof, true);
+  await prof.goto(BASE + `/app/profesor.html#/enlinea/${A1}`, { waitUntil: "load" });
+  await prof.waitForTimeout(800);
+  await prof.getByRole("button", { name: "Compartir (QR)" }).click();
+  await prof.waitForTimeout(800);
+  if (!(await prof.locator("dialog .qr-caja svg").count())) errores.push("enlinea: no dibuja el QR");
+  await prof.screenshot({ path: `${OUT}/enlinea-qr.png`, fullPage: false });
+  await prof.keyboard.press("Escape");
+  await prof.getByRole("button", { name: "Revisar" }).first().click();
+  await prof.waitForTimeout(500);
+  if (!(await prof.locator("dialog .puntos-dev input").count())) errores.push("enlinea: no permite poner puntos al desarrollo");
+  await prof.screenshot({ path: `${OUT}/enlinea-revisar.png`, fullPage: false });
+  await prof.keyboard.press("Escape");
+  await prof.goto(BASE + `/app/profesor.html#/enlinea/${A2}`, { waitUntil: "load" });
+  await prof.waitForTimeout(800);
+  await prof.getByRole("button", { name: /Agregar pregunta/ }).click();
+  await prof.waitForTimeout(300);
+  if (!(await prof.locator("dialog .opciones-preg .op").count())) errores.push("enlinea: el editor no muestra las opciones");
+  await prof.screenshot({ path: `${OUT}/enlinea-pregunta.png`, fullPage: false });
   await ctxB.close();
 }
 // Flujo de importación (profesor): elegir CSV, revisar, importar y ver el resultado

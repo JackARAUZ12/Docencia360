@@ -15,6 +15,7 @@ const RUTAS = [
   { r: "estudiantes", t: "Estudiantes", i: "estudiantes", m: () => import("../comun/estudiantes.js") },
   { r: "grupos", t: "Grupos y horarios", corto: "Grupos", i: "grupos", m: () => import("../comun/grupos.js") },
   { r: "tareas", t: "Tareas", i: "tareas", m: () => import("../comun/tareas.js") },
+  { r: "enlinea", t: "Exámenes en línea", corto: "En línea", i: "enlinea", m: () => import("../comun/enlinea.js") },
   { r: "cursos", t: "Asignaturas y cursos", corto: "Cursos", i: "cursos", m: () => import("./cursos.js") },
   { r: "calendario", t: "Calendario", i: "calendario", m: () => import("../comun/calendario.js") },
   { r: "informes", t: "Informes", i: "informes", m: () => import("./informes.js") },

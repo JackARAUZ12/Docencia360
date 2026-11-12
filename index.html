@@ -280,6 +280,7 @@ function lineas(p) {
     lim(p.max_estudiantes, "estudiantes"),
     p.modalidad === "profesor" ? (p.max_docentes ? `${p.max_docentes} asistente con su propio código` : null) : lim(p.max_docentes, NOMBRE_DOC[p.modalidad]),
     p.modalidad === "profesor" ? lim(p.max_grupos, "grupos") : null,
+    f.portal_estudiantes && p.max_estudiantes_portal ? `Exámenes y tareas en línea con nota automática · ${p.max_estudiantes_portal.toLocaleString("es-NI")} estudiantes con acceso` : null,
     f.finanzas ? "Matrículas, cobros y recibos" : null,
     f.reportes_pdf ? "Informes en PDF" : null,
     f.exportar ? "Exportar a Excel (CSV)" : null,

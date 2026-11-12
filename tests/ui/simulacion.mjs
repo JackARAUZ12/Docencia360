@@ -10,9 +10,9 @@ const est = [["Ana", "López"], ["Luis", "Pérez"], ["María José", "Gutiérrez
   id: E(i + 1), cuenta_id: C, nombres: n, apellidos: a, estado: i === 3 ? "retirado" : "activo", telefono: "8888-000" + i,
   contacto_nombre: "Responsable " + i, contacto_telefono: "7777-000" + i, creado: hoy + "T10:00:00Z", fecha_nacimiento: "2010-05-0" + (i + 1) }));
 const planes = [
-  { id: "prof_basico", modalidad: "profesor", nombre: "Básico", orden: 1, resumen: "Para empezar", precio_usd: 4, precio_nio: 149, max_estudiantes: 30, max_docentes: 0, max_grupos: 4, max_admins: 0, almacenamiento_mb: 200, funciones: { tareas: true, exportar: false, asistentes: false, calendario: true, reportes_pdf: false }, activo: true },
-  { id: "prof_profesional", modalidad: "profesor", nombre: "Profesional", orden: 2, resumen: "Varios grupos", precio_usd: 8, precio_nio: 295, max_estudiantes: 120, max_docentes: 0, max_grupos: 15, max_admins: 0, almacenamiento_mb: 1024, funciones: { tareas: true, exportar: true, asistentes: false, calendario: true, reportes_pdf: true }, activo: true },
-  { id: "prof_premium", modalidad: "profesor", nombre: "Premium", orden: 3, resumen: "Con asistente", precio_usd: 14, precio_nio: 515, max_estudiantes: 400, max_docentes: 1, max_grupos: null, max_admins: 0, almacenamiento_mb: 3072, funciones: { tareas: true, exportar: true, asistentes: true, calendario: true, reportes_pdf: true }, activo: true },
+  { id: "prof_basico", modalidad: "profesor", nombre: "Básico", orden: 1, resumen: "Para empezar", precio_usd: 4, precio_nio: 149, max_estudiantes: null, max_estudiantes_portal: 0, max_docentes: 0, max_grupos: 4, max_admins: 0, almacenamiento_mb: 200, funciones: { tareas: true, exportar: false, asistentes: false, calendario: true, reportes_pdf: false, portal_estudiantes: false }, activo: true },
+  { id: "prof_profesional", modalidad: "profesor", nombre: "Profesional", orden: 2, resumen: "Varios grupos", precio_usd: 8, precio_nio: 295, max_estudiantes: null, max_estudiantes_portal: 250, max_docentes: 0, max_grupos: 15, max_admins: 0, almacenamiento_mb: 1024, funciones: { tareas: true, exportar: true, asistentes: false, calendario: true, reportes_pdf: true, portal_estudiantes: true }, activo: true },
+  { id: "prof_premium", modalidad: "profesor", nombre: "Premium", orden: 3, resumen: "Con asistente", precio_usd: 14, precio_nio: 515, max_estudiantes: null, max_estudiantes_portal: 600, max_docentes: 1, max_grupos: null, max_admins: 0, almacenamiento_mb: 3072, funciones: { tareas: true, exportar: true, asistentes: true, calendario: true, reportes_pdf: true, portal_estudiantes: true }, activo: true },
   { id: "col_avanzado", modalidad: "colegio", nombre: "Avanzado", orden: 2, resumen: "Colegios", precio_usd: 99, precio_nio: 3625, max_estudiantes: 1200, max_docentes: 80, max_grupos: null, max_admins: 10, almacenamiento_mb: 51200, funciones: {}, activo: true },
 ];
 const grupos = [
@@ -20,12 +20,32 @@ const grupos = [
   { id: G2, cuenta_id: C, nombre: "Física sabatino", estado: "activo", asignatura_id: null, asignaturas: null, cursos: null },
 ];
 const dia = ((new Date().getDay() + 6) % 7) + 1;
+const A1 = "99999999-9999-9999-9999-999999999991", A2 = "99999999-9999-9999-9999-999999999992";
+const Q = (n) => `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa${n}`;
+const PREGUNTAS = [
+  { id: Q(1), actividad_id: A1, cuenta_id: C, orden: 0, tipo: "opcion", enunciado: "¿Cuál es la unidad de velocidad en el SI?", opciones: ["m/s", "km", "kg"], correcta: 0, puntos: 2 },
+  { id: Q(2), actividad_id: A1, cuenta_id: C, orden: 1, tipo: "vf", enunciado: "La aceleración es una magnitud vectorial.", opciones: [], correcta: true, puntos: 1 },
+  { id: Q(3), actividad_id: A1, cuenta_id: C, orden: 2, tipo: "corta", enunciado: "Si un auto recorre 100 m en 10 s, ¿cuál es su rapidez en m/s?", opciones: [], correcta: ["10"], puntos: 3 },
+  { id: Q(4), actividad_id: A1, cuenta_id: C, orden: 3, tipo: "desarrollo", enunciado: "Explica con tus palabras qué es la inercia.", opciones: [], correcta: null, puntos: 4 },
+];
+const sinCorrecta = PREGUNTAS.map(({ correcta, ...p }) => p);
 const F = {
   planes, config_global: [{ clave: "publico.dias_prueba", valor: 14 }, { clave: "publico.inactividad_minutos", valor: 60 }, { clave: "publico.tipo_cambio", valor: 36.62, descripcion: "Tipo de cambio", actualizado: hoy }, { clave: "publico.terminos_version", valor: "2026-11-05" }, { clave: "publico.registro_con_codigo", valor: true }],
   grupos, asignaturas: [{ id: "a1", cuenta_id: C, nombre: "Matemática", activo: true }], cursos: [{ id: "c1", cuenta_id: C, nombre: "Álgebra intensiva", mensualidad: 800, duracion_semanas: 8, modalidad_clase: "presencial", activo: true }],
   estudiantes: est,
   grupo_estudiantes: est.slice(0, 3).map((e) => ({ grupo_id: G1, estudiante_id: e.id, cuenta_id: C, estado: "activo", desde: "2026-02-01", estudiantes: e, grupos: { id: G1, nombre: "Matemática 9no", estado: "activo" } })),
   horarios: [{ id: "h1", dia, hora_inicio: "08:00:00", hora_fin: "09:30:00", grupo_id: G1, grupos: { nombre: "Matemática 9no", estado: "activo" } }],
+  actividades: [
+    { id: A1, cuenta_id: C, grupo_id: G1, evaluacion_id: EV1, tipo: "examen", titulo: "Examen de cinemática", instrucciones: "Lee con calma. Tienes 30 minutos.", abre: null, cierra: null, duracion_min: 30, intentos: 1, mostrar_nota: true, peso: 20, estado: "publicada", token: "fisica2026", creado: hoy + "T09:00:00Z" },
+    { id: A2, cuenta_id: C, grupo_id: G1, evaluacion_id: null, tipo: "tarea", titulo: "Tarea: movimiento rectilíneo", instrucciones: null, abre: null, cierra: null, duracion_min: null, intentos: 2, mostrar_nota: true, peso: 10, estado: "borrador", token: null, creado: hoy + "T10:00:00Z" },
+  ],
+  preguntas: PREGUNTAS,
+  entregas: [
+    { id: "en1", actividad_id: A1, estudiante_id: E(1), estado: "enviada", pendiente: true, intento: 1, enviada: hoy + "T09:40:00Z", puntaje: 6, puntaje_max: 10, comentario: null,
+      respuestas: { [Q(1)]: 0, [Q(2)]: false, [Q(3)]: "10", [Q(4)]: "Es cuando un cuerpo tiende a seguir en reposo o en movimiento." }, puntos_auto: { [Q(1)]: 2, [Q(2)]: 0, [Q(3)]: 3 }, puntos_manual: {} },
+    { id: "en2", actividad_id: A1, estudiante_id: E(2), estado: "enviada", pendiente: false, intento: 1, enviada: hoy + "T09:42:00Z", puntaje: 9, puntaje_max: 10, comentario: null,
+      respuestas: { [Q(1)]: 0, [Q(2)]: true, [Q(3)]: "10", [Q(4)]: "Resistencia al cambio de movimiento." }, puntos_auto: { [Q(1)]: 2, [Q(2)]: 1, [Q(3)]: 3 }, puntos_manual: { [Q(4)]: 3 } }],
+  estudiantes_acceso: [{ estudiante_id: E(1), cuenta_id: C, activo: true, ultimos: "42", ultimo_acceso: hoy + "T09:30:00Z" }, { estudiante_id: E(2), cuenta_id: C, activo: true, ultimos: "17", ultimo_acceso: null }],
   evaluaciones: [
     { id: EV1, cuenta_id: C, grupo_id: G1, titulo: "Examen parcial", tipo: "examen", fecha: hoy, peso: 60, puntaje_max: 100, grupos: { nombre: "Matemática 9no" } },
     { id: EV2, cuenta_id: C, grupo_id: G1, titulo: "Tarea de ecuaciones", tipo: "tarea", fecha: hoy, peso: 40, puntaje_max: 20, grupos: { nombre: "Matemática 9no" } }],
@@ -66,6 +86,16 @@ const FC = {
   asistencia_docentes: [],
 };
 const RPC = {
+  d360_actividad_resultados: [
+    { estudiante_id: E(1), nombre: "Ana López", acceso: true, intentos: 1, entrega: { id: "en1", estado: "enviada", puntaje: 6, puntaje_max: 10, pendiente: true, enviada: hoy + "T09:40:00Z", intento: 1 } },
+    { estudiante_id: E(2), nombre: "Luis Pérez", acceso: true, intentos: 1, entrega: { id: "en2", estado: "enviada", puntaje: 9, puntaje_max: 10, pendiente: false, enviada: hoy + "T09:42:00Z", intento: 1 } },
+    { estudiante_id: E(3), nombre: "María José Gutiérrez Castillo", acceso: false, intentos: 0, entrega: null },
+  ],
+  d360_actividad_publicar: "tarea20261",
+  d360_alumnos_activar: [{ estudiante_id: E(3), nombre: "María José Gutiérrez Castillo", codigo: "583920" }],
+  d360_alumno_ver: { ok: true, estado: "abierta", titulo: "Examen de cinemática", tipo: "examen", instrucciones: "Lee con calma. Tienes 30 minutos.", institucion: "Clases de la Prof. Ana", grupo: "Matemática 9no", abre: null, cierra: null, duracion_min: 30, intentos: 1, preguntas: 4, puntaje_max: 10 },
+  d360_alumno_guardar: { ok: true, guardado: hoy },
+  d360_alumno_enviar: { ok: true, resultado: { estado: "enviada", enviada: new Date().toISOString(), pendiente: true, puntaje: 6, puntaje_max: 10, mostrar_nota: true, intento: 1, intentos: 1, quedan: 0 } },
   d360_importar_estudiantes: { creados: 2, inscritos: 2, omitidos: [{ fila: 4, nombre: "Ya Existe", motivo: "Ya existe un estudiante con el mismo documento, código o nombre" }] },
   d360_aceptar_terminos: null,
   d360_mis_cuentas: [{ cuenta_id: C, nombre: "Clases de la Prof. Ana", modalidad: "profesor", codigo: "K7M2QP", rol: "propietario", miembro_id: "m1", miembro_nombre: "Ana Martínez",
@@ -104,6 +134,14 @@ export async function preparar(page, conSesion, modalidad = "profesor", rol = pr
     if (u.pathname.startsWith("/rest/v1/rpc/")) {
       const fn = u.pathname.split("/").pop();
       body = RPC[fn] ?? null;
+      if (fn === "d360_alumno_entrar") {
+        const d = JSON.parse(route.request().postData() || "{}");
+        body = d.p_codigo === "123456"
+          ? { ok: true, nombre: "Ana", sesion: "s".repeat(48), intento: 1, intentos: 1, limite: new Date(Date.now() + 30 * 60000).toISOString(), ahora: new Date().toISOString(),
+              respuestas: {}, preguntas: sinCorrecta, titulo: "Examen de cinemática", instrucciones: "Lee con calma. Tienes 30 minutos." }
+          : { ok: false, motivo: "codigo" };
+      }
+      if (fn === "d360_alumno_enviar") registro.alumno = JSON.parse(route.request().postData() || "{}").p_respuestas;
       if (fn === "d360_validar_codigo_registro") {
         const cod = (JSON.parse(route.request().postData() || "{}").p_codigo || "").toUpperCase();
         body = cod === "D360-PRUE-BA01" ? { ok: true, requiere: true, codigo: cod, modalidad: "profesor", plan: "prof_basico", meses_pagados: 1 } : { ok: false, motivo: "usado" };
@@ -136,4 +174,4 @@ export async function preparar(page, conSesion, modalidad = "profesor", rol = pr
 }
 
 
-export { hoy, U, C, G1, G2, E, EV1, EV2, planes, sesion };
+export { hoy, U, C, G1, G2, E, EV1, EV2, planes, sesion, A1, A2, Q };
