@@ -2,6 +2,8 @@
 import { sb, q } from "../core/sb.js";
 import { h, hoyISO, sumarDias, diaLargo, fechaCorta, hora, nota } from "../core/ui.js";
 
+const u_al_limite = (filas) => filas.some(([u, m]) => u >= m);
+
 export async function render(el, ctx) {
   const hoy = hoyISO();
   const diaSemana = ((new Date(hoy + "T00:00:00Z").getUTCDay() + 6) % 7) + 1; // 1 = lunes
@@ -54,8 +56,22 @@ export async function render(el, ctx) {
   const clasesHoy = horariosHoy.filter((x) => x.grupos?.estado === "activo");
   const sinLista = [...new Map(clasesHoy.filter((c) => !conLista.has(c.grupo_id)).map((c) => [c.grupo_id, c])).values()];
 
+  // Cerca del límite del plan (90 %): avisar antes de que el sistema lo bloquee
+  let avisoLimite = null;
+  if (ctx.esDueno && !ctx.cuenta.es_demo) {
+    const plan = await q(sb.from("planes").select("nombre,max_estudiantes,max_grupos").eq("id", ctx.cuenta.plan_id).maybeSingle()).catch(() => null);
+    const cerca = plan ? [[resumen.estudiantes_activos, plan.max_estudiantes, "estudiantes activos"], [resumen.grupos_activos, plan.max_grupos, "grupos activos"]]
+      .filter(([u, m]) => m != null && m > 0 && u >= Math.ceil(m * 0.9)) : [];
+    if (cerca.length) avisoLimite = h("div.aviso.ojo", { style: "margin-bottom:1rem" },
+      h("strong", "Tu plan está casi lleno. "),
+      cerca.map(([u, m, t]) => `Usas ${u} de ${m} ${t}. `),
+      u_al_limite(cerca) ? "No podrás agregar más hasta cambiar de plan. " : "",
+      h("a", { href: "#/cuenta" }, "Ver planes"));
+  }
+
   el.append(
     h("div.p-titulo", h("div", h("p.tenue", { style: "margin:0" }, diaLargo(hoy)), h("h1", `Hola, ${nombre}`))),
+    avisoLimite,
     hechos < pasos.length && !guiaOculta ? guia(false) : null,
     notifs.length ? h("div", notifs.map((n) => h("div.aviso.ojo", h("strong", n.titulo + ". "), n.cuerpo || "",
       n.enlace ? [" ", h("a", { href: n.enlace }, "Ver")] : null,

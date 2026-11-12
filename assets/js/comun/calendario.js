@@ -17,7 +17,10 @@ export async function render(el, ctx, { params }) {
     { name: "tipo", label: "Tipo", type: "select", options: TIPOS },
     { name: "hora_inicio", label: "Desde", type: "time" },
     { name: "hora_fin", label: "Hasta", type: "time" },
-    { name: "grupo_id", label: "Grupo", type: "select", placeholder: "Todos / ninguno", options: grupos.map((g) => [g.id, g.nombre]) },
+    // Un docente/asistente solo puede agendar fechas de sus grupos (lo exige el servidor)
+    ctx.esDocente
+      ? { name: "grupo_id", label: "Grupo", type: "select", required: true, options: grupos.map((g) => [g.id, g.nombre]) }
+      : { name: "grupo_id", label: "Grupo", type: "select", placeholder: "Todos / ninguno", options: grupos.map((g) => [g.id, g.nombre]) },
     { name: "descripcion", label: "Detalle", type: "textarea", full: true },
   ], ev, async (d, cerrar) => {
     if (d.hora_inicio && d.hora_fin && d.hora_fin <= d.hora_inicio) throw new Error("La hora de fin debe ser posterior al inicio.");
@@ -26,7 +29,10 @@ export async function render(el, ctx, { params }) {
     cerrar(); ctx.toast("Guardado"); pintar();
   });
 
-  el.append(ctx.titulo("Calendario", h("button.btn", { onclick: () => evento(null) }, h("span", { html: ICONOS.mas_add }), "Nueva fecha")), cont);
+  const puedeAgendar = !ctx.esDocente || grupos.length > 0;
+  // Un docente solo edita fechas de sus grupos; las generales son de la administración
+  const editable = (e) => !ctx.esDocente || (e.grupo_id && grupos.some((g) => g.id === e.grupo_id));
+  el.append(ctx.titulo("Calendario", puedeAgendar ? h("button.btn", { onclick: () => evento(null) }, h("span", { html: ICONOS.mas_add }), "Nueva fecha") : null), cont);
 
   async function pintar() {
     const ini = `${anio}-${String(mes).padStart(2, "0")}-01`;
@@ -81,10 +87,10 @@ export async function render(el, ctx, { params }) {
       x.evals.length ? [h("h3", "Evaluaciones y entregas"), h("ul.lista", x.evals.map((e) => h("li", h("div.crece", h("strong", e.titulo), h("div.tenue", `${e.tipo} · ${e.grupos?.nombre}`)))))] : null,
       x.eventos.length ? [h("h3", "Fechas importantes"), h("ul.lista", x.eventos.map((e) => h("li",
         h("div.crece", h("strong", e.titulo), h("div.tenue", [e.tipo, e.hora_inicio ? `${hora(e.hora_inicio)}${e.hora_fin ? "–" + hora(e.hora_fin) : ""}` : null].filter(Boolean).join(" · ")), e.descripcion ? h("div", e.descripcion) : null),
-        h("button.btn.btn-texto.btn-sm", { onclick: () => { m.cerrar(); evento(e); } }, "Editar"),
-        h("button.btn.btn-texto.btn-sm", { onclick: async () => { if (await confirmar("Eliminar", `¿Eliminar «${e.titulo}»?`, { boton: "Eliminar", peligro: true })) { await q(sb.from("eventos").delete().eq("id", e.id)); m.cerrar(); pintar(); } } }, "Borrar"))))] : null,
+        editable(e) ? h("button.btn.btn-texto.btn-sm", { onclick: () => { m.cerrar(); evento(e); } }, "Editar") : null,
+        !editable(e) ? null : h("button.btn.btn-texto.btn-sm", { onclick: async () => { if (await confirmar("Eliminar", `¿Eliminar «${e.titulo}»?`, { boton: "Eliminar", peligro: true })) { await q(sb.from("eventos").delete().eq("id", e.id)); m.cerrar(); pintar(); } } }, "Borrar"))))] : null,
       !x.clases.length && !x.evals.length && !x.eventos.length ? h("p.suave", "Nada programado este día.") : null);
-    const m = modal(fecha(iso), cuerpo, [{ texto: "Cerrar", clase: "btn-sec" }, { texto: "Agregar fecha", onclick: (c) => { c(); evento(null, iso); } }]);
+    const m = modal(fecha(iso), cuerpo, [{ texto: "Cerrar", clase: "btn-sec" }, puedeAgendar ? { texto: "Agregar fecha", onclick: (c) => { c(); evento(null, iso); } } : null].filter(Boolean));
   }
 
   pintar();

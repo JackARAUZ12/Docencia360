@@ -326,3 +326,17 @@ dialog.modal.ancho { width: min(96vw, 860px); }
 /* Cifras: el número se ajusta al ancho de su celda para que montos largos (C$5,000.00) no se encimen */
 .cifra { min-width: 0; container-type: inline-size; }
 .cifra b { font-size: clamp(1.2rem, 16cqi, 2rem); overflow-wrap: anywhere; }
+/* Mi cuenta: comparación de planes en tarjetas (se apilan en el teléfono) */
+.planes-cmp { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .75rem; margin-top: .75rem; }
+.plan-card { border: 1px solid var(--renglon-fuerte); border-radius: 12px; padding: .9rem 1rem; display: flex; flex-direction: column; gap: .4rem; background: var(--papel); }
+.plan-card.actual { border: 2px solid var(--tinta); }
+.plan-card .plan-cab { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.plan-card .plan-cab strong { font-family: var(--display); font-size: 1.1rem; }
+.plan-card .plan-precio b { font-family: var(--display); font-size: 1.35rem; font-weight: 800; }
+.plan-card p { margin: 0; font-size: .9rem; }
+.plan-card ul.incluye { list-style: none; margin: .25rem 0 .5rem; padding: 0; font-size: .9rem; flex: 1; }
+.plan-card ul.incluye li { padding-left: 1.4rem; position: relative; margin: .2rem 0; }
+.plan-card ul.incluye li.si::before { content: "✓"; position: absolute; left: 0; color: #1F7552; font-weight: 800; }
+.plan-card ul.incluye li.no { color: var(--texto-3); }
+.plan-card ul.incluye li.no::before { content: "—"; position: absolute; left: 0; }
+.plan-card .btn { width: 100%; justify-content: center; }

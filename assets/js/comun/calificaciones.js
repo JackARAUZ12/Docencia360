@@ -119,7 +119,7 @@ export async function render(el, ctx, { params }) {
           h("div", { style: "display:flex;gap:.5rem" },
             ctx.f("exportar") ? h("button.btn.btn-sec.btn-sm", { onclick: () => descargarCSV("calificaciones.csv",
               [["Estudiante", ...evals.map((e) => e.titulo), "Promedio"],
-               ...miembros.map((m) => [nombreCompleto(m.estudiantes), ...evals.map((e) => valor[`${e.id}|${m.estudiante_id}`] ?? ""), promedio[m.estudiante_id]?.promedio ?? ""])]) }, "Exportar") : null,
+               ...miembros.map((m) => [nombreCompleto(m.estudiantes), ...evals.map((e) => valor[`${e.id}|${m.estudiante_id}`] ?? ""), promedio[m.estudiante_id]?.promedio ?? ""])]) }, "Exportar") : ctx.mejora("Exportar a Excel"),
             guardar)),
         tablaNotas,
         h("p.tenue", { style: "margin-top:.75rem" }, "Escala 0–100. Aprobado desde 60. Toca el título de una evaluación para editarla o borrarla.")));

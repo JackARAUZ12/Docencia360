@@ -46,21 +46,21 @@ export async function render(el, ctx) {
     ctx.titulo("Asignaturas y cursos"),
     h("p.suave", "Una asignatura es lo que enseñas (Matemática). Un curso es cómo lo ofreces: duración, precio y modalidad. Puedes usar solo asignaturas si prefieres algo simple."),
     h("section.hoja",
-      h("div.hoja-titulo", h("h2", "Asignaturas"), h("button.btn.btn-sm", { onclick: () => editarAsig(null) }, h("span", { html: ICONOS.mas_add }), "Nueva")),
+      h("div.hoja-titulo", h("h2", "Asignaturas"), !ctx.esGestor ? null : h("button.btn.btn-sm", { onclick: () => editarAsig(null) }, h("span", { html: ICONOS.mas_add }), "Nueva")),
       tabla([
         { t: "Asignatura", v: (a) => [h("strong", a.nombre), a.descripcion ? h("div.tenue", a.descripcion) : null] },
         { t: "Grupos", v: (a) => usoAsig(a.id), clase: "derecha" },
         { t: "Estado", v: (a) => h("span.estado" + (a.activo ? ".ok" : ""), a.activo ? "Activa" : "Inactiva") },
-        { t: "", clase: "acciones", v: (a) => [h("button.btn.btn-texto.btn-sm", { onclick: () => editarAsig(a) }, "Editar"), h("button.btn.btn-texto.btn-sm", { onclick: () => borrar("asignaturas", a, usoAsig(a.id)) }, "Eliminar")] },
-      ], asig, { vacio: "Sin asignaturas. Crea la primera, por ejemplo «Matemática»." })),
+        { t: "", clase: "acciones", v: (a) => !ctx.esGestor ? null : [h("button.btn.btn-texto.btn-sm", { onclick: () => editarAsig(a) }, "Editar"), h("button.btn.btn-texto.btn-sm", { onclick: () => borrar("asignaturas", a, usoAsig(a.id)) }, "Eliminar")] },
+      ], asig, { vacio: ctx.esGestor ? "Sin asignaturas. Crea la primera, por ejemplo «Matemática»." : "Sin asignaturas." })),
     h("section.hoja",
-      h("div.hoja-titulo", h("h2", "Cursos"), h("button.btn.btn-sm", { onclick: () => editarCurso(null) }, h("span", { html: ICONOS.mas_add }), "Nuevo")),
+      h("div.hoja-titulo", h("h2", "Cursos"), !ctx.esGestor ? null : h("button.btn.btn-sm", { onclick: () => editarCurso(null) }, h("span", { html: ICONOS.mas_add }), "Nuevo")),
       tabla([
         { t: "Curso", v: (c) => [h("strong", c.nombre), h("div.tenue", [asig.find((a) => a.id === c.asignatura_id)?.nombre, c.modalidad_clase].filter(Boolean).join(" · "))] },
         { t: "Duración", v: (c) => [c.duracion_semanas ? `${c.duracion_semanas} sem.` : null, c.horas_totales ? `${c.horas_totales} h` : null].filter(Boolean).join(" · ") || "—" },
         { t: "Mensualidad", v: (c) => Number(c.mensualidad) ? dinero(c.mensualidad, ctx.cuenta.moneda) : "—", clase: "derecha" },
         { t: "Grupos", v: (c) => usoCurso(c.id), clase: "derecha" },
-        { t: "", clase: "acciones", v: (c) => [h("button.btn.btn-texto.btn-sm", { onclick: () => editarCurso(c) }, "Editar"), h("button.btn.btn-texto.btn-sm", { onclick: () => borrar("cursos", c, usoCurso(c.id)) }, "Eliminar")] },
+        { t: "", clase: "acciones", v: (c) => !ctx.esGestor ? null : [h("button.btn.btn-texto.btn-sm", { onclick: () => editarCurso(c) }, "Editar"), h("button.btn.btn-texto.btn-sm", { onclick: () => borrar("cursos", c, usoCurso(c.id)) }, "Eliminar")] },
       ], cursos, { vacio: "Sin cursos. Son opcionales." })),
   );
 }

@@ -18,6 +18,20 @@ export async function render(el, ctx) {
   const asistentes = miembros.filter((m) => m.rol === "docente");
   const uso = (usado, max, txt) => h("li", h("div.crece", h("div.titulo", txt)), h("span.num", max == null ? `${usado} · sin límite` : `${usado} de ${max}`),
     max != null && usado >= max ? h("span.estado.mal", "Al límite") : null);
+  const puedePagar = ["propietario", "director", "finanzas"].includes(ctx.rol);
+  // Qué incluye cada plan, en palabras simples (✓ incluido · — no incluido)
+  const lim = (v, txt) => (v == null ? `${txt} sin límite` : `Hasta ${v} ${txt.toLowerCase()}`);
+  const incluye = (p) => {
+    const f = p.funciones || {};
+    const filas = [[lim(p.max_estudiantes, "Estudiantes activos"), true], [lim(p.max_grupos, "Grupos"), true],
+      ["Asistencia, notas, tareas y calendario", true], ["Informes en PDF", !!f.reportes_pdf], ["Exportar listas a Excel (CSV)", !!f.exportar]];
+    if (ctx.modalidad === "profesor") filas.push([p.max_docentes ? `${p.max_docentes} asistente con su propio acceso` : "Asistente con su propio acceso", !!(f.asistentes && p.max_docentes)]);
+    else {
+      filas.push([lim(p.max_docentes, ctx.modalidad === "academia" ? "Instructores" : "Docentes"), p.max_docentes !== 0]);
+      filas.push(["Matrículas, cobros y recibos", !!f.finanzas], ["Certificados con folio", !!f.certificados], ["Portal de familias", !!f.portal_familias]);
+    }
+    return filas;
+  };
   const ESTADO = { pendiente: ["ojo", "Pendiente de activación"], prueba: ["info", "Prueba gratis"], activa: ["ok", "Activa"], vencida: ["ojo", "Vencida (en gracia)"], suspendida: ["mal", "Suspendida"], cancelada: ["mal", "Cancelada"] };
 
   const mostrarCodigo = (titulo, pin, nota) => modal(titulo, h("div",
@@ -40,18 +54,21 @@ export async function render(el, ctx) {
               ? (plan.max_docentes ? uso(asistentes.filter((a) => a.activo).length, plan.max_docentes, "Asistentes") : null)
               : [uso(asistentes.filter((a) => a.activo).length, plan.max_docentes, "Instructores"),
                  uso(miembros.filter((m) => m.activo && ["director", "subdirector", "coordinador", "administrativo", "finanzas"].includes(m.rol)).length, plan.max_admins, "Usuarios administrativos")])),
-        h("section.hoja",
+        puedePagar ? h("section.hoja",
           h("div.hoja-titulo", h("h2", "Renovar o cambiar de plan")),
-          h("p.suave", "El pago se hace por transferencia o depósito. Al confirmarlo, activamos tu plan el mismo día."),
-          tabla([
-            { t: "Plan", v: (p) => [h("strong", p.nombre), p.id === sus.plan_id ? h("span.estado.info", { style: "margin-left:.5rem" }, "Actual") : null, h("div.tenue", p.resumen)] },
-            { t: "Estudiantes", v: (p) => p.max_estudiantes ?? "Sin límite", clase: "derecha" },
-            { t: "Mensual", v: (p) => [dinero(p.precio_nio, "NIO"), h("div.tenue", dinero(p.precio_usd, "USD"))], clase: "derecha" },
-          ], planes),
-          whatsapp
-            ? h("a.btn", { style: "margin-top:1rem", target: "_blank", rel: "noopener",
-                href: `https://wa.me/${whatsapp}?text=${encodeURIComponent(`Hola, quiero renovar Docencia360. Cuenta: ${cuenta.nombre} (código ${cuenta.codigo}).`)}` }, "Solicitar por WhatsApp")
-            : h("p.tenue", { style: "margin-top:1rem" }, `Para renovar, comunícate con Docencia360 indicando el código de tu cuenta: ${cuenta.codigo}.`)),
+          h("p.suave", "Pagas por transferencia, depósito o en efectivo. Al confirmar el pago, tu plan queda activo el mismo día."),
+          h("div.planes-cmp", planes.map((p) => {
+            const actual = p.id === sus.plan_id;
+            const msj = `Hola, quiero ${actual ? "renovar" : "cambiarme a"} el plan ${p.nombre} de Docencia360. Cuenta: ${cuenta.nombre} (código ${cuenta.codigo}).`;
+            return h("article.plan-card" + (actual ? ".actual" : ""),
+              h("div.plan-cab", h("strong", p.nombre), actual ? h("span.estado.info", "Tu plan") : null),
+              h("div.plan-precio", h("b", dinero(p.precio_nio, "NIO").replace(/\.00$/, "")), h("span.tenue", ` al mes · ${dinero(p.precio_usd, "USD")}`)),
+              p.resumen ? h("p.tenue", p.resumen) : null,
+              h("ul.incluye", incluye(p).map(([txt, si]) => h("li" + (si ? ".si" : ".no"), txt))),
+              whatsapp ? h("a.btn" + (actual ? ".btn-sec" : ""), { target: "_blank", rel: "noopener", href: `https://wa.me/${whatsapp}?text=${encodeURIComponent(msj)}` },
+                actual ? "Renovar este plan" : "Quiero este plan") : null);
+          })),
+          whatsapp ? null : h("p.tenue", { style: "margin-top:1rem" }, `Para renovar o cambiar de plan, comunícate con Docencia360 indicando el código de tu cuenta: ${cuenta.codigo}.`)) : null,
         pagos.length ? h("section.hoja", h("h2", "Historial de pagos"), tabla([
           { t: "Fecha", v: (p) => fecha(p.creado) },
           { t: "Período", v: (p) => `${fecha(p.periodo_desde)} – ${fecha(p.periodo_hasta)}` },

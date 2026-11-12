@@ -54,3 +54,13 @@ do $$ begin
   if exists(select 1 from estudiantes where cuenta_id = (select (v->>'cuenta_id')::uuid from r where k='C')) then raise exception 'FALLO conserva acceso tras quitarlo del grupo'; end if;
   raise notice 'OK al quitarlo del grupo deja de ver a esos estudiantes';
 end $$;
+
+-- Mensajes de límite claros para el profesor
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000b1';
+do $$ begin
+  perform d360_crear_miembro((select (v->>'cuenta_id')::uuid from r where k='C'), 'Segundo asistente', 'docente');
+  raise exception 'FALLO crea un segundo asistente';
+exception when raise_exception then
+  if sqlerrm not like 'Llegaste al máximo de asistentes de tu plan Premium (1)%' then raise exception 'FALLO mensaje: %', sqlerrm; end if;
+  raise notice 'OK el límite de asistentes se explica con palabras claras';
+end $$;

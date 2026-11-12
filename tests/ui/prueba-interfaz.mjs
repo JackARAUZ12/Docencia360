@@ -41,7 +41,7 @@ const F = {
   eventos: [{ id: "ev1", cuenta_id: C, titulo: "Reunión de padres", fecha: hoy, tipo: "reunion", hora_inicio: "17:00:00" }],
   notificaciones: [], observaciones: [{ id: "o1", texto: "Muy participativa", tipo: "academica", creado: hoy + "T10:00:00Z" }],
   cuentas: [{ id: C, nombre: "Clases de la Prof. Ana", codigo: "K7M2QP", moneda: "NIO", telefono: "8888-1111", email: "ana@ejemplo.com", terminos_version: "2026-11-05" }],
-  suscripciones: [{ cuenta_id: C, plan_id: "prof_premium", estado: "prueba", vence: "2026-12-01", dias_gracia: 5 }],
+  suscripciones: [{ cuenta_id: C, plan_id: process.env.PLAN || "prof_premium", estado: process.env.ESTADO || "prueba", vence: "2026-12-01", dias_gracia: 5 }],
   pagos_suscripcion: [], miembros: [{ id: "m1", user_id: U, nombre: "Ana Martínez", rol: "propietario", activo: true, codigo_ultimos: "42" }, { id: "m2", nombre: "Asistente Uno", rol: "docente", activo: true }],
   grupo_docentes: [{ grupo_id: G1, miembro_id: "m2", miembros: { nombre: "Asistente Uno" }, grupos: { id: G1, nombre: "Matemática 9no", estado: "activo" } }], promociones: [],
   matriculas: [{ id: "mt1", cuenta_id: C, estudiante_id: E(1), curso_id: "c1", grupo_id: G1, fecha: hoy, estado: "activa", mensualidad: 800, descuento_pct: 10, beca: "Hermanos",
@@ -102,7 +102,7 @@ const RPC = {
 let registroEnviado = null;
 const sesion = { access_token: "x.y.z", refresh_token: "r", token_type: "bearer", expires_in: 360000, expires_at: Math.floor(Date.now() / 1000) + 360000, user: { id: U, email: "ana@ejemplo.com", aud: "authenticated", role: "authenticated" } };
 
-async function preparar(page, conSesion, modalidad = "profesor", rol = "propietario") {
+async function preparar(page, conSesion, modalidad = "profesor", rol = process.env.ROL || "propietario") {
   await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   await page.route(/supabase\.co/, async (route) => {
     const u = new URL(route.request().url());

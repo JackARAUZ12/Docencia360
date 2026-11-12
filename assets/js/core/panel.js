@@ -24,6 +24,10 @@ export async function crearContexto(modalidad) {
     ir: (hash) => { location.hash = hash; },
     toast,
     titulo: (texto, ...acciones) => h("div.p-titulo", h("h1", texto), h("div.acciones", acciones)),
+    // Función que el plan no incluye: el dueño ve que existe y cómo obtenerla; el resto no ve nada
+    mejora: (texto) => (rol === "propietario" && !ctx.cuenta.es_demo
+      ? h("a.btn.btn-texto.btn-sm.no-imprimir", { href: "#/cuenta", title: "Tu plan no incluye esta función. Toca para ver los planes." }, `${texto} · mejora tu plan`)
+      : null),
   });
 
   // Datos compartidos entre módulos, con caché que se invalida al guardar

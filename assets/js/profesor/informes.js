@@ -13,7 +13,7 @@ export async function render(el, ctx, { params }) {
   const pdf = ctx.f("reportes_pdf");
   const botonImprimir = pdf
     ? h("button.btn.btn-sec", { onclick: () => print() }, h("span", { html: ICONOS.imprimir }), "Imprimir / guardar PDF")
-    : h("a.btn.btn-sec", { href: "#/cuenta", title: "Disponible desde el plan Profesional" }, "PDF: plan Profesional");
+    : ctx.mejora("Imprimir / PDF");
 
   const selTipo = h("div.segmentos", { role: "group" }, [["grupo", "Por grupo"], ["estudiante", "Por estudiante"]].map(([v, t]) =>
     h("button", { type: "button", "aria-pressed": String(v === tipo), onclick: (e) => { tipo = v; selTipo.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget))); controles(); pintar(); } }, t)));
@@ -67,7 +67,7 @@ export async function render(el, ctx, { params }) {
         h("p.tenue", { style: "margin-top:1rem" }, "En riesgo: promedio menor a 60 o asistencia menor a 80%."),
         ctx.f("exportar") ? h("button.btn.btn-texto.btn-sm.no-imprimir", { onclick: () => descargarCSV(`informe-${g.nombre}.csv`,
           [["Estudiante", "Calificadas", "Asistencia %", "Ausencias", "Promedio"],
-           ...miembros.map((m) => [nombreCompleto(m.estudiantes), P[m.estudiante_id]?.calificadas ?? 0, A[m.estudiante_id]?.porcentaje ?? "", A[m.estudiante_id]?.ausentes ?? 0, P[m.estudiante_id]?.promedio ?? ""])]) }, "Descargar CSV") : null));
+           ...miembros.map((m) => [nombreCompleto(m.estudiantes), P[m.estudiante_id]?.calificadas ?? 0, A[m.estudiante_id]?.porcentaje ?? "", A[m.estudiante_id]?.ausentes ?? 0, P[m.estudiante_id]?.promedio ?? ""])]) }, "Descargar CSV") : ctx.mejora("Exportar a Excel")));
       return;
     }
 
