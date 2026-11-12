@@ -71,7 +71,8 @@ reset role;
 update miembros set user_id='00000000-0000-0000-0000-00000000000c' where id=(select (v->>'miembro_id')::uuid from r where k='D');
 set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 do $$ begin
-  if (select count(*) from estudiantes) <> 1 then raise exception 'FALLO docente no ve alumnos'; end if;
+  if (select count(*) from estudiantes) <> 0 then raise exception 'FALLO un docente sin grupos ve alumnos'; end if;
+  raise notice 'OK un docente sin grupos asignados no ve expedientes';
   begin
     insert into evaluaciones(cuenta_id,grupo_id,titulo) select cb,(select id from grupos where nombre='7mo A'),'Examen' from ids;
     raise exception 'FALLO: docente sin asignar creó evaluación';

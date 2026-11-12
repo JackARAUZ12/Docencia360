@@ -17,9 +17,9 @@ const est = [["Ana", "López"], ["Luis", "Pérez"], ["María José", "Gutiérrez
   id: E(i + 1), cuenta_id: C, nombres: n, apellidos: a, estado: i === 3 ? "retirado" : "activo", telefono: "8888-000" + i,
   contacto_nombre: "Responsable " + i, contacto_telefono: "7777-000" + i, creado: hoy + "T10:00:00Z", fecha_nacimiento: "2010-05-0" + (i + 1) }));
 const planes = [
-  { id: "prof_basico", modalidad: "profesor", nombre: "Básico", orden: 1, resumen: "Para empezar", precio_usd: 4, precio_nio: 149, max_estudiantes: 30, max_docentes: 0, max_grupos: 4, max_admins: 0, almacenamiento_mb: 200, funciones: { tareas: true }, activo: true },
-  { id: "prof_profesional", modalidad: "profesor", nombre: "Profesional", orden: 2, resumen: "Varios grupos", precio_usd: 8, precio_nio: 295, max_estudiantes: 120, max_docentes: 0, max_grupos: 15, max_admins: 0, almacenamiento_mb: 1024, funciones: { tareas: true, reportes_pdf: true, exportar: true }, activo: true },
-  { id: "prof_premium", modalidad: "profesor", nombre: "Premium", orden: 3, resumen: "Con asistente", precio_usd: 14, precio_nio: 515, max_estudiantes: 400, max_docentes: 1, max_grupos: null, max_admins: 0, almacenamiento_mb: 3072, funciones: { tareas: true, reportes_pdf: true, exportar: true, asistentes: true }, activo: true },
+  { id: "prof_basico", modalidad: "profesor", nombre: "Básico", orden: 1, resumen: "Para empezar", precio_usd: 4, precio_nio: 149, max_estudiantes: 30, max_docentes: 0, max_grupos: 4, max_admins: 0, almacenamiento_mb: 200, funciones: { tareas: true, exportar: false, asistentes: false, calendario: true, reportes_pdf: false }, activo: true },
+  { id: "prof_profesional", modalidad: "profesor", nombre: "Profesional", orden: 2, resumen: "Varios grupos", precio_usd: 8, precio_nio: 295, max_estudiantes: 120, max_docentes: 0, max_grupos: 15, max_admins: 0, almacenamiento_mb: 1024, funciones: { tareas: true, exportar: true, asistentes: false, calendario: true, reportes_pdf: true }, activo: true },
+  { id: "prof_premium", modalidad: "profesor", nombre: "Premium", orden: 3, resumen: "Con asistente", precio_usd: 14, precio_nio: 515, max_estudiantes: 400, max_docentes: 1, max_grupos: null, max_admins: 0, almacenamiento_mb: 3072, funciones: { tareas: true, exportar: true, asistentes: true, calendario: true, reportes_pdf: true }, activo: true },
   { id: "col_avanzado", modalidad: "colegio", nombre: "Avanzado", orden: 2, resumen: "Colegios", precio_usd: 99, precio_nio: 3625, max_estudiantes: 1200, max_docentes: 80, max_grupos: null, max_admins: 10, almacenamiento_mb: 51200, funciones: {}, activo: true },
 ];
 const grupos = [
@@ -115,9 +115,13 @@ async function preparar(page, conSesion, modalidad = "profesor", rol = "propieta
         const cod = (JSON.parse(route.request().postData() || "{}").p_codigo || "").toUpperCase();
         body = cod === "D360-PRUE-BA01" ? { ok: true, requiere: true, codigo: cod, modalidad: "profesor", plan: "prof_basico", meses_pagados: 1 } : { ok: false, motivo: "usado" };
       }
-      if (fn === "d360_mis_cuentas") body = body.map((c) => ({ ...c, modalidad, rol, nombre: modalidad === "academia" ? "Academia Horizonte" : c.nombre,
+      // PLAN=prof_basico|prof_profesional|prof_premium y ESTADO=activa|pendiente|vencida simulan el plan del profesor
+      const planSim = modalidad === "profesor" && process.env.PLAN ? planes.find((p) => p.id === process.env.PLAN) : null;
+      if (fn === "d360_mis_cuentas") body = body.map((c) => ({ ...c, modalidad, rol,
+        ...(planSim ? { plan_id: planSim.id, plan_nombre: planSim.nombre } : {}),
+        ...(process.env.ESTADO ? { estado: process.env.ESTADO, operativa: !["pendiente", "vencida", "suspendida"].includes(process.env.ESTADO) } : {}), nombre: modalidad === "academia" ? "Academia Horizonte" : c.nombre,
         plan_nombre: modalidad === "academia" ? "Profesional" : c.plan_nombre,
-        funciones: modalidad === "colegio" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, portal_familias: true, boletines: true, sedes: true } : modalidad === "academia" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, tareas: true } : c.funciones }));
+        funciones: modalidad === "colegio" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, portal_familias: true, boletines: true, sedes: true } : modalidad === "academia" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, tareas: true } : (planSim?.funciones ?? c.funciones) }));
     }
     else if (u.pathname.startsWith("/rest/v1/")) {
       const t = u.pathname.split("/").pop();
