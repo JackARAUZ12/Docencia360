@@ -151,3 +151,6 @@
 @media (min-width: 960px) { .franja-panel { padding: 1rem 2rem 0; } }
 /* «Función · mejora tu plan» siempre al final de las acciones del título (no antes de lo principal) */
 .p-titulo .acciones > a.btn-texto { order: 9; }
+/* Lista de asistentes en Mi cuenta: en pantallas angostas las acciones bajan a su propia línea */
+.miembros-lista li { flex-wrap: wrap; }
+.miembros-lista li .crece { min-width: 160px; }

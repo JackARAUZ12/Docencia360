@@ -104,7 +104,7 @@ export async function render(el, ctx) {
               setTimeout(ctx.recargar, 400);
             }) }, "Agregar") : null),
           ctx.f("asistentes")
-            ? (asistentes.length ? h("ul.lista", asistentes.map((a) => h("li",
+            ? (asistentes.length ? h("ul.lista.miembros-lista", asistentes.map((a) => h("li",
                 h("div.crece", h("div.titulo", a.nombre), h("div.tenue", a.ultimo_acceso ? `Último acceso: ${fecha(a.ultimo_acceso)}` : "Aún no entra")),
                 h("span.estado" + (a.activo ? ".ok" : ".mal"), a.activo ? "Activo" : "Desactivado"),
                 h("button.btn.btn-texto.btn-sm", { onclick: async () => {
