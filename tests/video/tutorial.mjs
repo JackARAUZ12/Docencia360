@@ -103,7 +103,9 @@ async function ir(url) {
   await pg.goto(BASE + url, { waitUntil: "domcontentloaded" });
   await pausa(1300); await capa(); await pg.mouse.move(mx, my);
 }
-async function hash(h) { await pg.evaluate((x) => { location.hash = x; }, h); await pausa(1400); await capa(); }
+async function hash(h) {   // al cambiar de pantalla se borra el subtítulo anterior
+  await pg.evaluate((x) => { window.__tut?.sub("", ""); location.hash = x; }, h); await pausa(1400); await capa();
+}
 async function bajar(px, ms = 1400) { await pg.mouse.wheel(0, px); await pausa(ms); }
 
 const navegador = await chromium.launch();
