@@ -38,7 +38,7 @@ const CAPA = () => {
     #tut-tarjeta small{font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#F2C94C;font-size:18px}
     #tut-tarjeta h1{font-size:64px;line-height:1.02;margin:.35em 0 .3em;color:#F4F6F2;font-weight:800;letter-spacing:-.02em;max-width:17ch}
     #tut-tarjeta p{font-size:24px;max-width:46ch;opacity:.85;margin:0}
-    #tut-tarjeta .marca{position:absolute;left:110px;top:60px;font-weight:800;font-size:26px}#tut-tarjeta .marca span{color:#F2C94C}`;
+    #tut-tarjeta .tut-marca{position:absolute;left:110px;top:60px;font-weight:800;font-size:26px;color:#F4F6F2}#tut-tarjeta .tut-marca span{color:#F2C94C}`;
   document.documentElement.append(css);
   const cur = Object.assign(document.createElement("div"), { id: "tut-cursor" });
   const sub = Object.assign(document.createElement("div"), { id: "tut-sub" });
@@ -51,7 +51,7 @@ const CAPA = () => {
     sub(et, txt) { sub.innerHTML = ""; if (!txt) return sub.classList.remove("ver"); const b = document.createElement("b"); b.textContent = et; sub.append(b, txt); sub.classList.add("ver"); },
     tarjeta(et, tit, txt) {
       if (!tit) return tar.classList.remove("ver");
-      tar.innerHTML = '<div class="marca">Docencia<span>360</span></div>';
+      tar.innerHTML = '<div class="tut-marca">Docencia<span>360</span></div>';
       const s = document.createElement("small"); s.textContent = et; const h = document.createElement("h1"); h.textContent = tit; const p = document.createElement("p"); p.textContent = txt || "";
       tar.append(s, h, p); tar.classList.add("ver");
     },
@@ -113,6 +113,7 @@ async function nuevaPagina(conSesion) {
   if (pg) { const v = pg.video(); await pg.close(); videos.push(await v.path()); }
   pg = await ctx.newPage();
   pg.on("pageerror", (e) => avisos.push("error en página: " + e.message));
+  if (!conSesion) await pg.addInitScript(() => { try { if (!sessionStorage.getItem("tut-limpio")) { localStorage.clear(); sessionStorage.setItem("tut-limpio", "1"); } } catch (_) {} });
   await preparar(pg, conSesion, "profesor", "propietario");
   // El código que genera el administrador en el video es el mismo que luego usa el cliente
   await pg.route(/rpc\/d360_admin_crear_codigo/, (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "k3", codigo: "D360-PRUE-BA01" }) }));
@@ -143,6 +144,7 @@ await clic("dialog [name=plan]", { espera: 600 });
 await escribir("dialog [name=nota]", "Prof. Marta Ruiz · pagó por transferencia");
 await clic(pg.locator("dialog").getByRole("button", { name: "Generar código" }), { espera: 1500 });
 await nota("Listo: copias el código o lo envías directo por WhatsApp. El enlace ya lleva el código escrito.", 4800);
+await clic(pg.locator("dialog").last().getByRole("button", { name: "Cerrar" }), { espera: 800 });
 
 // 3) El cliente crea su cuenta con el código (sin sesión)
 await tarjeta("Parte 2", "Tu cliente crea su cuenta", "Con el código entra de inmediato: sin correos de confirmación y con su plan ya activo.");
@@ -200,10 +202,14 @@ await clic(".pie-fijo .btn", { espera: 1500 });
 
 await hash("#/calificaciones");
 await sub("Calificaciones", "Creas evaluaciones (exámenes, tareas, proyectos) con su peso. El promedio de cada estudiante se calcula solo.", 4000);
-const inp = pg.locator(".calificar input, table input").first();
-if (await inp.count()) { await escribir(inp, "88"); await pg.keyboard.press("Enter"); await pg.keyboard.type("74", { delay: 60 }); await pausa(600); }
-await nota("Escribes la nota y Enter pasa a la siguiente. En el teléfono se califica por evaluación, en una lista cómoda.", 4000);
-await clic(".pie-fijo .btn", { espera: 1400 });
+await clic(pg.getByRole("button", { name: "Por evaluación" }), { espera: 1200 });
+const inp = pg.locator(".calificar input");
+if (await inp.count()) {
+  await escribir(inp.nth(0), "88"); await pg.keyboard.press("Enter"); await pausa(300);
+  await pg.keyboard.type("74", { delay: 70 }); await pausa(500);
+}
+await nota("Eliges la evaluación y pones las notas en una lista: Enter pasa al siguiente estudiante. También tienes el cuadro completo.", 4200);
+await clic(".pie-fijo .btn", { espera: 1600 });
 
 await hash("#/tareas");
 await sub("Tareas", "Asignas tareas a un grupo con fecha de entrega y marcas quién entregó.", 3800);
