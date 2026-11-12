@@ -66,6 +66,7 @@ const MOTIVO = {
   pronto: "Esta actividad todavía no abre.",
   cuenta_inactiva: "La cuenta de tu profesor no está activa en este momento.",
   no_existe: "Este enlace no corresponde a ninguna actividad. Revisa que esté completo.",
+  no_disponible: "Las actividades en línea de tu profesor no están disponibles en este momento. Avísale.",
 };
 
 let info, sesion = null, preguntas = [], respuestas = {}, pin = "", limite = null, desfase = 0, tGuardar, tReloj, enviando = false;
@@ -93,6 +94,7 @@ function cabecera() {
 
 function pantallaCodigo() {
   limpiar();
+  if (info.estado === "no_disponible") { cont.replaceChildren(cabecera(), h("div.aviso.ojo", MOTIVO.no_disponible)); return; }
   const estado = { pronto: info.abre ? `Abre el ${fechaHora(info.abre)}.` : MOTIVO.pronto, cerrada: MOTIVO.cerrada, cuenta_inactiva: MOTIVO.cuenta_inactiva }[info.estado];
   const inp = h("input.pin-alumno", { inputmode: "numeric", autocomplete: "off", maxLength: 6, placeholder: "••••••", "aria-label": "Tu código personal de 6 números" });
   inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, "").slice(0, 6); });

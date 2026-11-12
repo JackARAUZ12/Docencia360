@@ -102,6 +102,17 @@ for (const [ancho, alto, tag] of VISTAS) {
   const dlg = await adm.locator("dialog").last().innerText().catch(() => "");
   if (!/D360-NUEV-O001/.test(dlg) || !/Enviar por WhatsApp/.test(dlg) || !/Ya pagado/.test(dlg)) errores.push("admin-codigos: no muestra el código generado para compartir: " + dlg.slice(0, 200));
   await adm.screenshot({ path: `${OUT}/admin-codigo-generado.png`, fullPage: false });
+  // Cambiar plan con vista previa
+  await adm.keyboard.press("Escape");
+  await adm.goto(BASE + "/admin/index.html#/cuentas", { waitUntil: "load" });
+  await adm.waitForTimeout(600);
+  await adm.getByRole("button", { name: "Gestionar" }).first().click();
+  await adm.locator("dialog").getByRole("button", { name: "Cambiar plan" }).click();
+  await adm.locator("dialog select").last().selectOption("prof_basico");
+  await adm.waitForTimeout(500);
+  const prev = await adm.locator("dialog").last().innerText();
+  if (!/Baja de plan/.test(prev) || !/Pierde/.test(prev) || !/pausados/.test(prev)) errores.push("admin-plan: la vista previa no explica el cambio: " + prev.slice(0, 200));
+  await adm.screenshot({ path: `${OUT}/admin-cambiar-plan.png`, fullPage: false });
   const anchoA = await adm.evaluate(() => document.documentElement.scrollWidth);
   if (anchoA > 361) errores.push(`admin-codigos: desborde horizontal (${anchoA}px)`);
   await ctxB.close();

@@ -98,6 +98,7 @@ function gestionar(c, ps) {
     h("p.tenue", `${c.estudiantes} estudiantes activos · ${c.miembros} usuarios · creada ${fecha(c.creado)}`));
   const m = modal("Gestionar cuenta", cuerpo, [
     { texto: "Registrar pago", onclick: (cerrar) => { cerrar(); registrarPago(c, delPlan); } },
+    { texto: "Cambiar plan", clase: "btn-sec", onclick: (cerrar) => { cerrar(); cambiarPlan(c, delPlan); } },
     { texto: "Editar suscripción", clase: "btn-sec", onclick: (cerrar) => { cerrar(); editarSus(c, delPlan); } },
     c.estado === "suspendida" || c.estado === "cancelada"
       ? { texto: "Reactivar", clase: "btn-sec", onclick: async (cerrar) => {
@@ -108,6 +109,40 @@ function gestionar(c, ps) {
           await actualizarSus(c.cuenta_id, { estado: "suspendida" }); cerrar(); } },
   ]);
   return m;
+}
+
+// Subir o bajar de plan con vista previa: qué gana, qué pierde y qué pasará (nunca se borran datos)
+function cambiarPlan(c, delPlan) {
+  const sel = h("select", { "aria-label": "Nuevo plan" }, delPlan.filter((p) => p.activo !== false).map((p) =>
+    h("option", { value: p.id, selected: p.id === c.plan_id }, `${p.nombre} · ${dinero(p.precio_nio, "NIO")} / ${dinero(p.precio_usd, "USD")} al mes`)));
+  const vista = h("div", h("p.tenue", "Elige el nuevo plan para ver qué cambia."));
+  let impacto = null;
+  const pintar = async () => {
+    impacto = null;
+    if (sel.value === c.plan_id) { vista.replaceChildren(h("p.tenue", "Es el plan actual.")); return; }
+    vista.replaceChildren(h("p.tenue", "Revisando…"));
+    try {
+      const i = await q(sb.rpc("d360_admin_impacto_plan", { p_cuenta: c.cuenta_id, p_plan: sel.value }));
+      impacto = i;
+      vista.replaceChildren(
+        h("p", h("span.estado" + (i.direccion === "sube" ? ".ok" : i.direccion === "baja" ? ".ojo" : ""), i.direccion === "sube" ? "Sube de plan" : i.direccion === "baja" ? "Baja de plan" : "Mismo nivel"),
+          ` ${i.actual} → ${i.nuevo} · ${dinero(i.precio_actual, "NIO")} → ${dinero(i.precio_nuevo, "NIO")} al mes`),
+        i.gana.length ? h("div", h("strong", "Gana: "), i.gana.join(", ")) : null,
+        i.pierde.length ? h("div", h("strong", "Pierde: "), i.pierde.join(", ")) : null,
+        i.avisos.length ? h("ul", { style: "margin:.75rem 0 0 1.1rem;padding:0" }, i.avisos.map((t) => h("li", t))) : h("p.tenue", { style: "margin-top:.75rem" }, "Sin efectos sobre sus datos actuales."),
+        h("p.tenue", { style: "margin-top:.75rem" }, "El cambio se aplica de inmediato. No se borra ningún dato del cliente. La fecha de vencimiento no cambia: usa «Registrar pago» si además pagó."));
+    } catch (e) { vista.replaceChildren(h("div.aviso.mal", e.message)); }
+  };
+  sel.addEventListener("change", pintar);
+  modal(`Cambiar plan · ${c.nombre}`, h("div", h("label.campo", h("span", "Nuevo plan"), sel), vista), [
+    { texto: "Cancelar", clase: "btn-sec" },
+    { texto: "Cambiar plan", onclick: async (cerrar) => {
+      if (!impacto) { toast("Elige un plan distinto al actual.", "mal"); return false; }
+      try { await q(sb.rpc("d360_admin_cambiar_plan", { p_cuenta: c.cuenta_id, p_plan: sel.value })); cerrar(); toast(`Plan cambiado a ${impacto.nuevo}`); navegar(); }
+      catch (e) { toast(e.message, "mal"); }
+      return false;
+    } },
+  ]);
 }
 
 async function actualizarSus(cuentaId, cambios) {

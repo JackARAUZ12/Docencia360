@@ -107,6 +107,7 @@ function sinPlan(el, ctx) {
         h("li", "Compartes un QR o un enlace; cada estudiante entra con su propio código."),
         h("li", "El sistema califica solo y la nota llega a Calificaciones.")),
       h("p", "Incluido en los planes ", h("strong", "Profesional"), " (hasta 250 estudiantes con acceso) y ", h("strong", "Premium"), " (hasta 600)."),
+      h("p.tenue", "Si antes tenías esta función, tus exámenes, notas y los códigos de tus estudiantes siguen guardados y vuelven a funcionar al cambiar de plan."),
       ctx.esDueno ? h("a.btn", { href: "#/cuenta" }, "Ver planes") : h("p.tenue", "Pídele a quien administra la cuenta que active esta función.")));
 }
 

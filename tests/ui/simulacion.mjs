@@ -86,6 +86,10 @@ const FC = {
   asistencia_docentes: [],
 };
 const RPC = {
+  d360_admin_impacto_plan: { actual: "Premium", nuevo: "Básico", direccion: "baja", precio_actual: 515, precio_nuevo: 149, gana: [], pierde: ["Exámenes y tareas en línea", "Asistente con su propio acceso", "Informes en PDF"],
+    avisos: ["2 estudiantes con acceso en línea ya no podrán entrar a exámenes. Sus códigos, exámenes y notas se guardan y vuelven a funcionar si sube de plan.", "1 asistente(s) quedarán pausados (sin borrar nada) y se reactivan solos si vuelve a subir de plan."],
+    uso: {}, limites: {} },
+  d360_admin_cambiar_plan: {},
   d360_actividad_resultados: [
     { estudiante_id: E(1), nombre: "Ana López", acceso: true, intentos: 1, entrega: { id: "en1", estado: "enviada", puntaje: 6, puntaje_max: 10, pendiente: true, enviada: hoy + "T09:40:00Z", intento: 1 } },
     { estudiante_id: E(2), nombre: "Luis Pérez", acceso: true, intentos: 1, entrega: { id: "en2", estado: "enviada", puntaje: 9, puntaje_max: 10, pendiente: false, enviada: hoy + "T09:42:00Z", intento: 1 } },

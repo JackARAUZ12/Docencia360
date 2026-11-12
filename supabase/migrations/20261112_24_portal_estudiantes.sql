@@ -415,7 +415,8 @@ begin
   select * into c from cuentas where id = a.cuenta_id;
   select * into g from grupos where id = a.grupo_id;
   select count(*) into n from preguntas where actividad_id = a.id;
-  v_estado := case when a.estado = 'cerrada' or (a.cierra is not null and a.cierra < now()) then 'cerrada'
+  v_estado := case when not d360_tiene_funcion(a.cuenta_id, 'portal_estudiantes') then 'no_disponible'
+                   when a.estado = 'cerrada' or (a.cierra is not null and a.cierra < now()) then 'cerrada'
                    when a.abre is not null and a.abre > now() then 'pronto'
                    when not d360_cuenta_operativa(a.cuenta_id) then 'cuenta_inactiva'
                    else 'abierta' end;
@@ -450,6 +451,7 @@ begin
   select * into a from actividades where token = lower(trim(coalesce(p_token, ''))) and estado <> 'borrador';
   if a.id is null then return jsonb_build_object('ok', false, 'motivo', 'no_existe'); end if;
   if v_pin !~ '^\d{6}$' then return jsonb_build_object('ok', false, 'motivo', 'formato'); end if;
+  if not d360_tiene_funcion(a.cuenta_id, 'portal_estudiantes') then return jsonb_build_object('ok', false, 'motivo', 'no_disponible'); end if;
   v_clave := 'alumno|' || v_ip || '|' || a.id; v_glob := 'alumno|*|' || a.id;
   v_min := coalesce(_d360_registro_bloqueado(v_clave), _d360_registro_bloqueado(v_glob));
   if v_min is not null then return jsonb_build_object('ok', false, 'motivo', 'bloqueado', 'minutos', v_min); end if;
