@@ -149,3 +149,5 @@
 /* Franja de demostración / aviso del plan: mismo ancho y centrado que el contenido */
 .franja-panel { max-width: 1100px; width: 100%; margin-inline: auto; padding: 1rem 16px 0; }
 @media (min-width: 960px) { .franja-panel { padding: 1rem 2rem 0; } }
+/* «Función · mejora tu plan» siempre al final de las acciones del título (no antes de lo principal) */
+.p-titulo .acciones > a.btn-texto { order: 9; }

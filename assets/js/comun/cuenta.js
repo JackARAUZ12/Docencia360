@@ -47,7 +47,7 @@ export async function render(el, ctx) {
           h("div.hoja-titulo", h("h2", `Plan ${plan.nombre || ""}`), h("span.estado." + ESTADO[sus.estado][0], ESTADO[sus.estado][1])),
           h("p", ctx.cuenta.es_demo ? "Cuenta de demostración: tiene todas las funciones del plan." : sus.estado === "pendiente" ? "Tu cuenta se activa al registrar el pago del primer mes." : sus.estado === "prueba" ? `Tu prueba termina el ${fecha(sus.vence)}.` : `Pagado hasta el ${fecha(sus.vence)}.`,
             sus.dias_gracia ? h("span.tenue", ` Tienes ${sus.dias_gracia} días de gracia después del vencimiento.`) : null),
-          h("ul.lista",
+          !puedePagar ? null : h("ul.lista",   // el uso del plan es información del dueño
             uso(resumen.estudiantes_activos, plan.max_estudiantes, "Estudiantes activos"),
             uso(resumen.grupos_activos, plan.max_grupos, "Grupos activos"),
             ctx.modalidad === "profesor"

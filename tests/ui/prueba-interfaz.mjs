@@ -120,7 +120,7 @@ async function preparar(page, conSesion, modalidad = "profesor", rol = process.e
       if (fn === "d360_mis_cuentas") body = body.map((c) => ({ ...c, modalidad, rol,
         ...(planSim ? { plan_id: planSim.id, plan_nombre: planSim.nombre } : {}),
         ...(process.env.ESTADO ? { estado: process.env.ESTADO, operativa: !["pendiente", "vencida", "suspendida"].includes(process.env.ESTADO) } : {}), nombre: modalidad === "academia" ? "Academia Horizonte" : c.nombre,
-        plan_nombre: modalidad === "academia" ? "Profesional" : c.plan_nombre,
+        plan_nombre: modalidad === "academia" ? "Profesional" : (planSim?.nombre ?? c.plan_nombre),
         funciones: modalidad === "colegio" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, portal_familias: true, boletines: true, sedes: true } : modalidad === "academia" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, tareas: true } : (planSim?.funciones ?? c.funciones) }));
     }
     else if (u.pathname.startsWith("/rest/v1/")) {

@@ -40,4 +40,4 @@ begin
       using errcode = 'P0001', hint = 'limite_plan';
   end if;
 end $$;
-revoke all on function public.d360_validar_limite(uuid, text) from public, anon;
+-- (create or replace conserva los permisos que ya tenía la función)
