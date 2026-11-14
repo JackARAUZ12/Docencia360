@@ -22,7 +22,7 @@ Toda la gestión educativa, en un solo lugar. SaaS para **profesores independien
 ## Tecnología
 
 - **Frontend:** HTML + JavaScript (módulos ES) sin paso de compilación. Se publica en cualquier hosting estático (GitHub Pages, Netlify, dominio propio).
-- **Backend:** Supabase (Postgres + Auth + Edge Functions), proyecto `mxsfdvpxsbakvsometpk`.
+- **Backend:** Supabase (Postgres + Auth + Edge Functions), proyecto `srhgoiovnnpaiddfehah` (organización Agenda360).
 - **Librería:** `@supabase/supabase-js` 2.45.4, incluida en `assets/vendor/` (sin CDN).
 - **Tipografía:** Atkinson Hyperlegible (Google Fonts).
 
