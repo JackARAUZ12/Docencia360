@@ -17,9 +17,7 @@ export async function render(el, ctx, { params }) {
   // Cambios sin guardar: se avisa antes de cambiar de grupo, fecha o pantalla
   let sucio = false;
   const seguro = async () => !sucio || await confirmar("Cambios sin guardar", "Marcaste asistencia que aún no guardas. Si continúas, se perderá.", { boton: "Continuar sin guardar", peligro: true });
-  const alSalir = (e) => { if (sucio) { e.preventDefault(); e.returnValue = ""; } };
-  addEventListener("beforeunload", alSalir);
-  addEventListener("hashchange", () => removeEventListener("beforeunload", alSalir), { once: true });
+  ctx.pendiente = { hay: () => sucio, confirmar: seguro };
   const irGrupo = (id) => { grupoId = id; selGrupo.value = id; history.replaceState(null, "", `#/asistencia?grupo=${id}`); pintar(); };
 
   const selGrupo = h("select", { "aria-label": "Grupo", onchange: async (e) => {

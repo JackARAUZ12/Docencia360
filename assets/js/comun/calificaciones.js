@@ -36,6 +36,7 @@ export async function render(el, ctx, { params }) {
   let vista = params.get("vista") || (evalSel || ESTRECHA() ? "evaluacion" : "cuadro");
   let pendientes = 0;
   const seguro = async () => !pendientes || await confirmar("Notas sin guardar", `Tienes ${pendientes} nota(s) sin guardar. Si continúas, se perderán.`, { boton: "Continuar sin guardar", peligro: true });
+  ctx.pendiente = { hay: () => pendientes > 0, confirmar: seguro };
   const segs = h("div.segmentos", { role: "group", "aria-label": "Vista" }, [["evaluacion", "Por evaluación"], ["cuadro", "Cuadro completo"]].map(([v, t]) =>
     h("button", { type: "button", "aria-pressed": String(v === vista), onclick: async (e) => {
       const b = e.currentTarget; if (v === vista || !(await seguro())) return;

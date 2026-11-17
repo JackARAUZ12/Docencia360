@@ -10,7 +10,7 @@ export async function render(el, ctx) {
   const diaSemana = ((new Date(hoy + "T00:00:00Z").getUTCDay() + 6) % 7) + 1; // 1 = lunes
   const [resumen, grupos, horariosHoy, evals, eventos, notifs, recientes] = await Promise.all([
     q(sb.rpc("d360_resumen_panel", { p_cuenta: ctx.id })),
-    ctx.datos.grupos(),
+    ctx.gruposVisibles(),
     q(sb.from("horarios").select("hora_inicio,hora_fin,grupo_id,grupos(nombre,estado)").eq("cuenta_id", ctx.id).eq("dia", diaSemana).order("hora_inicio")),
     q(sb.from("evaluaciones").select("id,titulo,tipo,fecha,grupo_id,grupos(nombre)").eq("cuenta_id", ctx.id).gte("fecha", hoy).lte("fecha", sumarDias(hoy, 7)).order("fecha")),
     q(sb.from("eventos").select("*").eq("cuenta_id", ctx.id).gte("fecha", hoy).lte("fecha", sumarDias(hoy, 7)).order("fecha")),
@@ -39,7 +39,10 @@ export async function render(el, ctx) {
   // Grupos con clase hoy sin asistencia registrada
   const { data: asisHoy } = await sb.from("asistencias").select("grupo_id").eq("cuenta_id", ctx.id).eq("fecha", hoy);
   const conLista = new Set((asisHoy || []).map((a) => a.grupo_id));
-  const clasesHoy = horariosHoy.filter((x) => x.grupos?.estado === "activo");
+  // El asistente solo ve las clases, evaluaciones y promedios de sus grupos
+  const visibles = new Set(grupos.map((g) => g.id));
+  const clasesHoy = horariosHoy.filter((x) => x.grupos?.estado === "activo" && visibles.has(x.grupo_id));
+  if (ctx.esDocente) evals.splice(0, evals.length, ...evals.filter((e) => visibles.has(e.grupo_id)));
   const sinLista = [...new Map(clasesHoy.filter((c) => !conLista.has(c.grupo_id)).map((c) => [c.grupo_id, c])).values()];
 
   // Clase de ahora (o la próxima de hoy): un toque para pasar lista

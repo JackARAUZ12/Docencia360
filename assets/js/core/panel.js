@@ -119,7 +119,15 @@ export function textoPlan(c) {
  */
 export function iniciarEnrutador(ctx, main, rutas, { inicio = "inicio", especiales = {}, alNavegar, ayudas = {} } = {}) {
   let n = 0;
-  async function navegar() {
+  // Cambios sin guardar: un módulo registra ctx.pendiente = { hay: () => bool, confirmar: async () => bool }
+  // y el enrutador pregunta antes de salir de la pantalla (menú, botones o cerrar la pestaña).
+  addEventListener("beforeunload", (e) => { if (ctx.pendiente?.hay()) { e.preventDefault(); e.returnValue = ""; } });
+  async function navegar(ev) {
+    if (ev?.oldURL && ctx.pendiente?.hay()) {
+      const anterior = new URL(ev.oldURL).hash;
+      if (!(await ctx.pendiente.confirmar())) { history.replaceState(null, "", anterior); return; }
+    }
+    ctx.pendiente = null;
     const [path, query] = location.hash.replace(/^#\/?/, "").split("?");
     const [r0, ...partes] = path.split("/");
     const r = r0 || inicio;
@@ -149,7 +157,7 @@ export function iniciarEnrutador(ctx, main, rutas, { inicio = "inicio", especial
       if (actual === n) errorEn(main, e, navegar);
     }
   }
-  ctx.recargar = navegar;
+  ctx.recargar = () => navegar();
   addEventListener("hashchange", navegar);
   navegar();
   return navegar;

@@ -45,6 +45,16 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
     ok(await page.locator('a[href="#/tareas"]').first().isVisible(), `${tag} ${plan} Notas lleva a «Tareas y entregas»`);
     await page.goto(BASE + "/app/profesor.html#/grupos"); await page.waitForTimeout(900);
     ok(await page.locator('a[href="#/cursos"]').first().isVisible(), `${tag} ${plan} Grupos lleva a «Asignaturas y cursos»`);
+    // Cambios sin guardar: al salir por el menú se pregunta y se puede quedar
+    await page.goto(BASE + "/app/profesor.html#/asistencia"); await page.waitForTimeout(1000);
+    await page.locator("button", { hasText: /^A$/ }).first().click();
+    await page.evaluate(() => { location.hash = "#/inicio"; }); await page.waitForTimeout(500);
+    ok(await page.getByText("Cambios sin guardar").isVisible(), `${tag} ${plan} avisa antes de salir con asistencia sin guardar`);
+    await page.getByRole("button", { name: "Cancelar" }).click(); await page.waitForTimeout(400);
+    ok(page.url().includes("#/asistencia") && await page.locator(".pie-fijo").count() > 0, `${tag} ${plan} «Cancelar» deja la lista como estaba`);
+    await page.evaluate(() => { location.hash = "#/inicio"; }); await page.waitForTimeout(400);
+    await page.getByRole("button", { name: "Continuar sin guardar" }).click(); await page.waitForTimeout(900);
+    ok(page.url().includes("#/inicio"), `${tag} ${plan} «Continuar sin guardar» sí sale`);
     // Pegar una lista
     await page.goto(BASE + "/app/profesor.html#/estudiantes"); await page.waitForTimeout(900);
     await page.getByRole("button", { name: "Pegar una lista" }).click(); await page.waitForTimeout(300);
