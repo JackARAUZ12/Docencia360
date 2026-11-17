@@ -46,7 +46,7 @@ export async function render(el, ctx) {
   ];
 
   el.append(
-    ctx.titulo("Tareas", h("button.btn", { onclick: nueva }, h("span", { html: ICONOS.mas_add }), "Nueva tarea")),
+    ctx.titulo("Tareas", h("a.btn.btn-sec", { href: "#/calificaciones" }, "Ver todas las notas"), h("button.btn", { onclick: nueva }, h("span", { html: ICONOS.mas_add }), "Nueva tarea")),
     h("section.hoja", h("h2", "Por entregar"), tabla(cols, proximas, { vacio: "No hay tareas abiertas." })),
     h("section.hoja", h("h2", "Anteriores"), tabla(cols, pasadas, { vacio: "Sin tareas anteriores." })),
   );

@@ -42,6 +42,24 @@ export async function render(el, ctx) {
   const clasesHoy = horariosHoy.filter((x) => x.grupos?.estado === "activo");
   const sinLista = [...new Map(clasesHoy.filter((c) => !conLista.has(c.grupo_id)).map((c) => [c.grupo_id, c])).values()];
 
+  // Clase de ahora (o la próxima de hoy): un toque para pasar lista
+  const ahoraMin = (() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); })();
+  const aMin = (t) => { const [hh, mm] = String(t).split(":").map(Number); return hh * 60 + mm; };
+  const enCurso = clasesHoy.find((c) => aMin(c.hora_inicio) - 15 <= ahoraMin && ahoraMin <= aMin(c.hora_fin));
+  const proxima = enCurso ? null : clasesHoy.find((c) => aMin(c.hora_inicio) > ahoraMin);
+  const claseAhora = (c, ahora) => {
+    const tomada = conLista.has(c.grupo_id);
+    return h("section.clase-ahora" + (ahora ? ".en-curso" : ""), { "aria-label": ahora ? "Clase de ahora" : "Próxima clase" },
+      h("div.crece",
+        h("p.etiqueta", ahora ? "Clase de ahora" : "Tu próxima clase de hoy"),
+        h("p.nombre", c.grupos.nombre),
+        h("p.tenue", `${hora(c.hora_inicio)} – ${hora(c.hora_fin)}`)),
+      h("div.acciones",
+        tomada ? h("span.estado.ok", "✓ Lista tomada") : null,
+        h("a.btn" + (tomada ? ".btn-sec" : ""), { href: `#/asistencia?grupo=${c.grupo_id}` }, tomada ? "Ver o corregir la lista" : "Pasar lista"),
+        h("a.btn.btn-sec", { href: `#/calificaciones?grupo=${c.grupo_id}` }, "Poner notas")));
+  };
+
   // Cerca del límite del plan (90 %): avisar antes de que el sistema lo bloquee
   let avisoLimite = null;
   if (ctx.esDueno && !ctx.cuenta.es_demo) {
@@ -58,6 +76,7 @@ export async function render(el, ctx) {
   el.append(
     h("div.p-titulo", h("div", h("p.tenue", { style: "margin:0" }, diaLargo(hoy)), h("h1", `Hola, ${nombre}`))),
     avisoLimite,
+    enCurso ? claseAhora(enCurso, true) : proxima ? claseAhora(proxima, false) : null,
     notifs.length ? h("div", notifs.map((n) => h("div.aviso.ojo", h("strong", n.titulo + ". "), n.cuerpo || "",
       n.enlace ? [" ", h("a", { href: n.enlace }, "Ver")] : null,
       " ", h("button.btn.btn-texto.btn-sm", { onclick: async (e) => { await sb.from("notificaciones").update({ leida: true }).eq("id", n.id); e.target.closest(".aviso").remove(); } }, "Entendido")))) : null,

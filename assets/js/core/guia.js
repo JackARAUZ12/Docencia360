@@ -19,7 +19,7 @@ export async function cargarGuia(ctx) {
     const ay = { ...(ctx.guia.ayudas || {}), ...(cambios.ayudas || {}) };
     ctx.guia = { ...ctx.guia, ...cambios, ayudas: ay };
     if (ctx.cuenta.es_demo) { try { sessionStorage.setItem(CLAVE_DEMO(ctx), JSON.stringify(ctx.guia)); } catch (_) {} return; }
-    try { ctx.guia = (await q(sb.rpc("d360_guia_guardar", { p_cuenta: ctx.id, p_cambios: cambios }))) || ctx.guia; } catch (_) { /* se reintenta la próxima vez */ }
+    try { const srv = await q(sb.rpc("d360_guia_guardar", { p_cuenta: ctx.id, p_cambios: cambios })); if (srv && typeof srv === "object") ctx.guia = { ...ctx.guia, ...srv, ayudas: { ...(ctx.guia.ayudas || {}), ...(srv.ayudas || {}) } }; } catch (_) { /* se reintenta la próxima vez */ }
   };
   return ctx.guia;
 }

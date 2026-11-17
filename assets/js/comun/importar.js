@@ -247,3 +247,55 @@ async function opcionesDestino(ctx, grupoInicial = null) {
   const sel = h("select", h("option", { value: "" }, "Ninguno por ahora"), grupos.map((g) => h("option", { value: g.id, selected: g.id === grupoInicial }, g.nombre)));
   return { nodo: h("label.campo", h("span", "Inscribir en el grupo"), sel), valor: () => ({ grupo: sel.value }) };
 }
+
+/**
+ * Pegar una lista de nombres (uno por línea), sin archivo. Muestra cómo se
+ * separará cada nombre antes de guardar. El servidor valida, omite duplicados
+ * y respeta el límite del plan (d360_importar_estudiantes).
+ */
+export async function pegarLista(ctx, alTerminar, { grupo = null } = {}) {
+  const grupos = !grupo && ctx.modalidad === "profesor" ? (await ctx.datos.grupos()).filter((g) => g.estado === "activo") : [];
+  const selGrupo = grupos.length ? h("select", { "aria-label": "Grupo" }, h("option", { value: "" }, "Ninguno por ahora"), grupos.map((g) => h("option", { value: g.id }, g.nombre))) : null;
+  const area = h("textarea", { rows: 8, placeholder: "Ana Sofía López\nCarlos Pérez Ruiz\nGutiérrez Castillo, María José", "aria-describedby": "pegar-ayuda" });
+  const vista = h("div.pegar-vista", { "aria-live": "polite" });
+  const err = h("div.aviso.mal.oculto", { role: "alert" });
+  const filas = () => area.value.split(/\r?\n/).map((s) => s.trim()).filter((s) => s.length > 1).slice(0, 500)
+    .map((l, i) => ({ ...separarNombre(l), _fila: i + 1 }));
+  const pintar = () => {
+    const f = filas();
+    if (!f.length) { vista.replaceChildren(h("p.tenue", "Escribe o pega los nombres para ver cómo quedarán.")); return; }
+    vista.replaceChildren(
+      h("p", h("strong", `${f.length} estudiante${f.length === 1 ? "" : "s"}`), " · así se guardarán:"),
+      tabla([{ t: "Nombres", v: (x) => x.nombres || h("span.tenue", "—") }, { t: "Apellidos", v: (x) => x.apellidos || h("span.tenue", "—") }], f.slice(0, 5)),
+      f.length > 5 ? h("p.tenue", `…y ${f.length - 5} más.`) : null);
+  };
+  area.addEventListener("input", pintar);
+  pintar();
+  const m = modal("Pegar una lista de estudiantes", h("div.pegar-lista",
+    h("p.suave", "Escribe o pega un nombre por línea, por ejemplo desde WhatsApp o Word."),
+    h("label.campo", h("span", "Nombres"), area),
+    h("p.tenue", { id: "pegar-ayuda" }, "Formato «Nombres Apellidos». Si un nombre queda mal separado abajo, escríbelo con coma: «Apellidos, Nombres». No se repiten estudiantes que ya existen."),
+    selGrupo ? h("label.campo", h("span", "Agregarlos al grupo"), selGrupo) : null,
+    vista, err), [
+    { texto: "Cancelar", clase: "btn-sec" },
+    { texto: "Guardar estudiantes", onclick: async (cerrar) => {
+      const f = filas();
+      if (!f.length) { area.focus(); return false; }
+      err.classList.add("oculto");
+      try {
+        const r = await q(sb.rpc("d360_importar_estudiantes", { p_cuenta: ctx.id, p_filas: f, p_grupo: grupo || selGrupo?.value || null }));
+        ctx.datos.invalidar();
+        cerrar();
+        const om = r.omitidos || [];
+        ctx.toast(`${r.creados} estudiante${r.creados === 1 ? "" : "s"} guardado${r.creados === 1 ? "" : "s"}` + (om.length ? ` · ${om.length} omitido${om.length === 1 ? "" : "s"}` : ""));
+        if (om.length) modal("Algunos nombres no se guardaron", h("div",
+          h("p.suave", "Estos ya existían o tenían un problema:"),
+          h("ul", om.slice(0, 30).map((o) => h("li", `${o.nombre || "Fila " + o.fila}: ${o.motivo}`)))), [{ texto: "Entendido" }]);
+        alTerminar?.(r);
+      } catch (e) { err.textContent = mensajeError(e); err.classList.remove("oculto"); }
+      return false;
+    } },
+  ]);
+  m.el.classList.add("ancho");
+  area.focus();
+}

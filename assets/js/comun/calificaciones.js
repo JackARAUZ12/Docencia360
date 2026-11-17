@@ -45,7 +45,8 @@ export async function render(el, ctx, { params }) {
     grupoId = e.target.value; evalSel = null; history.replaceState(null, "", `#/calificaciones?grupo=${grupoId}`); pintar(); } },
     grupos.map((g) => h("option", { value: g.id, selected: g.id === grupoId }, g.nombre + (g.estado !== "activo" ? ` (${g.estado})` : ""))));
   const cuerpo = h("div");
-  el.append(ctx.titulo("Calificaciones",
+  el.append(ctx.titulo(ctx.modalidad === "profesor" ? "Notas y tareas" : "Calificaciones",
+    ctx.f("tareas") ? h("a.btn.btn-sec", { href: "#/tareas" }, h("span", { html: ICONOS.tareas }), "Tareas y entregas") : null,
     h("button.btn", { onclick: () => editarEvaluacion(ctx, grupoId, null, irA) }, h("span", { html: ICONOS.mas_add }), "Nueva evaluación")),
     h("div.barra-filtros", sel, segs), cuerpo);
   if (params.get("nuevo") === "1") { history.replaceState(null, "", `#/calificaciones?grupo=${grupoId}`); setTimeout(() => editarEvaluacion(ctx, grupoId, null, irA), 50); }

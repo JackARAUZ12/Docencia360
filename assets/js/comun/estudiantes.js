@@ -68,6 +68,8 @@ export async function render(el, ctx, { partes }) {
         [["Nombres", "Apellidos", "Estado", "Teléfono", "Correo", "Responsable", "Tel. responsable", "Grupos"],
          ...est.map((e) => [e.nombres, e.apellidos, e.estado, e.telefono, e.email, e.contacto_nombre, e.contacto_telefono, (gruposDe[e.id] || []).join("; ")])]) },
         h("span", { html: ICONOS.descargar }), "Exportar") : ctx.mejora("Exportar a Excel"),
+      ctx.esGestor ? h("button.btn.btn-sec", { onclick: async () => (await import("./importar.js")).pegarLista(ctx, ctx.recargar) },
+        h("span", { html: ICONOS.mas_add }), "Pegar una lista") : null,
       ctx.esGestor ? h("button.btn.btn-sec", { onclick: async () => (await import("./importar.js")).abrirImportacion(ctx, ctx.recargar) },
         h("span", { html: ICONOS.subir }), "Importar Excel") : null,
       ctx.esGestor ? h("button.btn", { onclick: () => editarEstudiante(ctx, null, ctx.recargar) }, h("span", { html: ICONOS.mas_add }), "Nuevo estudiante") : null),

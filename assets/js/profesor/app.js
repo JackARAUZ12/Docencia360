@@ -13,7 +13,7 @@ await cargarGuia(ctx);
 // Consejos de una línea: aparecen la primera vez que se entra a cada sección
 const AYUDAS = {
   asistencia: "elige el grupo y toca P (presente), A (ausente), T (tarde) o J (justificado). «Todos presentes» marca a todo el grupo de una vez.",
-  calificaciones: "crea una evaluación (examen, tarea, proyecto) con su peso y escribe las notas. El promedio de cada estudiante se calcula solo.",
+  calificaciones: "crea una evaluación (examen, tarea, proyecto) con su peso y escribe las notas. El promedio se calcula solo. Las tareas con fecha de entrega están en «Tareas y entregas».",
   estudiantes: "toca un nombre para ver su asistencia, sus notas y tus observaciones.",
   grupos: "un grupo es una clase. Dentro de cada grupo agregas a los estudiantes y el horario.",
   tareas: "aquí ves las tareas con fecha de entrega: quién entregó y quién falta.",
@@ -22,30 +22,40 @@ const AYUDAS = {
   informes: "resumen de asistencia y promedios por grupo, listo para imprimir o compartir.",
 };
 
+// Menú en tres bloques. «Tareas» vive dentro de Notas y «Asignaturas y
+// cursos» dentro de Grupos: siguen existiendo, pero no ocupan el menú.
 const RUTAS = [
-  { r: "inicio", t: "Inicio", i: "inicio", m: () => import("./inicio.js") },
-  { r: "asistencia", t: "Asistencia", i: "asistencia", m: () => import("../comun/asistencia.js") },
-  { r: "calificaciones", t: "Calificaciones", corto: "Notas", i: "notas", m: () => import("../comun/calificaciones.js") },
-  { r: "estudiantes", t: "Estudiantes", i: "estudiantes", m: () => import("../comun/estudiantes.js") },
-  { r: "grupos", t: "Grupos y horarios", corto: "Grupos", i: "grupos", m: () => import("../comun/grupos.js") },
-  { r: "tareas", t: "Tareas", i: "tareas", m: () => import("../comun/tareas.js") },
-  { r: "enlinea", t: "Exámenes en línea", corto: "En línea", i: "enlinea", m: () => import("../comun/enlinea.js") },
-  { r: "cursos", t: "Asignaturas y cursos", corto: "Cursos", i: "cursos", m: () => import("./cursos.js") },
-  { r: "calendario", t: "Calendario", i: "calendario", m: () => import("../comun/calendario.js") },
-  { r: "informes", t: "Informes", i: "informes", m: () => import("./informes.js") },
-  { r: "cuenta", t: "Mi cuenta", i: "cuenta", m: () => import("../comun/cuenta.js") },
+  { r: "inicio", t: "Inicio", i: "inicio", b: "dia", m: () => import("./inicio.js") },
+  { r: "asistencia", t: "Asistencia", i: "asistencia", b: "dia", m: () => import("../comun/asistencia.js") },
+  { r: "calificaciones", t: "Notas y tareas", corto: "Notas", i: "notas", b: "dia", m: () => import("../comun/calificaciones.js") },
+  { r: "enlinea", t: "Exámenes en línea", corto: "En línea", i: "enlinea", b: "dia", plan: "portal_estudiantes", m: () => import("../comun/enlinea.js") },
+  { r: "grupos", t: "Grupos y horarios", corto: "Grupos", i: "grupos", b: "clases", m: () => import("../comun/grupos.js") },
+  { r: "estudiantes", t: "Estudiantes", i: "estudiantes", b: "clases", m: () => import("../comun/estudiantes.js") },
+  { r: "calendario", t: "Calendario", i: "calendario", b: "clases", m: () => import("../comun/calendario.js") },
+  { r: "informes", t: "Informes", i: "informes", b: "mas", m: () => import("./informes.js") },
+  { r: "cuenta", t: "Mi cuenta", i: "cuenta", b: "mas", m: () => import("../comun/cuenta.js") },
+  { r: "tareas", t: "Tareas", i: "tareas", padre: "calificaciones", m: () => import("../comun/tareas.js") },
+  { r: "cursos", t: "Asignaturas y cursos", i: "cursos", padre: "grupos", m: () => import("./cursos.js") },
 ];
+const BLOQUES = [["dia", "Día a día"], ["clases", "Mis clases"], ["mas", "Más"]];
 const EN_BARRA = ["inicio", "asistencia", "calificaciones", "estudiantes"];
 
 const icono = (n) => h("span", { html: ICONOS[n] });
-const enlace = (x) => h("a", { href: "#/" + x.r, dataset: { r: x.r } }, icono(x.i), h("span", x.t));
+// Función que el plan no incluye: se ve con candado y lleva a una vista previa honesta
+const bloqueada = (x) => x.plan && !ctx.f(x.plan);
+const enlace = (x) => h("a", { href: "#/" + x.r, dataset: { r: x.r }, title: bloqueada(x) ? "No incluido en tu plan: toca para ver qué hace" : null },
+  icono(x.i), h("span", x.t), bloqueada(x) ? h("span.candado", { html: ICONOS.candado, "aria-label": "No incluido en tu plan" }) : null);
+const menuPorBloques = (filtro = () => true) => BLOQUES.map(([b, titulo]) => {
+  const items = RUTAS.filter((x) => x.b === b && filtro(x));
+  return items.length ? h("div.bloque-menu", h("p.titulo-bloque", titulo), items.map(enlace)) : null;
+});
 const enlaceSalir = () => h("a", { href: "#", onclick: (e) => { e.preventDefault(); salir(); } }, icono("salir"), h("span", "Salir"));
 const main = h("main.p-main", { id: "contenido", tabIndex: -1 });
 
 document.getElementById("app").replaceChildren(
   h("div.p-app",
     h("nav.p-riel", { "aria-label": "Menú principal" },
-      marca(ruta("app/profesor.html")), RUTAS.map(enlace),
+      marca(ruta("app/profesor.html")), menuPorBloques(),
       h("div.pie", h("div.tenue", { style: "padding:0 .7rem .5rem" }, textoPlan(ctx.cuenta)), enlaceSalir())),
     h("div",
       h("header.p-cabecera", marca(ruta("app/profesor.html")),
@@ -63,11 +73,17 @@ ctx.botonGuia = guia;
 
 iniciarEnrutador(ctx, main, RUTAS, {
   ayudas: AYUDAS,
-  alNavegar: () => guia.actualizar(),
+  alNavegar: (r) => {
+    // Secciones internas marcan en el menú a su sección principal
+    const padre = RUTAS.find((x) => x.r === r)?.padre;
+    if (padre) document.querySelectorAll(`[data-r="${padre}"]`).forEach((a) => a.setAttribute("aria-current", "page"));
+    if (r !== "mas" && !EN_BARRA.includes(padre || r)) document.querySelector('.p-barra [data-r="mas"]')?.setAttribute("aria-current", "page");
+    guia.actualizar();
+  },
   especiales: {
     mas: (m) => {
       document.title = "Más · Docencia360";
-      m.replaceChildren(h("h1", "Más"), h("nav.p-mas", RUTAS.filter((x) => !EN_BARRA.includes(x.r)).map(enlace), enlaceSalir()));
+      m.replaceChildren(h("h1", "Más"), h("nav.p-mas", menuPorBloques((x) => !EN_BARRA.includes(x.r)), h("div.bloque-menu", enlaceSalir())));
     },
   },
 });

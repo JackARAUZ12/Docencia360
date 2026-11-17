@@ -220,3 +220,26 @@ ul.lista-simple li { margin: .3rem 0; }
 /* Espacio para que el botón flotante no tape lo último de la página */
 body:has(.guia-flotante:not([hidden])) .p-main { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
 @media (min-width: 960px) { body:has(.guia-flotante:not([hidden])) .p-main { padding-bottom: 6rem; } }
+
+/* ---------- Menú por bloques ---------- */
+.bloque-menu { display: grid; gap: .15rem; }
+.bloque-menu + .bloque-menu { margin-top: .6rem; }
+.titulo-bloque { margin: .2rem .7rem .25rem; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--texto-3); }
+.p-riel a .candado, .p-mas a .candado { margin-left: auto; display: inline-flex; opacity: .75; }
+.p-riel a .candado svg, .p-mas a .candado svg { width: 16px; height: 16px; }
+@media (min-width: 960px) {
+  .p-riel { overflow-y: auto; }
+  .p-riel .titulo-bloque { color: rgba(244, 246, 242, .5); }
+}
+.p-mas .bloque-menu + .bloque-menu { border-top: 1px solid var(--renglon); padding-top: .6rem; }
+
+/* ---------- Clase de ahora ---------- */
+.clase-ahora { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.25rem; padding: 1rem 1.25rem; margin-bottom: 1rem;
+  border: 1px solid var(--renglon-fuerte); border-left: 6px solid var(--texto-3); border-radius: var(--radio-sm); background: var(--papel); box-shadow: var(--sombra); }
+.clase-ahora.en-curso { border-left-color: var(--aprobado); }
+.clase-ahora p { margin: 0; }
+.clase-ahora .etiqueta { font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--texto-3); }
+.clase-ahora.en-curso .etiqueta { color: var(--aprobado); }
+.clase-ahora .nombre { font-size: 1.25rem; font-weight: 800; line-height: 1.25; }
+.clase-ahora .acciones { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+@media (max-width: 600px) { .clase-ahora .acciones { width: 100%; } .clase-ahora .acciones .btn { flex: 1 1 auto; justify-content: center; } }

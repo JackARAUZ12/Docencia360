@@ -48,7 +48,9 @@ export async function render(el, ctx, { partes, params }) {
   const hor = {}; horarios.forEach((x) => (hor[x.grupo_id] ||= []).push(`${DIAS[x.dia].slice(0, 3)} ${hora(x.hora_inicio)}`));
 
   el.append(
-    ctx.titulo(ctx.esDocente ? "Mis grupos" : "Grupos y horarios", ctx.esGestor ? h("button.btn", { onclick: () => editarGrupo(ctx, null) }, h("span", { html: ICONOS.mas_add }), "Nuevo grupo") : null),
+    ctx.titulo(ctx.esDocente ? "Mis grupos" : "Grupos y horarios",
+      ctx.modalidad === "profesor" && ctx.esGestor ? h("a.btn.btn-sec", { href: "#/cursos" }, h("span", { html: ICONOS.cursos }), "Asignaturas y cursos") : null,
+      ctx.esGestor ? h("button.btn", { onclick: () => editarGrupo(ctx, null) }, h("span", { html: ICONOS.mas_add }), "Nuevo grupo") : null),
     h("div.hoja", tabla([
       { t: "Grupo", v: (g) => [h("a.fila-enlace", { href: `#/grupos/${g.id}` }, g.nombre), h("div.tenue", g.asignaturas?.nombre || g.cursos?.nombre || "")] },
       academia ? { t: "Instructor", v: (g) => (inst[g.id] || []).join(", ") || h("span.estado.ojo", "Sin asignar") } : null,
@@ -99,6 +101,7 @@ async function detalle(el, ctx, id) {
       h("div", { style: "display:grid;gap:.6rem" },
         libres.length ? h("button.btn.btn-sec", { type: "button", onclick: () => { m.cerrar(); agregarEstudiantes(); } }, `Elegir de mis estudiantes (${libres.length} disponibles)`) : null,
         h("button.btn.btn-sec", { type: "button", onclick: () => { m.cerrar(); nuevoEnGrupo(); } }, "Registrar un estudiante nuevo"),
+        ctx.modalidad !== "academia" ? h("button.btn.btn-sec", { type: "button", onclick: async () => { m.cerrar(); (await import("./importar.js")).pegarLista(ctx, ctx.recargar, { grupo: id }); } }, "Pegar una lista de nombres") : null,
         h("button.btn.btn-sec", { type: "button", onclick: () => { m.cerrar(); importarEnGrupo(); } }, "Importar una lista de Excel o CSV"))));
   };
   const agregarEstudiantes = () => {
