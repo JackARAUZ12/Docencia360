@@ -1,5 +1,6 @@
 // Inicio del profesor: qué toca hoy, qué está pendiente y cómo va todo.
 import { sb, q } from "../core/sb.js";
+import { pasosProfesor, listaPasos, bienvenida } from "../core/guia.js";
 import { h, hoyISO, sumarDias, diaLargo, fechaCorta, hora, nota } from "../core/ui.js";
 
 const u_al_limite = (filas) => filas.some(([u, m]) => u >= m);
@@ -20,33 +21,18 @@ export async function render(el, ctx) {
   const activos = grupos.filter((g) => g.estado === "activo");
   const nombre = ctx.cuenta.miembro_nombre.split(" ")[0];
 
-  // Primeros pasos: el ciclo completo de trabajo, marcado con datos reales
-  const hay = async (t) => (await q(sb.from(t).select("id").eq("cuenta_id", ctx.id).limit(1))).length > 0;
-  const [hayHorario, hayLista, hayEval] = await Promise.all([hay("horarios"), hay("asistencias"), hay("evaluaciones")]);
-  const g1 = activos[0];
-  const pasos = [
-    { hecho: activos.length > 0, t: "Crea tu primer grupo", d: "Un grupo reúne a los estudiantes de una misma clase. La asignatura la escribes ahí mismo.", href: "#/grupos?nuevo=1", b: "Crear grupo" },
-    { hecho: resumen.estudiantes_activos > 0, t: "Agrega a tus estudiantes", d: "Uno por uno o todos de una vez desde Excel.", href: g1 ? `#/grupos/${g1.id}` : "#/estudiantes", b: "Agregar" },
-    { hecho: hayHorario, t: "Ponle horario al grupo", d: "Así Inicio te recuerda a qué grupo pasar lista cada día.", href: g1 ? `#/grupos/${g1.id}` : "#/grupos", b: "Poner horario" },
-    { hecho: hayLista, t: "Pasa lista", d: "Toca P, A, T o J por estudiante, o marca a todos presentes.", href: "#/asistencia", b: "Pasar lista" },
-    { hecho: hayEval, t: "Crea una evaluación y pon notas", d: "El promedio se calcula solo.", href: "#/calificaciones?nuevo=1", b: "Crear evaluación" },
-  ];
-  const hechos = pasos.filter((p) => p.hecho).length;
-  const claveGuia = `d360-guia-oculta-${ctx.id}`;
-  let guiaOculta = false; try { guiaOculta = localStorage.getItem(claveGuia) === "1"; } catch (_) {}
-  const siguiente = pasos.findIndex((p) => !p.hecho);
-  const guia = (completa) => h("section.hoja", { style: completa ? "" : "margin-bottom:1rem" },
-    h("div.hoja-titulo", h("h2", completa ? "Deja listo tu espacio" : `Primeros pasos · ${hechos} de ${pasos.length}`),
-      completa ? null : h("button.btn.btn-texto.btn-sm", { type: "button", onclick: (e) => { try { localStorage.setItem(claveGuia, "1"); } catch (_) {} e.target.closest("section").remove(); } }, "Ocultar")),
-    h("div.barra-progreso", { role: "progressbar", "aria-valuemin": 0, "aria-valuemax": pasos.length, "aria-valuenow": hechos }, h("span", { style: `width:${(hechos / pasos.length) * 100}%` })),
-    h("ol.pasos-guia", pasos.map((p, i) => h("li" + (p.hecho ? ".hecho" : ""),
-      h("span.num", p.hecho ? "✓" : String(i + 1)),
-      h("div.crece", h("div.titulo", p.t), p.hecho ? null : h("div.tenue", p.d)),
-      p.hecho ? null : h("a.btn.btn-sm" + (i === siguiente ? "" : ".btn-sec"), { href: p.href }, p.b)))));
+  // Primeros pasos (los mismos del botón flotante), marcados con datos reales
+  const guiaDatos = ctx.esDueno ? await pasosProfesor(ctx) : null;
+  const guia = () => h("section.hoja",
+    h("div.hoja-titulo", h("h2", `Primeros pasos · ${guiaDatos.hechos} de ${guiaDatos.pasos.length}`),
+      h("button.btn.btn-texto.btn-sm", { type: "button", onclick: () => bienvenida(ctx, { forzar: true }) }, "Ver la bienvenida")),
+    listaPasos(guiaDatos));
 
   // Cuenta nueva: la guía en lugar de un panel vacío
   if (!activos.length || !resumen.estudiantes_activos) {
-    el.append(h("h1", `Hola, ${nombre}`), h("p.suave", "Estos son los pasos para empezar. Toman pocos minutos."), guia(true));
+    el.append(h("h1", `Hola, ${nombre}`),
+      guiaDatos ? [h("p.suave", "Estos son los pasos para empezar. Toman pocos minutos."), guia()]
+        : h("p.suave", "Todavía no tienes grupos asignados. Cuando el profesor te asigne uno, aparecerá aquí."));
     return;
   }
 
@@ -72,7 +58,6 @@ export async function render(el, ctx) {
   el.append(
     h("div.p-titulo", h("div", h("p.tenue", { style: "margin:0" }, diaLargo(hoy)), h("h1", `Hola, ${nombre}`))),
     avisoLimite,
-    hechos < pasos.length && !guiaOculta ? guia(false) : null,
     notifs.length ? h("div", notifs.map((n) => h("div.aviso.ojo", h("strong", n.titulo + ". "), n.cuerpo || "",
       n.enlace ? [" ", h("a", { href: n.enlace }, "Ver")] : null,
       " ", h("button.btn.btn-texto.btn-sm", { onclick: async (e) => { await sb.from("notificaciones").update({ leida: true }).eq("id", n.id); e.target.closest(".aviso").remove(); } }, "Entendido")))) : null,

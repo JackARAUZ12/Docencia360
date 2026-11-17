@@ -5,8 +5,22 @@ import { salir, ruta } from "../core/sesion.js";
 import { ICONOS } from "../core/iconos.js";
 import { botonTema } from "../core/tema.js";
 import { crearContexto, avisoPlan, textoPlan, iniciarEnrutador } from "../core/panel.js";
+import { cargarGuia, botonGuia, bienvenida } from "../core/guia.js";
 
 const ctx = await crearContexto("profesor");
+await cargarGuia(ctx);
+
+// Consejos de una línea: aparecen la primera vez que se entra a cada sección
+const AYUDAS = {
+  asistencia: "elige el grupo y toca P (presente), A (ausente), T (tarde) o J (justificado). «Todos presentes» marca a todo el grupo de una vez.",
+  calificaciones: "crea una evaluación (examen, tarea, proyecto) con su peso y escribe las notas. El promedio de cada estudiante se calcula solo.",
+  estudiantes: "toca un nombre para ver su asistencia, sus notas y tus observaciones.",
+  grupos: "un grupo es una clase. Dentro de cada grupo agregas a los estudiantes y el horario.",
+  tareas: "aquí ves las tareas con fecha de entrega: quién entregó y quién falta.",
+  enlinea: "crea un examen o una tarea, publícalo y compártelo con un enlace o QR. Cada estudiante entra con su código personal y la nota se calcula sola.",
+  calendario: "agrega reuniones, feriados y fechas importantes. Las evaluaciones aparecen solas.",
+  informes: "resumen de asistencia y promedios por grupo, listo para imprimir o compartir.",
+};
 
 const RUTAS = [
   { r: "inicio", t: "Inicio", i: "inicio", m: () => import("./inicio.js") },
@@ -43,7 +57,13 @@ document.getElementById("app").replaceChildren(
     RUTAS.filter((x) => EN_BARRA.includes(x.r)).map((x) => h("a", { href: "#/" + x.r, dataset: { r: x.r } }, icono(x.i), x.corto || x.t)),
     h("a", { href: "#/mas", dataset: { r: "mas" } }, icono("mas"), "Más")));
 
+const guia = botonGuia(ctx);
+document.body.append(guia);
+ctx.botonGuia = guia;
+
 iniciarEnrutador(ctx, main, RUTAS, {
+  ayudas: AYUDAS,
+  alNavegar: () => guia.actualizar(),
   especiales: {
     mas: (m) => {
       document.title = "Más · Docencia360";
@@ -51,3 +71,8 @@ iniciarEnrutador(ctx, main, RUTAS, {
     },
   },
 });
+
+// Primera vez: bienvenida guiada (solo el dueño, si aún no tiene grupos)
+if (ctx.esDueno && !ctx.cuenta.es_demo && !ctx.guia.bienvenida) {
+  ctx.datos.grupos().then((g) => { if (!g.some((x) => x.estado === "activo")) bienvenida(ctx); }).catch(() => {});
+}

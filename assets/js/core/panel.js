@@ -4,6 +4,7 @@
 import { sb, q, mensajeError } from "./sb.js";
 import { h, toast, errorEn, cargando, fecha, modal } from "./ui.js";
 import { protegerModalidad, salir, ruta } from "./sesion.js";
+import { ayuda } from "./guia.js";
 
 const GESTORES = ["propietario", "director", "subdirector", "coordinador", "administrativo"];
 const FINANZAS = ["propietario", "director", "administrativo", "finanzas"];
@@ -116,7 +117,7 @@ export function textoPlan(c) {
  * Enrutador por hash. rutas: [{r, t, m: () => import(...)}]
  * especiales: { [r]: (main) => void } para vistas sin módulo (p. ej. "mas").
  */
-export function iniciarEnrutador(ctx, main, rutas, { inicio = "inicio", especiales = {}, alNavegar } = {}) {
+export function iniciarEnrutador(ctx, main, rutas, { inicio = "inicio", especiales = {}, alNavegar, ayudas = {} } = {}) {
   let n = 0;
   async function navegar() {
     const [path, query] = location.hash.replace(/^#\/?/, "").split("?");
@@ -137,6 +138,9 @@ export function iniciarEnrutador(ctx, main, rutas, { inicio = "inicio", especial
       const vista = h("div");
       await mod.render(vista, ctx, { partes, params });
       if (actual !== n) return;
+      // Consejo de una línea la primera vez que se entra a la sección
+      const tip = ayudas[r] && ctx.guia ? ayuda(ctx, r, ayudas[r]) : null;
+      if (tip) { const t = vista.querySelector(":scope > .p-titulo, :scope > h1"); t ? t.after(tip) : vista.prepend(tip); }
       main.replaceChildren(vista);
       main.focus({ preventScroll: true });
       scrollTo(0, 0);

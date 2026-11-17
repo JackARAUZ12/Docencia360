@@ -102,6 +102,7 @@ const RPC = {
   d360_alumno_enviar: { ok: true, resultado: { estado: "enviada", enviada: new Date().toISOString(), pendiente: true, puntaje: 6, puntaje_max: 10, mostrar_nota: true, intento: 1, intentos: 1, quedan: 0 } },
   d360_importar_estudiantes: { creados: 2, inscritos: 2, omitidos: [{ fila: 4, nombre: "Ya Existe", motivo: "Ya existe un estudiante con el mismo documento, código o nombre" }] },
   d360_aceptar_terminos: null,
+  d360_guia: {}, d360_guia_guardar: {},
   d360_mis_cuentas: [{ cuenta_id: C, nombre: "Clases de la Prof. Ana", modalidad: "profesor", codigo: "K7M2QP", rol: "propietario", miembro_id: "m1", miembro_nombre: "Ana Martínez",
     plan_id: "prof_premium", plan_nombre: "Premium", estado: "prueba", vence: "2026-12-01", dias_gracia: 5, operativa: true, funciones: planes[2].funciones, onboarding_completo: false, moneda: "NIO" }],
   d360_resumen_panel: { estudiantes_activos: 3, grupos_activos: 2, asistencia_30d: 91.5, evaluaciones_sin_nota: 1, docentes: 1 },
