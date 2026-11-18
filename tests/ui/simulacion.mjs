@@ -30,6 +30,9 @@ const PREGUNTAS = [
 ];
 const sinCorrecta = PREGUNTAS.map(({ correcta, ...p }) => p);
 const F = {
+  avisos_aula: [{ id: "av1", cuenta_id: C, grupo_id: G1, texto: "Mañana hay examen de fracciones.", creado: hoy + "T14:00:00Z" }],
+  materiales: [{ id: "ma1", cuenta_id: C, grupo_id: G1, titulo: "Guía unidad 3", descripcion: "Resolver del 1 al 10", url: null, archivo_path: C + "/materiales/x.pdf", archivo_nombre: "guia.pdf", archivo_tamano: 120000, archivo_tipo: "application/pdf", creado: hoy + "T13:00:00Z" }],
+  entrega_archivos: [{ id: "ea1", path: C + "/entregas/e/f.jpg", nombre: "cuaderno.jpg", tamano: 250000, tipo: "image/jpeg" }],
   planes, config_global: [{ clave: "publico.dias_prueba", valor: 14 }, { clave: "publico.inactividad_minutos", valor: 60 }, { clave: "publico.tipo_cambio", valor: 36.62, descripcion: "Tipo de cambio", actualizado: hoy }, { clave: "publico.terminos_version", valor: "2026-11-05" }, { clave: "publico.registro_con_codigo", valor: true }],
   grupos, asignaturas: [{ id: "a1", cuenta_id: C, nombre: "Matemática", activo: true }], cursos: [{ id: "c1", cuenta_id: C, nombre: "Álgebra intensiva", mensualidad: 800, duracion_semanas: 8, modalidad_clase: "presencial", activo: true }],
   estudiantes: est,
@@ -103,6 +106,19 @@ const RPC = {
   d360_importar_estudiantes: { creados: 2, inscritos: 2, omitidos: [{ fila: 4, nombre: "Ya Existe", motivo: "Ya existe un estudiante con el mismo documento, código o nombre" }] },
   d360_aceptar_terminos: null,
   d360_guia: {}, d360_guia_guardar: {},
+  d360_aula_salir: null,
+  d360_alumno_archivos: { ok: true, archivos: [] },
+  d360_aula_inicio: { ok: true, nombre: "Ana López", institucion: "Clases de la Prof. Ana", cuenta_activa: true,
+    grupos: [{ id: G1, nombre: "Matemática 9no" }],
+    actividades: [
+      { token: "fisica2026", titulo: "Examen de cinemática", tipo: "examen", grupo: "Física sabatino", estado: "abierta", duracion_min: 30, entregada: false, en_curso: false },
+      { token: "tareafoto1", titulo: "Ejercicios en el cuaderno", tipo: "tarea", grupo: "Matemática 9no", estado: "abierta", permite_archivos: true, entregada: false, en_curso: false },
+      { token: "quiz00001", titulo: "Quiz de repaso", tipo: "examen", grupo: "Matemática 9no", estado: "cerrada", entregada: true, puntaje: 8, puntaje_max: 10, comentario: "¡Muy bien!" }],
+    avisos: [{ texto: "Mañana hay examen de fracciones.", creado: hoy + "T14:00:00Z", grupo: "Matemática 9no" }],
+    materiales: [{ id: "ma1", titulo: "Guía unidad 3", descripcion: "Resolver del 1 al 10", archivo: true, archivo_nombre: "guia.pdf", archivo_tipo: "application/pdf", creado: hoy + "T13:00:00Z", grupo: "Matemática 9no" },
+                 { id: "ma2", titulo: "Video de repaso", url: "https://www.youtube.com/watch?v=x", archivo: false, creado: hoy + "T12:00:00Z", grupo: "Matemática 9no" }],
+    notas: [{ grupo: "Matemática 9no", promedio: 85, evaluaciones: [{ titulo: "Examen parcial", tipo: "examen", fecha: hoy, puntaje: 85, puntaje_max: 100 }] }],
+    asistencia: { presentes: 10, ausentes: 1, tardes: 1, justificados: 0, total: 12, porcentaje: 91.7, recientes: [{ fecha: hoy, estado: "ausente", grupo: "Matemática 9no" }] } },
   d360_alumno_portal: { ok: true, nombre: "Ana", institucion: "Clases de la Prof. Ana", cuenta_activa: true, actividades: [
     { token: "fisica2026", titulo: "Examen de cinemática", tipo: "examen", grupo: "Física sabatino", estado: "abierta", duracion_min: 30, entregada: false },
     { token: "tarea0001", titulo: "Tarea de fracciones", tipo: "tarea", grupo: "Matemática 9no", estado: "pronto", abre: new Date(Date.now() + 864e5).toISOString(), entregada: false },
@@ -150,6 +166,19 @@ export async function preparar(page, conSesion, modalidad = "profesor", rol = pr
               respuestas: {}, preguntas: sinCorrecta, titulo: "Examen de cinemática", instrucciones: "Lee con calma. Tienes 30 minutos." }
           : { ok: false, motivo: "codigo" };
       }
+      if (fn === "d360_aula_entrar") {
+        const d = JSON.parse(route.request().postData() || "{}");
+        body = String(d.p_espacio).toUpperCase() === "K7M2QP" && d.p_codigo === "123456" ? { ok: true, sesion: "a".repeat(48) } : { ok: false, motivo: "codigo" };
+      }
+      if (fn === "d360_aula_actividad") {
+        const d = JSON.parse(route.request().postData() || "{}");
+        body = { ok: true, nombre: "Ana", sesion: "e".repeat(48), intento: 1, intentos: 1, limite: null, ahora: new Date().toISOString(), respuestas: {},
+          preguntas: d.p_token === "tareafoto1" ? [] : sinCorrecta, titulo: "Actividad", instrucciones: null, permite_archivos: d.p_token === "tareafoto1", archivos: [] };
+      }
+      if (fn === "d360_alumno_ver") {
+        const d = JSON.parse(route.request().postData() || "{}");
+        if (d.p_token === "tareafoto1") body = { ...body, titulo: "Ejercicios en el cuaderno", tipo: "tarea", preguntas: 0, duracion_min: null, permite_archivos: true, puntos_archivo: 10, puntaje_max: 10 };
+      }
       if (fn === "d360_alumno_portal") {
         const d = JSON.parse(route.request().postData() || "{}");
         if (!(String(d.p_espacio).toUpperCase() === "K7M2QP" && d.p_codigo === "123456")) body = { ok: false, motivo: "codigo" };
@@ -173,6 +202,13 @@ export async function preparar(page, conSesion, modalidad = "profesor", rol = pr
       // Aplica filtros simples col=eq.valor (como PostgREST)
       for (const [k, v] of u.searchParams) if (v.startsWith("eq.") && Array.isArray(body) && body.some((x) => k in x)) body = body.filter((x) => String(x[k]) === v.slice(3));
       if (single) body = body[0] ?? null;
+    } else if (u.pathname === "/functions/v1/aula-archivos") {
+      const d = JSON.parse(route.request().postData() || "{}");
+      registro.archivos = (registro.archivos || []).concat([d]);
+      body = d.accion === "subir" ? { id: "f" + Date.now(), path: C + "/entregas/x/" + Date.now() + ".jpg", token: "tok" } : d.accion === "ver" ? { url: "https://ejemplo.invalid/archivo" } : { ok: true };
+    } else if (u.pathname.startsWith("/storage/v1/")) {
+      registro.storage = (registro.storage || []).concat([u.pathname]);
+      body = u.pathname.includes("/object/sign/") ? { signedURL: "/object/sign/x?token=t" } : { Key: "d360/x", path: "x" };
     } else if (u.pathname === "/functions/v1/registro-codigo") {
       const datos = JSON.parse(route.request().postData() || "{}");
       registro.enviado = datos;

@@ -22,6 +22,9 @@
   .act-alumno .btn { flex: none; }
   @media (max-width: 520px) { .act-alumno .btn { width: 100%; justify-content: center; } }
   .cab-act .btn.btn-texto, .cab-act .btn.btn-texto:hover { margin-top: .5rem; padding-left: 0; color: inherit; text-decoration: underline; opacity: .9; }
+  .archivos-ent { list-style: none; margin: .5rem 0; padding: 0; }
+  .archivos-ent li { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: .5rem 0; border-bottom: 1px solid var(--renglon); overflow-wrap: anywhere; }
+  .zona-archivos .btn-sec { min-height: 48px; }
   .pin-alumno { font-size: 2rem; letter-spacing: .5em; text-align: center; font-weight: 800; font-family: var(--display); }
   .pregunta { background: var(--papel); border: 1px solid var(--renglon); border-radius: 14px; padding: 1rem 1.1rem; margin-bottom: .9rem; }
   .pregunta .num { font-size: .82rem; font-weight: 800; color: var(--texto-3); text-transform: uppercase; letter-spacing: .06em; }
@@ -78,80 +81,13 @@ const MOTIVO = {
 
 let info, sesion = null, preguntas = [], respuestas = {}, pin = "", limite = null, desfase = 0, tGuardar, tReloj, enviando = false;
 
-// ---------- Portal: entrar sin enlace y ver todas mis actividades ----------
-const CLAVE_PORTAL = "d360-alumno-portal", CLAVE_PIN = "d360-alumno-pin";
-const leerSS = (k) => { try { return JSON.parse(sessionStorage.getItem(k) || "null"); } catch (_) { return null; } };
-const guardarSS = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
-const MOTIVO_PORTAL = {
-  codigo: "El código de tu profesor o tu código personal no es correcto. Revísalos o pídeselos a tu profesor.",
-  formato: "El código de tu profesor tiene 6 letras o números, y el tuyo 6 números.",
-  no_disponible: MOTIVO.no_disponible,
-};
-
-function pantallaPortal(espIni = "") {
-  document.title = "Mis tareas y exámenes · Docencia360";
-  const esp = h("input.inst", { maxLength: 6, autocomplete: "off", autocapitalize: "characters", spellcheck: false, placeholder: "ABC123", value: espIni, "aria-label": "Código de tu profesor" });
-  esp.addEventListener("input", () => { esp.value = esp.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6); });
-  const inp = h("input.pin-alumno", { inputmode: "numeric", autocomplete: "off", maxLength: 6, placeholder: "••••••", "aria-label": "Tu código personal de 6 números" });
-  inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, "").slice(0, 6); });
-  const btn = h("button.btn.btn-bloque", { type: "submit" }, "Ver mis tareas y exámenes");
-  const form = h("form", { novalidate: true },
-    h("label.campo", h("span", "Código de tu profesor"), esp, h("small", "6 letras y números. Está en la tarjeta que te dio tu profesor.")),
-    h("label.campo", h("span", "Tu código personal"), inp, h("small", "6 números. Es secreto: no lo compartas.")),
-    btn);
-  form.addEventListener("submit", async (e) => { e.preventDefault(); btn.disabled = true; await cargarPortal(esp.value, inp.value); btn.disabled = false; });
-  cont.replaceChildren(
-    h("section.cab-act", h("h1", "Tus tareas y exámenes"), h("p.suave", "Entra con los dos códigos que te dio tu profesor.")),
-    h("section.hoja", form),
-    h("p.tenue", { style: "text-align:center" }, "¿Tu profesor te mandó un enlace o un QR? También puedes abrirlo directamente."));
-  (espIni ? inp : esp).focus();
-}
-
-async function cargarPortal(esp, pinPortal, silencioso) {
-  limpiar();
-  let r;
-  try { r = await rpc("d360_alumno_portal", { p_espacio: esp, p_codigo: pinPortal }); }
-  catch (e) { if (silencioso) pantallaPortal(esp); return mostrar(e.message); }
-  if (!r.ok) {
-    guardarSS(CLAVE_PORTAL, null);
-    if (silencioso) pantallaPortal(esp);
-    return mostrar(r.motivo === "bloqueado" ? `Demasiados intentos. Espera ${r.minutos || 15} minutos.` : MOTIVO_PORTAL[r.motivo] || MOTIVO_PORTAL.codigo);
-  }
-  guardarSS(CLAVE_PORTAL, { esp: esp.toUpperCase(), pin: pinPortal });
-  const ir = (a) => { guardarSS(CLAVE_PIN, pinPortal); location.href = `alumno.html?a=${encodeURIComponent(a.token)}`; };
-  const tarjeta = (a) => {
-    const datos = [a.tipo === "examen" ? "Examen" : "Tarea", a.grupo];
-    if (a.duracion_min) datos.push(`${a.duracion_min} min`);
-    if (a.estado === "abierta" && a.cierra) datos.push(`cierra ${fechaHora(a.cierra)}`);
-    let accion;
-    if (a.estado === "pronto") accion = h("span.estado.info", a.abre ? `Abre ${fechaHora(a.abre)}` : "Aún no abre");
-    else if (a.entregada) accion = h("button.btn.btn-sec", { type: "button", onclick: () => ir(a) }, "Ver mi resultado");
-    else if (a.estado === "abierta") accion = h("button.btn", { type: "button", onclick: () => ir(a) }, a.tipo === "examen" ? "Empezar examen" : "Hacer tarea");
-    else accion = h("span.estado.mal", "Cerrada sin entregar");
-    const nota = a.entregada ? (a.pendiente ? "Entregada · el profesor está revisando" : a.puntaje != null ? `Nota: ${Number(a.puntaje)} de ${Number(a.puntaje_max)}` : "Entregada") : null;
-    return h("li.act-alumno", h("div.crece", h("strong", a.titulo), h("div.tenue", datos.join(" · ")), nota ? h("div", { style: "font-weight:700;margin-top:.2rem" }, nota) : null), accion);
-  };
-  const acts = r.actividades || [];
-  const porHacer = acts.filter((a) => a.estado === "abierta" && !a.entregada);
-  const proximas = acts.filter((a) => a.estado === "pronto");
-  const resto = acts.filter((a) => !porHacer.includes(a) && !proximas.includes(a));
-  const seccion = (t, l, vacio) => h("section.hoja", h("h2", t), l.length ? h("ul.lista-act", l.map(tarjeta)) : h("p.suave", vacio));
-  document.title = "Mis tareas y exámenes · Docencia360";
-  cont.replaceChildren(
-    h("section.cab-act", h("div.tenue", r.institucion), h("h1", `Hola, ${r.nombre}`),
-      h("button.btn.btn-texto.btn-sm", { type: "button", onclick: () => { guardarSS(CLAVE_PORTAL, null); guardarSS(CLAVE_PIN, null); pantallaPortal(); } }, "Salir")),
-    r.cuenta_activa ? null : h("div.aviso.ojo", MOTIVO.cuenta_inactiva),
-    seccion("Por hacer", porHacer, "No tienes tareas ni exámenes pendientes. ¡Bien!"),
-    proximas.length ? seccion("Próximamente", proximas, "") : null,
-    seccion("Entregadas y cerradas", resto, "Todavía no hay actividades anteriores."));
-}
+// ---------- Aula virtual: si el estudiante ya entró a su aula, no vuelve a escribir códigos ----------
+const CLAVE_AULA = "d360-aula";
+const sesionAula = (() => { try { return JSON.parse(localStorage.getItem(CLAVE_AULA) || sessionStorage.getItem(CLAVE_AULA) || "null")?.sesion || null; } catch (_) { return null; } })();
+const ARCH = () => import("./assets/js/comun/archivos.js");
 
 async function inicio() {
-  if (!token) {
-    const g = leerSS(CLAVE_PORTAL);
-    if (g?.esp && g?.pin) return cargarPortal(g.esp, g.pin, true);
-    return pantallaPortal(new URLSearchParams(location.search).get("p") || "");
-  }
+  if (!token) { location.replace("aula.html" + location.search); return; }
   try { info = await rpc("d360_alumno_ver", { p_token: token }); }
   catch (e) { cont.replaceChildren(h("div.aviso.mal", e.message)); return; }
   if (!info.ok) { cont.replaceChildren(h("div.vacio", h("p", MOTIVO[info.motivo] || MOTIVO.no_existe))); return; }
@@ -173,21 +109,53 @@ function cabecera() {
 
 function pantallaCodigo() {
   limpiar();
+  if (sesionAula && info.estado !== "no_disponible") return pantallaAula();
   if (info.estado === "no_disponible") { cont.replaceChildren(cabecera(), h("div.aviso.ojo", MOTIVO.no_disponible)); return; }
   const estado = { pronto: info.abre ? `Abre el ${fechaHora(info.abre)}.` : MOTIVO.pronto, cerrada: MOTIVO.cerrada, cuenta_inactiva: MOTIVO.cuenta_inactiva }[info.estado];
-  const inp = h("input.pin-alumno", { inputmode: "numeric", autocomplete: "off", maxLength: 6, placeholder: "••••••", "aria-label": "Tu código personal de 6 números", value: leerSS(CLAVE_PIN) || "" });
+  const inp = h("input.pin-alumno", { inputmode: "numeric", autocomplete: "off", maxLength: 6, placeholder: "••••••", "aria-label": "Tu código personal de 6 números" });
   inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, "").slice(0, 6); });
   const form = h("form", { novalidate: true },
     h("label.campo", h("span", "Tu código personal"), inp, h("small", "Son 6 números. Te lo dio tu profesor.")),
     h("button.btn.btn-bloque", { type: "submit" }, "Entrar"));
   form.addEventListener("submit", (e) => { e.preventDefault(); pin = inp.value; entrar(false); });
   cont.replaceChildren(
-    leerSS(CLAVE_PORTAL) ? h("p", h("a", { href: "alumno.html" }, "← Mis tareas y exámenes")) : null,
+    h("p.tenue", "¿Ya entraste a tu aula? ", h("a", { href: "aula.html" }, "Ir a mi aula")),
     cabecera(),
     info.instrucciones ? h("section.hoja", h("h2", "Instrucciones"), h("p", { style: "white-space:pre-wrap" }, info.instrucciones)) : null,
     estado && info.estado !== "abierta" ? h("div.aviso.ojo", estado, " Si ya la respondiste, entra con tu código para ver tu resultado.") : null,
     h("section.hoja", form));
   inp.focus();
+}
+
+// Desde el aula: un botón para empezar (el tiempo corre solo al tocarlo)
+function pantallaAula() {
+  const estado = { pronto: info.abre ? `Abre el ${fechaHora(info.abre)}.` : MOTIVO.pronto, cerrada: MOTIVO.cerrada, cuenta_inactiva: MOTIVO.cuenta_inactiva }[info.estado];
+  const btn = h("button.btn.btn-bloque", { type: "button", onclick: async () => { btn.disabled = true; await entrarAula(false); btn.disabled = false; } },
+    info.estado === "abierta" ? (info.tipo === "examen" ? "Empezar examen" : "Empezar tarea") : "Ver mi entrega");
+  const datos = [];
+  if (info.duracion_min) datos.push(`Tienes ${info.duracion_min} minutos desde que tocas «Empezar».`);
+  if (info.permite_archivos) datos.push("Puedes subir fotos o PDF de tu trabajo (hasta 5 archivos de 5 MB).");
+  cont.replaceChildren(
+    h("p", h("a", { href: "aula.html" }, "← Mi aula")),
+    cabecera(),
+    info.instrucciones ? h("section.hoja", h("h2", "Instrucciones"), h("p", { style: "white-space:pre-wrap" }, info.instrucciones)) : null,
+    estado && info.estado !== "abierta" ? h("div.aviso.ojo", estado) : null,
+    h("section.hoja", datos.length ? h("ul", datos.map((d) => h("li", d))) : null, btn));
+}
+async function entrarAula(nuevo) {
+  limpiar();
+  let r;
+  try { r = await rpc("d360_aula_actividad", { p_sesion: sesionAula, p_token: token, p_nuevo_intento: !!nuevo }); }
+  catch (e) { return mostrar(e.message); }
+  if (!r.ok) {
+    if (r.motivo === "sesion") { try { localStorage.removeItem(CLAVE_AULA); sessionStorage.removeItem(CLAVE_AULA); } catch (_) {} location.href = "aula.html"; return; }
+    return mostrar(r.motivo === "pronto" && r.abre ? `Abre el ${fechaHora(r.abre)}.` : MOTIVO[r.motivo] || MOTIVO.no_existe);
+  }
+  if (r.resultado) return pantallaResultado(r.nombre, r.resultado);
+  sesion = r.sesion; preguntas = r.preguntas; respuestas = r.respuestas || {};
+  limite = r.limite ? new Date(r.limite).getTime() : null;
+  desfase = new Date(r.ahora).getTime() - Date.now();
+  pantallaPreguntas(r.nombre, r);
 }
 
 async function entrar(nuevo, silencioso) {
@@ -223,19 +191,61 @@ function pantallaPreguntas(nombre, r) {
     else t.append(h("textarea", { maxLength: 8000, placeholder: "Escribe tu respuesta…", "aria-label": `Respuesta a la pregunta ${i + 1}`, oninput: (e) => cambiar(e.target.value) }, respuestas[p.id] ?? ""));
     return t;
   });
-  function contar() { progreso.textContent = `${preguntas.filter(respondida).length} de ${preguntas.length} respondidas`; }
+  function contar() { progreso.textContent = preguntas.length ? `${preguntas.filter(respondida).length} de ${preguntas.length} respondidas` : ""; }
   contar();
   const reloj = limite ? h("div.reloj", { role: "timer", "aria-live": "off" }, h("span", "Tiempo restante"), h("span", { id: "restante" })) : null;
-  const btnEnviar = h("button.btn", { type: "button", onclick: () => confirmarEnvio() }, "Enviar respuestas");
+  const btnEnviar = h("button.btn", { type: "button", onclick: () => confirmarEnvio() }, preguntas.length ? "Enviar respuestas" : "Entregar");
+  const zonaArchivos = info.permite_archivos ? seccionArchivos(r.archivos) : null;
   cont.replaceChildren(reloj,
     h("p", h("strong", `Hola, ${nombre}.`), " ", r.intentos > 1 ? `Intento ${r.intento} de ${r.intentos}. ` : "", "Tus respuestas se guardan solas mientras escribes."),
     r.instrucciones ? h("div.aviso", { style: "white-space:pre-wrap" }, r.instrucciones) : null,
     tarjetas,
+    zonaArchivos,
     h("div.barra-alumno", h("div", h("div", progreso, h("br"), estadoGuardado), btnEnviar)));
   window.__estadoGuardado = estadoGuardado;
   if (limite) { tick(); tReloj = setInterval(tick, 1000); }
   addEventListener("beforeunload", avisoSalida);
 }
+// ---------- Archivos de la entrega (fotos o PDF) ----------
+let archivos = [];
+function seccionArchivos(iniciales) {
+  const lista = h("ul.archivos-ent");
+  const estado = h("p.tenue", { "aria-live": "polite" });
+  const entrada = h("input", { type: "file", accept: ".jpg,.jpeg,.png,.webp,.pdf,image/*,application/pdf", multiple: true, className: "oculto", "aria-label": "Elegir fotos o PDF" });
+  const elegir = h("button.btn.btn-sec", { type: "button", onclick: () => entrada.click() }, "📷 Subir foto o PDF");
+  const pintar = () => {
+    lista.replaceChildren(...archivos.map((f) => h("li",
+      h("span", f.tipo === "application/pdf" ? "📄 " : "🖼️ ", f.nombre, h("span.tenue", ` · ${Math.max(1, Math.round(f.tamano / 1024))} KB`)),
+      h("button.btn.btn-texto.btn-sm", { type: "button", onclick: async (e) => {
+        e.currentTarget.disabled = true;
+        try { await (await ARCH()).quitarDeEntrega(sesion, f.id); archivos = archivos.filter((x) => x.id !== f.id); pintar(); }
+        catch (err) { mostrar(err.message); e.currentTarget.disabled = false; }
+      } }, "Quitar"))));
+    elegir.disabled = archivos.length >= 5;
+    estado.textContent = archivos.length ? `${archivos.length} de 5 archivos subidos.` : "Aún no subes archivos.";
+  };
+  entrada.addEventListener("change", async () => {
+    const elegidos = [...entrada.files]; entrada.value = "";
+    const A = await ARCH();
+    for (const f of elegidos) {
+      if (archivos.length >= 5) { mostrar("Puedes subir máximo 5 archivos."); break; }
+      estado.textContent = `Subiendo «${f.name}»…`; elegir.disabled = true;
+      try { archivos.push(await A.subirAEntrega(sesion, f)); limpiar(); }
+      catch (err) { mostrar(err.message); }
+      pintar();
+    }
+  });
+  (async () => {
+    if (Array.isArray(iniciales)) archivos = iniciales;
+    else { try { const r = await rpc("d360_alumno_archivos", { p_sesion: sesion }); archivos = r.archivos || []; } catch (_) { archivos = []; } }
+    pintar();
+  })();
+  return h("section.hoja.zona-archivos",
+    h("h2", "Tu trabajo en archivos"),
+    h("p.suave", "Toma una foto clara de tu cuaderno o sube un PDF. Las fotos se achican solas para subir rápido. Máximo 5 archivos de 5 MB."),
+    lista, estado, entrada, elegir);
+}
+
 const avisoSalida = (e) => { if (sesion && !enviando) { guardar(); e.preventDefault(); e.returnValue = ""; } };
 
 function tick() {
@@ -258,7 +268,9 @@ async function guardar() {
 
 function confirmarEnvio() {
   const faltan = preguntas.filter((p) => !respondida(p)).length;
-  modal("Enviar respuestas", h("p", faltan ? `Te faltan ${faltan} pregunta(s) por responder. Después de enviar ya no podrás cambiar tus respuestas.` : "Después de enviar ya no podrás cambiar tus respuestas."), [
+  const sinArchivo = info.permite_archivos && !archivos.length;
+  const avisos = [faltan ? `Te faltan ${faltan} pregunta(s) por responder.` : "", sinArchivo ? "No has subido ningún archivo." : "", "Después de enviar ya no podrás cambiar tu entrega."].filter(Boolean).join(" ");
+  modal(preguntas.length ? "Enviar respuestas" : "Entregar", h("p", avisos), [
     { texto: "Seguir respondiendo", clase: "btn-sec" },
     { texto: "Enviar", onclick: (c) => { c(); enviar(false); } },
   ]);
@@ -288,8 +300,10 @@ function pantallaResultado(nombre, res, porTiempo) {
       ? [h("div.nota", `${Number(res.puntaje).toLocaleString("es-NI")} / ${Number(res.puntaje_max).toLocaleString("es-NI")}`), h("p.suave", "Tu nota ya está registrada.")]
       : res.pendiente ? h("p", "Tu profesor revisará algunas respuestas y luego verás tu nota en tus calificaciones.")
       : h("p", "Tu profesor ya recibió tus respuestas."),
+    res.comentario ? h("div.aviso", h("strong", "Comentario de tu profesor: "), res.comentario) : null,
     h("p.tenue", `Enviada: ${fechaHora(res.enviada)}`),
-    quedan ? h("button.btn", { onclick: () => entrar(true) }, `Hacer otro intento (te quedan ${res.quedan})`) : null));
+    quedan ? h("button.btn", { onclick: () => (sesionAula ? entrarAula(true) : entrar(true)) }, `Hacer otro intento (te quedan ${res.quedan})`) : null,
+    sesionAula ? h("p", { style: "margin-top:1rem" }, h("a.btn.btn-sec", { href: "aula.html" }, "Volver a mi aula")) : null));
 }
 
 inicio();

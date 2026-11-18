@@ -135,8 +135,13 @@ function editarActividad(ctx, a, grupos) {
     { name: "intentos", label: "Intentos", type: "number", min: 1, max: 5, value: 1, required: true },
     { name: "peso", label: "Peso en el promedio (%)", type: "number", min: 0, max: 100, step: "0.5", value: 0, required: true, help: "Igual que en Calificaciones." },
     { name: "mostrar_nota", label: "Mostrar la nota al estudiante al enviar", type: "checkbox", value: true },
+    { type: "seccion", label: "Archivos del estudiante" },
+    { name: "permite_archivos", label: "El estudiante sube fotos o PDF de su trabajo (hasta 5 archivos de 5 MB)", type: "checkbox", value: false, full: true },
+    { name: "puntos_archivo", label: "Puntos del trabajo en archivo", type: "number", min: 0, max: 100, step: "0.5", value: 10,
+      help: "Lo calificas tú al revisar. Puede ser una tarea solo con archivo, sin preguntas." },
   ], a ? { ...a, abre: aLocal(a.abre), cierra: aLocal(a.cierra) } : null, async (d, cerrar) => {
-    const fila = { ...d, abre: aISO(d.abre), cierra: aISO(d.cierra), duracion_min: d.duracion_min || null, intentos: d.intentos || 1, peso: d.peso ?? 0 };
+    const fila = { ...d, abre: aISO(d.abre), cierra: aISO(d.cierra), duracion_min: d.duracion_min || null, intentos: d.intentos || 1, peso: d.peso ?? 0,
+      permite_archivos: !!d.permite_archivos, puntos_archivo: d.permite_archivos ? Number(d.puntos_archivo || 0) : 0 };
     if (fila.abre && fila.cierra && fila.cierra <= fila.abre) throw new Error("La fecha de cierre debe ser posterior a la de apertura.");
     if (a) { await q(sb.from("actividades").update(fila).eq("id", a.id)); cerrar(); ctx.recargar(); }
     else {
@@ -219,7 +224,9 @@ async function detalle(el, ctx, id) {
   const grupo = grupos.find((g) => g.id === a.grupo_id);
   const hayEntregas = res.some((r) => r.entrega);
   const editable = !hayEntregas;
-  const total = preguntas.reduce((s, p) => s + Number(p.puntos), 0);
+  const ptsArchivo = a.permite_archivos ? Number(a.puntos_archivo || 0) : 0;
+  const total = preguntas.reduce((s, p) => s + Number(p.puntos), 0) + ptsArchivo;
+  const listaParaPublicar = preguntas.length > 0 || ptsArchivo > 0;
   const [cl, tx] = estadoActividad(a);
 
   const publicar = async () => {
@@ -250,17 +257,19 @@ async function detalle(el, ctx, id) {
   el.append(
     h("p", h("a", { href: "#/enlinea" }, "← En línea")),
     ctx.titulo(a.titulo,
-      a.estado === "borrador" ? h("button.btn", { onclick: publicar, disabled: !preguntas.length }, "Publicar") : null,
+      a.estado === "borrador" ? h("button.btn", { onclick: publicar, disabled: !listaParaPublicar }, "Publicar") : null,
       a.estado !== "borrador" && a.token ? h("button.btn", { onclick: () => compartir(a, grupo) }, "Compartir (QR)") : null,
       a.estado === "publicada" ? h("button.btn.btn-sec", { onclick: () => cerrarAct(false) }, "Cerrar") : null,
       a.estado === "cerrada" ? h("button.btn.btn-sec", { onclick: () => cerrarAct(true) }, "Reabrir") : null,
       h("button.btn.btn-sec", { onclick: () => editarActividad(ctx, a, grupos) }, "Editar datos"),
       h("button.btn.btn-texto", { onclick: borrar }, "Eliminar")),
     h("p.suave", h("span.estado" + (cl ? "." + cl : ""), tx), " ",
-      [a.tipo === "examen" ? "Examen" : "Tarea", grupo?.nombre, `${preguntas.length} pregunta(s) · ${pts(total)} puntos`,
+      [a.tipo === "examen" ? "Examen" : "Tarea", grupo?.nombre, `${preguntas.length} pregunta(s)${a.permite_archivos ? ` + archivo (${pts(ptsArchivo)} pts)` : ""} · ${pts(total)} puntos`,
        a.duracion_min ? `${a.duracion_min} min para responder` : "sin límite de tiempo", a.intentos > 1 ? `${a.intentos} intentos` : "1 intento",
        a.cierra ? `cierra ${fechaHora(a.cierra)}` : null].filter(Boolean).join(" · ")),
-    a.estado === "borrador" ? h("div.aviso", "Es un borrador: los estudiantes todavía no la ven. Agrega las preguntas y pulsa «Publicar».") : null,
+    a.estado === "borrador" ? h("div.aviso", a.permite_archivos
+      ? "Es un borrador: los estudiantes todavía no la ven. Pide el archivo y, si quieres, agrega preguntas; luego pulsa «Publicar». Aparecerá en el aula de cada estudiante del grupo."
+      : "Es un borrador: los estudiantes todavía no la ven. Agrega las preguntas y pulsa «Publicar». Aparecerá en el aula de cada estudiante del grupo.") : null,
 
     // Resultados
     a.estado !== "borrador" ? h("section.hoja",
@@ -295,13 +304,16 @@ async function detalle(el, ctx, id) {
           h("button.btn.btn-texto.btn-sm", { "aria-label": "Bajar", disabled: i === preguntas.length - 1, onclick: () => mover(p, 1) }, "↓"),
           h("button.btn.btn-texto.btn-sm", { onclick: () => editarPregunta(ctx, a, p, p.orden, ctx.recargar) }, "Editar"),
           h("button.btn.btn-texto.btn-sm", { onclick: async () => { if (await confirmar("Quitar pregunta", "¿Quitar esta pregunta?", { boton: "Quitar", peligro: true })) { try { await q(sb.from("preguntas").delete().eq("id", p.id)); ctx.recargar(); } catch (e) { toast(e.message, "mal"); } } } }, "Quitar")) : null)))
-        : h("div.vacio", h("p", "Todavía no hay preguntas."), editable ? h("button.btn", { onclick: () => editarPregunta(ctx, a, null, 0, ctx.recargar) }, "Agregar la primera") : null)),
+        : h("div.vacio", h("p", a.permite_archivos ? "Sin preguntas: el estudiante solo entrega su archivo. Puedes agregar preguntas si quieres." : "Todavía no hay preguntas."), editable ? h("button.btn", { onclick: () => editarPregunta(ctx, a, null, 0, ctx.recargar) }, "Agregar la primera") : null)),
   );
 }
 
 // ---------- Ver y revisar una entrega ----------
 async function verEntrega(ctx, a, preguntas, r) {
-  const e = await q(sb.from("entregas").select("id,respuestas,puntos_auto,puntos_manual,puntaje,puntaje_max,pendiente,comentario,enviada,intento").eq("id", r.entrega.id).single());
+  const [e, adjuntos] = await Promise.all([
+    q(sb.from("entregas").select("id,respuestas,puntos_auto,puntos_manual,puntaje,puntaje_max,pendiente,comentario,enviada,intento").eq("id", r.entrega.id).single()),
+    a.permite_archivos ? q(sb.from("entrega_archivos").select("id,path,nombre,tamano,tipo").eq("entrega_id", r.entrega.id).order("creado")) : [],
+  ]);
   const inputs = {};
   const comentario = h("textarea", { rows: 2, maxLength: 1000, placeholder: "Comentario para el estudiante (opcional)" }, e.comentario || "");
   const fila = (p, i) => {
@@ -321,9 +333,23 @@ async function verEntrega(ctx, a, preguntas, r) {
   const cuerpo = h("div.revision",
     h("p", h("strong", r.nombre), h("span.tenue", ` · intento ${e.intento} · enviada ${fechaHora(e.enviada)}`)),
     h("p", "Nota: ", h("strong", `${pts(e.puntaje)} / ${pts(e.puntaje_max)}`), e.pendiente ? h("span.estado.ojo", { style: "margin-left:.5rem" }, "Falta revisar el desarrollo") : null),
-    h("ol.lista-preguntas", preguntas.map(fila)),
-    Object.keys(inputs).length ? h("label.campo", h("span", "Comentario"), comentario) : null);
-  const tieneDesarrollo = Object.keys(inputs).length > 0;
+    preguntas.length ? h("ol.lista-preguntas", preguntas.map(fila)) : null,
+    a.permite_archivos ? seccionAdjuntos() : null,
+    h("label.campo", h("span", "Comentario para el estudiante (lo ve en su aula)"), comentario));
+  function seccionAdjuntos() {
+    if (Number(a.puntos_archivo) > 0) inputs.archivo = h("input", { type: "number", min: 0, max: a.puntos_archivo, step: "0.5", value: e.puntos_manual.archivo ?? "", style: "width:6rem", "aria-label": "Puntos del archivo" });
+    return h("section.adjuntos-rev",
+      h("h3", "Trabajo en archivos"),
+      adjuntos.length ? h("ul.lista-adjuntos", adjuntos.map((f) => h("li",
+        h("span", f.tipo === "application/pdf" ? "📄 " : "🖼️ ", f.nombre, h("span.tenue", ` · ${Math.max(1, Math.round(f.tamano / 1024))} KB`)),
+        h("button.btn.btn-sec.btn-sm", { type: "button", onclick: async (ev) => {
+          const b = ev.currentTarget; b.disabled = true; const v = window.open("", "_blank");
+          try { const { urlParaProfesor } = await import("./archivos.js"); const url = await urlParaProfesor(f.path); if (v) v.location = url; else location.href = url; }
+          catch (err) { v?.close(); toast(err.message, "mal"); } finally { b.disabled = false; }
+        } }, "Abrir")))) : h("p.tenue", "No subió archivos."),
+      inputs.archivo ? h("label.puntos-dev", inputs.archivo, ` / ${pts(a.puntos_archivo)} pts por el archivo`) : null);
+  }
+  const tieneDesarrollo = true;
   modal("Respuestas", cuerpo, tieneDesarrollo ? [
     { texto: "Cerrar", clase: "btn-sec" },
     { texto: "Guardar revisión", onclick: async (cerrar) => {
@@ -394,9 +420,9 @@ async function accesos(el, ctx, params) {
   el.append(
     h("p", h("a", { href: "#/enlinea" }, "← En línea")),
     ctx.titulo("Accesos de estudiantes"),
-    h("p.suave", "Cada estudiante con acceso recibe un código personal de 6 números. Con ese código y el código de tu espacio entra a ver todas sus tareas y exámenes; también puede abrir el enlace o QR de cada examen."),
-    h("div.aviso", h("strong", "Así entra el estudiante: "), "abre ", h("a", { href: ruta(`alumno.html?p=${ctx.cuenta.codigo}`), target: "_blank", rel: "noopener" }, new URL(ruta("alumno.html"), location.href).host + "/…/alumno.html"),
-      ", escribe el código de tu espacio ", h("strong", ctx.cuenta.codigo), " y su código personal."),
+    h("p.suave", "Cada estudiante con acceso recibe un código personal de 6 números. Con ese código y el código de tu espacio entra a su aula virtual: tareas, exámenes, archivos, materiales, avisos y sus notas."),
+    h("div.aviso", h("strong", "Así entra el estudiante: "), "abre ", h("a", { href: ruta(`aula.html?p=${ctx.cuenta.codigo}`), target: "_blank", rel: "noopener" }, new URL(ruta("aula.html"), location.href).host + "/…/aula.html"),
+      ", escribe el código de tu espacio ", h("strong", ctx.cuenta.codigo), " y su código personal. El aparato lo recuerda."),
     resumen,
     h("div.barra-filtros",
       h("select", { "aria-label": "Grupo", onchange: (e) => { grupo = e.target.value; pintar(); } },
@@ -408,12 +434,12 @@ async function accesos(el, ctx, params) {
 
 function mostrarCodigos(lista, ctx) {
   if (!lista.length) { toast("No había estudiantes nuevos para activar."); ctx.recargar(); return; }
-  const portal = new URL(ruta("alumno.html"), location.href).href.replace(/^https?:\/\//, "");
+  const portal = new URL(ruta("aula.html"), location.href).href.replace(/^https?:\/\//, "");
   const tarjetas = h("div.tarjetas-codigo", lista.map((x) => h("div.tarjeta-codigo",
     h("div.tenue", ctx.cuenta.nombre), h("strong", x.nombre),
     h("div.tenue", "Código de tu profesor"), h("div.cod", ctx.cuenta.codigo),
     h("div.tenue", "Tu código personal (secreto)"), h("div.cod", x.codigo),
-    h("div.tenue", "Entra en ", h("strong", portal), " o abre el enlace o QR de cada examen."))));
+    h("div.tenue", "Tu aula: ", h("strong", portal), " · ahí ves tus tareas, exámenes, materiales y notas."))));
   modal("Códigos de acceso", h("div",
     h("p", "Los códigos personales ", h("strong", "solo se muestran ahora"), ". Imprímelos o entrégalos uno por uno. Con la tarjeta, cada estudiante entra a ver todas sus tareas y exámenes."), tarjetas), [
     { texto: "Listo", clase: "btn-sec", onclick: (c) => { c(); ctx.recargar(); } },

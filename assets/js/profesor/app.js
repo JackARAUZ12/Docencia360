@@ -20,6 +20,7 @@ const AYUDAS = {
   enlinea: "crea un examen o una tarea, publícalo y compártelo con un enlace o QR. Cada estudiante entra con su código personal y la nota se calcula sola.",
   calendario: "agrega reuniones, feriados y fechas importantes. Las evaluaciones aparecen solas.",
   informes: "resumen de asistencia y promedios por grupo, listo para imprimir o compartir.",
+  aula: "publica avisos y materiales (PDF, fotos o enlaces) por grupo. Tus estudiantes los ven en su aula junto con sus tareas, exámenes y notas.",
 };
 
 // Menú en tres bloques. «Tareas» vive dentro de Notas y «Asignaturas y
@@ -29,6 +30,7 @@ const RUTAS = [
   { r: "asistencia", t: "Asistencia", i: "asistencia", b: "dia", m: () => import("../comun/asistencia.js") },
   { r: "calificaciones", t: "Notas y tareas", corto: "Notas", i: "notas", b: "dia", m: () => import("../comun/calificaciones.js") },
   { r: "enlinea", t: "Exámenes en línea", corto: "En línea", i: "enlinea", b: "dia", plan: "portal_estudiantes", m: () => import("../comun/enlinea.js") },
+  { r: "aula", t: "Aula virtual", i: "aula", b: "dia", plan: "portal_estudiantes", m: () => import("../comun/aula.js") },
   { r: "grupos", t: "Grupos y horarios", corto: "Grupos", i: "grupos", b: "clases", m: () => import("../comun/grupos.js") },
   { r: "estudiantes", t: "Estudiantes", i: "estudiantes", b: "clases", m: () => import("../comun/estudiantes.js") },
   { r: "calendario", t: "Calendario", i: "calendario", b: "clases", m: () => import("../comun/calendario.js") },

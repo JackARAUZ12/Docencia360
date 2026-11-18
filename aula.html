@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<script>try{if(localStorage.getItem("d360-tema")==="oscuro")document.documentElement.dataset.theme="dark"}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mi aula · Docencia360</title>
+<meta name="description" content="Aula virtual del estudiante: tareas, exámenes, materiales, avisos y notas.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="assets/img/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/d360.css">
+<style>
+  .aula { max-width: 860px; margin: 0 auto; padding: 1rem 16px calc(96px + env(safe-area-inset-bottom)); }
+  .aula > header { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+  .bienv { background: var(--pizarra, #1E3A32); color: #F4F6F2; border-radius: 16px; padding: 1.2rem 1.25rem; margin-bottom: 1rem; }
+  .bienv h1 { color: #F4F6F2; font-size: clamp(1.4rem, 1.1rem + 1.2vw, 1.9rem); margin: .15rem 0 .35rem; }
+  .bienv .tenue { color: rgba(244,246,242,.78); }
+  .bienv .salir { background: none; border: 0; color: inherit; text-decoration: underline; font: inherit; cursor: pointer; padding: 0; opacity: .9; }
+  .cifras-aula { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-top: .9rem; }
+  .cifras-aula div { background: rgba(255,255,255,.08); border-radius: 10px; padding: .55rem .65rem; }
+  .cifras-aula b { display: block; font-size: 1.35rem; color: #F2C94C; }
+  .cifras-aula span { font-size: .78rem; color: rgba(244,246,242,.8); }
+  .pestanas { display: none; }
+  @media (min-width: 760px) { .pestanas { display: flex; gap: .25rem; margin-bottom: 1rem; flex-wrap: wrap; } }
+  .pestanas a, .barra-aula a { text-decoration: none; color: var(--texto-2); font-weight: 700; }
+  .pestanas a { padding: .55rem .9rem; border-radius: 10px; border: 1px solid var(--renglon); background: var(--papel); }
+  .pestanas a[aria-current="page"] { background: var(--tinta); color: var(--papel); border-color: var(--tinta); }
+  .barra-aula { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--papel); border-top: 1px solid var(--renglon); padding-bottom: env(safe-area-inset-bottom); }
+  @media (min-width: 760px) { .barra-aula { display: none; } .aula { padding-bottom: 3rem; } }
+  .barra-aula a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: .55rem .2rem .5rem; font-size: .74rem; }
+  .barra-aula a span { font-size: 1.25rem; line-height: 1; }
+  .barra-aula a[aria-current="page"] { color: var(--tinta); }
+  .barra-aula .insignia { position: absolute; transform: translate(14px, -4px); background: var(--correccion); color: #fff; border-radius: 99px; font-size: .68rem; padding: 0 .35rem; }
+  .lista-a { list-style: none; margin: 0; padding: 0; }
+  .item-a { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .85rem 0; border-bottom: 1px solid var(--renglon); }
+  .item-a:last-child { border-bottom: 0; }
+  .item-a .crece { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
+  .item-a .btn { flex: none; }
+  @media (max-width: 520px) { .item-a .btn { width: 100%; justify-content: center; } }
+  .aviso-aula { border-left: 4px solid var(--resaltador, #F2C94C); background: var(--papel); border-radius: 10px; padding: .7rem .9rem; margin-bottom: .6rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .aviso-aula .tenue { display: block; font-size: .8rem; margin-top: .25rem; white-space: normal; }
+  .nota-g { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+  .nota-g b { font-size: 1.4rem; }
+  .pin-alumno { font-size: 2rem; letter-spacing: .5em; text-align: center; font-weight: 800; font-family: var(--display); }
+  .recordar { display: flex; gap: .6rem; align-items: center; margin: .25rem 0 1rem; }
+  .recordar input { width: 20px; height: 20px; }
+</style>
+</head>
+<body>
+<div class="aula">
+  <header><span id="marca"></span><span id="tema"></span></header>
+  <div id="aviso"></div>
+  <nav class="pestanas" id="pestanas" aria-label="Secciones del aula"></nav>
+  <main id="contenido" tabindex="-1"><p class="suave">Cargando…</p></main>
+</div>
+<nav class="barra-aula oculto" id="barra" aria-label="Menú del aula"></nav>
+<script src="assets/vendor/supabase.js"></script>
+<script type="module">
+import { botonTema } from "./assets/js/core/tema.js";
+import { sb, mensajeError } from "./assets/js/core/sb.js";
+import { h, marca } from "./assets/js/core/ui.js";
+
+document.getElementById("marca").append(marca("index.html"));
+document.getElementById("tema").append(botonTema());
+const cont = document.getElementById("contenido");
+const aviso = document.getElementById("aviso");
+const barra = document.getElementById("barra");
+const pestanas = document.getElementById("pestanas");
+const mostrar = (m, t = "mal") => aviso.replaceChildren(h(`div.aviso.${t}`, { role: "alert" }, m));
+const limpiar = () => aviso.replaceChildren();
+const rpc = async (fn, args) => { const { data, error } = await sb.rpc(fn, args); if (error) throw new Error(mensajeError(error)); return data; };
+const fechaHora = (iso) => new Date(iso).toLocaleString("es-NI", { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" });
+const fechaCorta = (iso) => new Date(String(iso).length === 10 ? iso + "T12:00:00" : iso).toLocaleDateString("es-NI", { day: "numeric", month: "short" });
+
+const CLAVE = "d360-aula";
+const leer = () => { try { return JSON.parse(localStorage.getItem(CLAVE) || sessionStorage.getItem(CLAVE) || "null"); } catch (_) { return null; } };
+const guardar = (v, recordar) => { try { localStorage.removeItem(CLAVE); sessionStorage.removeItem(CLAVE); if (v) (recordar ? localStorage : sessionStorage).setItem(CLAVE, JSON.stringify(v)); } catch (_) {} };
+let datos = null;
+
+const MOTIVO = {
+  codigo: "El código de tu profesor o tu código personal no es correcto. Revísalos o pídeselos a tu profesor.",
+  formato: "El código de tu profesor tiene 6 letras o números, y el tuyo 6 números.",
+  no_disponible: "El aula de tu profesor no está disponible en este momento. Avísale.",
+};
+
+// ---------- Entrar ----------
+function pantallaEntrar() {
+  document.title = "Entrar a mi aula · Docencia360";
+  barra.classList.add("oculto"); pestanas.replaceChildren();
+  const espIni = (new URLSearchParams(location.search).get("p") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+  const esp = h("input.inst", { maxLength: 6, autocomplete: "off", autocapitalize: "characters", spellcheck: false, placeholder: "ABC123", value: espIni, "aria-label": "Código de tu profesor" });
+  esp.addEventListener("input", () => { esp.value = esp.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6); });
+  const pin = h("input.pin-alumno", { inputmode: "numeric", autocomplete: "off", maxLength: 6, placeholder: "••••••", "aria-label": "Tu código personal de 6 números" });
+  pin.addEventListener("input", () => { pin.value = pin.value.replace(/\D/g, "").slice(0, 6); });
+  const recordar = h("input", { type: "checkbox", checked: true });
+  const btn = h("button.btn.btn-bloque", { type: "submit" }, "Entrar a mi aula");
+  const form = h("form", { novalidate: true, onsubmit: async (e) => {
+    e.preventDefault(); limpiar(); btn.disabled = true;
+    try {
+      const r = await rpc("d360_aula_entrar", { p_espacio: esp.value, p_codigo: pin.value, p_recordar: recordar.checked });
+      if (!r.ok) { mostrar(r.motivo === "bloqueado" ? `Demasiados intentos. Espera ${r.minutos || 15} minutos.` : MOTIVO[r.motivo] || MOTIVO.codigo); return; }
+      guardar({ sesion: r.sesion }, recordar.checked);
+      history.replaceState(null, "", "aula.html#/inicio");
+      await cargar();
+    } catch (err) { mostrar(err.message); }
+    finally { btn.disabled = false; }
+  } },
+    h("label.campo", h("span", "Código de tu profesor"), esp, h("small", "6 letras y números. Está en la tarjeta que te dio tu profesor.")),
+    h("label.campo", h("span", "Tu código personal"), pin, h("small", "6 números. Es secreto: no lo compartas.")),
+    h("label.recordar", recordar, h("span", "Recordarme en este aparato (no lo marques en una computadora prestada)")),
+    btn);
+  cont.replaceChildren(
+    h("section.bienv", h("h1", "Mi aula"), h("p.tenue", "Tus tareas, exámenes, materiales, avisos y notas en un solo lugar.")),
+    h("section.hoja", form));
+  (espIni ? pin : esp).focus();
+}
+
+// ---------- Cargar el aula ----------
+async function cargar() {
+  const s = leer();
+  if (!s?.sesion) return pantallaEntrar();
+  cont.replaceChildren(h("p.suave", "Cargando tu aula…"));
+  let r;
+  try { r = await rpc("d360_aula_inicio", { p_sesion: s.sesion }); }
+  catch (e) { cont.replaceChildren(h("div.aviso.mal", e.message), h("button.btn", { onclick: cargar }, "Intentar de nuevo")); return; }
+  if (!r.ok) {
+    if (r.motivo === "sesion") { guardar(null); mostrar("Tu sesión terminó. Vuelve a entrar con tus códigos.", "ojo"); return pantallaEntrar(); }
+    cont.replaceChildren(h("div.aviso.ojo", MOTIVO[r.motivo] || MOTIVO.no_disponible)); return;
+  }
+  datos = r;
+  pintarMenu();
+  mostrarRuta();
+}
+
+const RUTAS = [["inicio", "🏠", "Inicio"], ["actividades", "📝", "Tareas"], ["materiales", "📚", "Materiales"], ["notas", "⭐", "Mis notas"]];
+const pendientes = () => (datos?.actividades || []).filter((a) => a.estado === "abierta" && !a.entregada);
+function pintarMenu() {
+  const n = pendientes().length;
+  const enlace = (r, ic, t, chico) => h("a", { href: `#/${r}`, dataset: { r } }, chico ? h("span", ic) : null, chico ? t : `${ic} ${t}`,
+    r === "actividades" && n ? h("b.insignia", { "aria-label": `${n} pendientes` }, String(n)) : null);
+  barra.replaceChildren(...RUTAS.map(([r, ic, t]) => enlace(r, ic, t, true)));
+  pestanas.replaceChildren(...RUTAS.map(([r, ic, t]) => enlace(r, ic, t, false)));
+  barra.classList.remove("oculto");
+}
+function mostrarRuta() {
+  if (!datos) return;
+  limpiar();
+  const r = (location.hash.replace(/^#\/?/, "") || "inicio").split("?")[0];
+  document.querySelectorAll("[data-r]").forEach((a) => (a.dataset.r === r ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
+  ({ inicio, actividades, materiales, notas }[r] || inicio)();
+  cont.focus({ preventScroll: true }); scrollTo(0, 0);
+}
+addEventListener("hashchange", mostrarRuta);
+
+// ---------- Piezas ----------
+const ir = (a) => { location.href = `alumno.html?a=${encodeURIComponent(a.token)}`; };
+function tarjeta(a) {
+  const det = [a.tipo === "examen" ? "Examen" : "Tarea", a.grupo];
+  if (a.duracion_min) det.push(`${a.duracion_min} min`);
+  if (a.permite_archivos) det.push("con archivo");
+  if (a.estado === "abierta" && a.cierra) det.push(`cierra ${fechaHora(a.cierra)}`);
+  let accion;
+  if (a.estado === "pronto") accion = h("span.estado.info", a.abre ? `Abre ${fechaHora(a.abre)}` : "Aún no abre");
+  else if (a.en_curso && a.estado === "abierta") accion = h("button.btn", { type: "button", onclick: () => ir(a) }, "Continuar");
+  else if (a.entregada) accion = h("button.btn.btn-sec", { type: "button", onclick: () => ir(a) }, "Ver mi entrega");
+  else if (a.estado === "abierta") accion = h("button.btn", { type: "button", onclick: () => ir(a) }, a.tipo === "examen" ? "Empezar" : "Hacer tarea");
+  else accion = h("span.estado.mal", "Cerró sin entregar");
+  const nota = a.entregada ? (a.pendiente ? "Entregada · tu profesor la está revisando" : a.puntaje != null ? `Nota: ${Number(a.puntaje)} de ${Number(a.puntaje_max)}` : "Entregada") : null;
+  return h("li.item-a", h("div.crece", h("strong", a.titulo), h("div.tenue", det.join(" · ")),
+    nota ? h("div", { style: "font-weight:700;margin-top:.2rem" }, nota) : null,
+    a.comentario ? h("div.tenue", { style: "margin-top:.2rem" }, `Comentario: ${a.comentario}`) : null), accion);
+}
+const seccion = (t, items, vacio, extra) => h("section.hoja", h("div.hoja-titulo", h("h2", t), extra || null), items.length ? h("ul.lista-a", items) : h("p.suave", vacio));
+const avisoItem = (v) => h("div.aviso-aula", v.texto, h("span.tenue", `${v.grupo} · ${fechaHora(v.creado)}`));
+
+function cabecera() {
+  const ns = datos.notas.filter((x) => x.promedio != null);
+  const prom = ns.length ? (ns.reduce((s, x) => s + Number(x.promedio), 0) / ns.length).toFixed(1) : "—";
+  return h("section.bienv",
+    h("div.tenue", datos.institucion), h("h1", `Hola, ${datos.nombre.split(" ")[0]}`),
+    h("div.cifras-aula",
+      h("div", h("b", String(pendientes().length)), h("span", "por hacer")),
+      h("div", h("b", prom), h("span", "promedio")),
+      h("div", h("b", datos.asistencia?.porcentaje == null ? "—" : `${datos.asistencia.porcentaje}%`), h("span", "asistencia"))),
+    h("p", { style: "margin:.75rem 0 0" }, h("button.salir", { type: "button", onclick: salir }, "Salir")));
+}
+
+// ---------- Pantallas ----------
+function inicio() {
+  document.title = "Mi aula · Docencia360";
+  const p = pendientes();
+  cont.replaceChildren(cabecera(),
+    datos.cuenta_activa ? null : h("div.aviso.ojo", "La cuenta de tu profesor no está activa en este momento: puedes ver tu aula, pero no entregar."),
+    seccion("Por hacer", p.slice(0, 5).map(tarjeta), "No tienes nada pendiente. ¡Bien hecho!", p.length > 5 ? h("a", { href: "#/actividades" }, "Ver todas") : null),
+    h("section.hoja", h("h2", "Avisos de tu profesor"), datos.avisos.length ? datos.avisos.slice(0, 5).map(avisoItem) : h("p.suave", "Sin avisos por ahora.")),
+    datos.materiales.length ? seccion("Materiales nuevos", datos.materiales.slice(0, 3).map(material), "", h("a", { href: "#/materiales" }, "Ver todos")) : null);
+}
+
+function actividades() {
+  document.title = "Tareas y exámenes · Mi aula";
+  const a = datos.actividades;
+  const porHacer = a.filter((x) => x.estado === "abierta" && !x.entregada);
+  const pronto = a.filter((x) => x.estado === "pronto");
+  const resto = a.filter((x) => !porHacer.includes(x) && !pronto.includes(x));
+  cont.replaceChildren(h("h1", "Tareas y exámenes"),
+    seccion("Por hacer", porHacer.map(tarjeta), "No tienes tareas ni exámenes pendientes."),
+    pronto.length ? seccion("Próximamente", pronto.map(tarjeta), "") : null,
+    seccion("Entregadas y cerradas", resto.map(tarjeta), "Todavía no hay actividades anteriores."));
+}
+
+function material(m) {
+  const det = [m.grupo, fechaCorta(m.creado)];
+  const acciones = [];
+  if (m.url) acciones.push(h("a.btn.btn-sec", { href: m.url, target: "_blank", rel: "noopener noreferrer" }, "Abrir enlace"));
+  if (m.archivo) acciones.push(h("button.btn.btn-sec", { type: "button", onclick: async (e) => {
+    const b = e.currentTarget; b.disabled = true; limpiar();
+    const ventana = window.open("", "_blank");
+    try {
+      const { urlParaEstudiante } = await import("./assets/js/comun/archivos.js");
+      const url = await urlParaEstudiante(leer()?.sesion, { material: m.id });
+      if (ventana) ventana.location = url; else location.href = url;
+    } catch (err) { ventana?.close(); mostrar(err.message); }
+    finally { b.disabled = false; }
+  } }, m.archivo_tipo === "application/pdf" ? "Ver PDF" : "Ver archivo"));
+  return h("li.item-a", h("div.crece", h("strong", m.titulo), h("div.tenue", det.join(" · ")),
+    m.descripcion ? h("p", { style: "margin:.3rem 0 0;white-space:pre-wrap" }, m.descripcion) : null),
+    acciones.length ? h("div", { style: "display:flex;gap:.5rem;flex-wrap:wrap" }, acciones) : null);
+}
+function materiales() {
+  document.title = "Materiales · Mi aula";
+  cont.replaceChildren(h("h1", "Materiales"),
+    h("section.hoja", h("h2", "Avisos"), datos.avisos.length ? datos.avisos.map(avisoItem) : h("p.suave", "Sin avisos por ahora.")),
+    seccion("Guías, archivos y enlaces", datos.materiales.map(material), "Tu profesor todavía no ha compartido materiales."));
+}
+
+function notas() {
+  document.title = "Mis notas · Mi aula";
+  const as = datos.asistencia || {};
+  const estadoTxt = { ausente: "Ausente", tarde: "Tarde", justificado: "Justificado" };
+  cont.replaceChildren(h("h1", "Mis notas"),
+    datos.notas.length ? datos.notas.map((g) => h("section.hoja",
+      h("div.nota-g", h("h2", g.grupo), h("b", g.promedio == null ? "—" : `${Number(g.promedio)}`)),
+      h("p.tenue", g.promedio == null ? "Aún no tienes notas en este grupo." : "Promedio del grupo"),
+      g.evaluaciones.length ? h("ul.lista-a", g.evaluaciones.map((e) => h("li.item-a",
+        h("div.crece", h("strong", e.titulo), h("div.tenue", `${fechaCorta(e.fecha)} · ${e.tipo}`)),
+        h("strong", e.puntaje == null ? "Sin nota" : `${Number(e.puntaje)} / ${Number(e.puntaje_max)}`)))) : null))
+      : h("section.hoja", h("p.suave", "Todavía no estás en ningún grupo.")),
+    h("section.hoja", h("h2", "Mi asistencia"),
+      as.total ? [
+        h("p", h("strong", `${as.porcentaje}%`), ` de asistencia en los últimos 6 meses · ${as.ausentes} ausencia(s), ${as.tardes} tardanza(s), ${as.justificados} justificada(s).`),
+        as.recientes?.length ? h("ul.lista-a", as.recientes.map((x) => h("li.item-a", h("div.crece", h("strong", estadoTxt[x.estado] || x.estado), h("div.tenue", `${fechaCorta(x.fecha)} · ${x.grupo}`))))) : h("p.suave", "No tienes ausencias ni tardanzas recientes."),
+      ] : h("p.suave", "Aún no hay listas registradas.")));
+}
+
+async function salir() {
+  const s = leer();
+  try { if (s?.sesion) await rpc("d360_aula_salir", { p_sesion: s.sesion }); } catch (_) {}
+  guardar(null); datos = null;
+  history.replaceState(null, "", "aula.html");
+  pantallaEntrar();
+}
+
+cargar();
+</script>
+</body>
+</html>
