@@ -137,7 +137,9 @@ export function formularioModal(titulo, campos, valores, onGuardar, { boton = "G
         min: c.min, max: c.max, step: c.step, maxLength: c.maxlength, placeholder: c.placeholder,
         inputMode: c.inputmode, autocomplete: c.autocomplete || "off" });
     }
-    const campo = h("label.campo", h("span", c.label + (c.required ? "" : " (opcional)")), input, c.help ? h("small", c.help) : null);
+    // «(opcional)» solo donde de verdad se puede dejar vacío (una lista sin opción en blanco siempre tiene valor)
+    const opcional = !c.required && !(c.type === "select" && !c.placeholder) && !/\(opcional\)/.test(c.label);
+    const campo = h("label.campo", h("span", c.label + (opcional ? " (opcional)" : "")), input, c.help ? h("small", c.help) : null);
     if (c.full) { fila = null; form.append(campo); }
     else { if (!fila) { fila = h("div.fila"); form.append(fila); } fila.append(campo); }
   }

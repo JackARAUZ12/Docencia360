@@ -141,7 +141,7 @@ async function editarActividad(ctx, a, grupos) {
     { name: "permite_archivos", label: "El estudiante sube fotos o PDF de su trabajo (hasta 5 archivos de 5 MB)", type: "checkbox", value: false, full: true },
     { name: "puntos_archivo", label: "Puntos del trabajo en archivo", type: "number", min: 0, max: 100, step: "0.5", value: 10,
       help: "Lo calificas tú al revisar. Puede ser una tarea solo con archivo, sin preguntas." },
-    ctx.f("rubricas") ? { name: "rubrica_id", label: "Rúbrica para calificar el archivo (opcional)", type: "select", placeholder: rubs.length ? "Sin rúbrica" : "Aún no tienes rúbricas", options: rubs.map((r) => [r.id, r.nombre]) } : null,
+    ctx.f("rubricas") ? { name: "rubrica_id", label: "Rúbrica para calificar el archivo", type: "select", placeholder: rubs.length ? "Sin rúbrica" : "Aún no tienes rúbricas", options: rubs.map((r) => [r.id, r.nombre]) } : null,
   ].filter(Boolean), a ? { ...a, abre: aLocal(a.abre), cierra: aLocal(a.cierra) } : null, async (d, cerrar) => {
     const fila = { ...d, abre: aISO(d.abre), cierra: aISO(d.cierra), duracion_min: d.duracion_min || null, intentos: d.intentos || 1, peso: d.peso ?? 0,
       permite_archivos: !!d.permite_archivos, puntos_archivo: d.permite_archivos ? Number(d.puntos_archivo || 0) : 0 };

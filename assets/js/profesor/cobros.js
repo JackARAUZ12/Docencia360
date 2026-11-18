@@ -105,8 +105,8 @@ export async function render(el, ctx, { params }) {
   async function vistaResumen() {
     cuerpo.replaceChildren(h("p.tenue", "Calculando…"));
     const [a, m] = mes.split("-").map(Number);
-    const desde = `${mes}-01`, hasta = mesISO(new Date(a, m, 1)) + "-01";
-    const fin = new Date(new Date(hasta + "T00:00:00").getTime() - 864e5).toISOString().slice(0, 10);
+    const desde = `${mes}-01`;
+    const fin = `${mes}-${String(new Date(a, m, 0).getDate()).padStart(2, "0")}`;   // último día del mes, sin depender de la zona horaria
     const r = await q(sb.rpc("d360_finanzas_resumen", { p_cuenta: ctx.id, p_desde: desde, p_hasta: fin }));
     const ingresos = Number(r.cobrado) + Number(r.otros_ingresos);
     const gastos = Number(r.gastos);
@@ -176,7 +176,7 @@ export async function render(el, ctx, { params }) {
       h("p.suave", "Lo que cobras a tus estudiantes se suma solo. Aquí anotas lo demás: tus gastos de las clases y otros ingresos (talleres, venta de guías…)."),
       movs.length ? tabla([
         { t: "Fecha", v: (m) => fecha(m.fecha) },
-        { t: "Concepto", v: (m) => [h("strong", m.concepto), h("div.tenue", m.categoria)] },
+        { t: "Concepto", v: (m) => h("div.celda-doble", h("strong", m.concepto), h("div.tenue", m.categoria)) },
         { t: "Monto", clase: "derecha", v: (m) => h("strong.num" + (m.tipo === "gasto" ? ".nota-baja" : ""), (m.tipo === "gasto" ? "− " : "+ ") + dinero(m.monto, ctx.cuenta.moneda)) },
         { t: "", clase: "acciones", v: (m) => [
           h("button.btn.btn-texto.btn-sm", { onclick: () => movimiento(ctx, m.tipo, m) }, "Editar"),
@@ -212,8 +212,8 @@ function movimiento(ctx, tipo, m) {
     { name: "concepto", label: "Concepto", required: true, maxlength: 140, full: true, placeholder: tipo === "gasto" ? "Ej.: Fotocopias de la guía 3" : "Ej.: Taller de repaso del sábado" },
     { name: "monto", label: `Monto (${ctx.cuenta.moneda})`, type: "number", min: 0.01, step: "0.01", required: true },
     { name: "fecha", label: "Fecha", type: "date", required: true, value: hoyISO() },
-    { name: "categoria", label: "Categoría", type: "select", options: cats.map((c) => [c, c]), value: cats[0] },
-    { name: "nota", label: "Nota (opcional)", maxlength: 500, full: true },
+    { name: "categoria", label: "Categoría", type: "select", required: true, options: cats.map((c) => [c, c]), value: cats[0] },
+    { name: "nota", label: "Nota", maxlength: 500, full: true },
   ], m || null, async (d, cerrar) => {
     const fila = { tipo, concepto: d.concepto.trim(), monto: Number(d.monto), fecha: d.fecha, categoria: d.categoria, nota: d.nota?.trim() || null };
     if (m) await q(sb.from("movimientos").update(fila).eq("id", m.id));
@@ -230,9 +230,9 @@ function registrarClase(ctx, estudiantes) {
     { name: "estudiante_id", label: "Estudiante", type: "select", required: true, options: activos.map((e) => [e.id, nombreCompleto(e) + (Number(e.tarifa_clase) ? ` · ${dinero(e.tarifa_clase, ctx.cuenta.moneda)}` : "")]), full: true },
     { name: "fecha", label: "Fecha de la clase", type: "date", required: true, value: hoyISO() },
     { name: "monto", label: `Cobro (${ctx.cuenta.moneda})`, type: "number", min: 0.01, step: "0.01", required: true, help: "Si el estudiante tiene tarifa por clase, se usa esa." },
-    { name: "detalle", label: "Tema o detalle (opcional)", maxlength: 120, full: true, placeholder: "Ej.: Repaso de fracciones · 1 hora" },
+    { name: "detalle", label: "Tema o detalle", maxlength: 120, full: true, placeholder: "Ej.: Repaso de fracciones · 1 hora" },
     { name: "pagado", label: "Ya me pagó", type: "checkbox", value: true },
-    { name: "metodo", label: "Forma de pago", type: "select", options: [["efectivo", "Efectivo"], ["transferencia", "Transferencia"], ["deposito", "Depósito"], ["tarjeta", "Tarjeta"], ["otro", "Otro"]] },
+    { name: "metodo", label: "Forma de pago", type: "select", required: true, options: [["efectivo", "Efectivo"], ["transferencia", "Transferencia"], ["deposito", "Depósito"], ["tarjeta", "Tarjeta"], ["otro", "Otro"]] },
   ], {}, async (d, cerrar) => {
     const r = await q(sb.rpc("d360_cobro_clase", { p_cuenta: ctx.id, p_estudiante: d.estudiante_id, p_fecha: d.fecha, p_detalle: d.detalle || null,
       p_monto: Number(d.monto), p_pagado: !!d.pagado, p_metodo: d.metodo || "efectivo" }));

@@ -18,7 +18,7 @@ export async function editarEvaluacion(ctx, grupoId, ev, alGuardar, tipoInicial)
       help: "Déjalo en 0 si todas valen lo mismo." },
     { name: "puntaje_max", label: "Puntaje máximo", type: "number", min: 1, max: 1000, step: "0.5", value: 100, required: true },
     { name: "descripcion", label: "Indicaciones", type: "textarea", full: true },
-    ctx.f("rubricas") ? { name: "rubrica_id", label: "Rúbrica (opcional)", type: "select", placeholder: rubs.length ? "Sin rúbrica" : "Aún no tienes rúbricas", options: rubs.map((r) => [r.id, r.nombre]),
+    ctx.f("rubricas") ? { name: "rubrica_id", label: "Rúbrica", type: "select", placeholder: rubs.length ? "Sin rúbrica" : "Aún no tienes rúbricas", options: rubs.map((r) => [r.id, r.nombre]),
       help: "Con rúbrica, al poner notas eliges un nivel por criterio y la nota se calcula sola. Créalas en «Rúbricas»." } : null,
   ].filter(Boolean), ev, async (d, cerrar) => {
     d.peso = d.peso ?? 0;

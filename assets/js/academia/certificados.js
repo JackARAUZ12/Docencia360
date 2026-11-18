@@ -61,7 +61,7 @@ export async function render(el, ctx) {
     { name: "estudiante", label: "Estudiante", type: "select", required: true, full: true, placeholder: "Elige", options: est.map((e) => [e.id, nombreCompleto(e)]), value: pre.estudiante },
     { name: "curso", label: "Curso", type: "select", placeholder: "Sin curso (constancia general)", options: cursos.map((c) => [c.id, c.nombre]), value: pre.curso, full: true },
     { name: "tipo", label: "Tipo", type: "select", options: Object.entries(TIPOS) },
-    { name: "horas", label: "Horas (opcional)", type: "number", min: 1 },
+    { name: "horas", label: "Horas", type: "number", min: 1 },
     { name: "titulo", label: "Título que aparecerá", full: true, help: "Si lo dejas vacío, se usa el nombre del curso." },
     { name: "detalle", label: "Detalle adicional", full: true, placeholder: "Ej.: con mención de honor" },
   ], {}, async (d, cerrar) => {
