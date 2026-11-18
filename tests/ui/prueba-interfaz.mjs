@@ -222,6 +222,11 @@ for (const [ancho, alto, tag] of VISTAS) {
   if (!(await page.getByText("Notas sin guardar").isVisible())) errores.push("ciclo: no avisa notas sin guardar al cambiar de vista");
   await page.getByRole("button", { name: "Cancelar" }).click();
   await page.goto(BASE + `/app/profesor.html#/grupos/${G1}`, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(300);
+  // Hay una nota sin guardar: el sistema pregunta antes de salir de la pantalla
+  if (!(await page.getByText("Notas sin guardar").isVisible())) errores.push("ciclo: no avisa notas sin guardar al salir de la pantalla");
+  await page.getByRole("button", { name: "Continuar sin guardar" }).click();
+  await page.waitForTimeout(600);
   await page.getByRole("button", { name: "Agregar", exact: true }).first().click();
   await page.waitForTimeout(300);
   if (!(await page.getByRole("button", { name: "Registrar un estudiante nuevo" }).isVisible())) errores.push("ciclo: el grupo no ofrece registrar un estudiante nuevo");

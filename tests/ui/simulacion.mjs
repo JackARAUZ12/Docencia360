@@ -103,6 +103,10 @@ const RPC = {
   d360_importar_estudiantes: { creados: 2, inscritos: 2, omitidos: [{ fila: 4, nombre: "Ya Existe", motivo: "Ya existe un estudiante con el mismo documento, código o nombre" }] },
   d360_aceptar_terminos: null,
   d360_guia: {}, d360_guia_guardar: {},
+  d360_alumno_portal: { ok: true, nombre: "Ana", institucion: "Clases de la Prof. Ana", cuenta_activa: true, actividades: [
+    { token: "fisica2026", titulo: "Examen de cinemática", tipo: "examen", grupo: "Física sabatino", estado: "abierta", duracion_min: 30, entregada: false },
+    { token: "tarea0001", titulo: "Tarea de fracciones", tipo: "tarea", grupo: "Matemática 9no", estado: "pronto", abre: new Date(Date.now() + 864e5).toISOString(), entregada: false },
+    { token: "quiz00001", titulo: "Quiz de repaso", tipo: "examen", grupo: "Matemática 9no", estado: "cerrada", entregada: true, puntaje: 8, puntaje_max: 10, mostrar_nota: true }] },
   d360_mis_cuentas: [{ cuenta_id: C, nombre: "Clases de la Prof. Ana", modalidad: "profesor", codigo: "K7M2QP", rol: "propietario", miembro_id: "m1", miembro_nombre: "Ana Martínez",
     plan_id: "prof_premium", plan_nombre: "Premium", estado: "prueba", vence: "2026-12-01", dias_gracia: 5, operativa: true, funciones: planes[2].funciones, onboarding_completo: false, moneda: "NIO" }],
   d360_resumen_panel: { estudiantes_activos: 3, grupos_activos: 2, asistencia_30d: 91.5, evaluaciones_sin_nota: 1, docentes: 1 },
@@ -145,6 +149,10 @@ export async function preparar(page, conSesion, modalidad = "profesor", rol = pr
           ? { ok: true, nombre: "Ana", sesion: "s".repeat(48), intento: 1, intentos: 1, limite: new Date(Date.now() + 30 * 60000).toISOString(), ahora: new Date().toISOString(),
               respuestas: {}, preguntas: sinCorrecta, titulo: "Examen de cinemática", instrucciones: "Lee con calma. Tienes 30 minutos." }
           : { ok: false, motivo: "codigo" };
+      }
+      if (fn === "d360_alumno_portal") {
+        const d = JSON.parse(route.request().postData() || "{}");
+        if (!(String(d.p_espacio).toUpperCase() === "K7M2QP" && d.p_codigo === "123456")) body = { ok: false, motivo: "codigo" };
       }
       if (fn === "d360_alumno_enviar") registro.alumno = JSON.parse(route.request().postData() || "{}").p_respuestas;
       if (fn === "d360_validar_codigo_registro") {

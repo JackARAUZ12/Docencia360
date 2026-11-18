@@ -394,7 +394,9 @@ async function accesos(el, ctx, params) {
   el.append(
     h("p", h("a", { href: "#/enlinea" }, "← En línea")),
     ctx.titulo("Accesos de estudiantes"),
-    h("p.suave", "Cada estudiante con acceso recibe un código personal de 6 dígitos para entrar a tus tareas y exámenes en línea. Entrégaselo impreso o por mensaje privado."),
+    h("p.suave", "Cada estudiante con acceso recibe un código personal de 6 números. Con ese código y el código de tu espacio entra a ver todas sus tareas y exámenes; también puede abrir el enlace o QR de cada examen."),
+    h("div.aviso", h("strong", "Así entra el estudiante: "), "abre ", h("a", { href: ruta(`alumno.html?p=${ctx.cuenta.codigo}`), target: "_blank", rel: "noopener" }, new URL(ruta("alumno.html"), location.href).host + "/…/alumno.html"),
+      ", escribe el código de tu espacio ", h("strong", ctx.cuenta.codigo), " y su código personal."),
     resumen,
     h("div.barra-filtros",
       h("select", { "aria-label": "Grupo", onchange: (e) => { grupo = e.target.value; pintar(); } },
@@ -406,11 +408,14 @@ async function accesos(el, ctx, params) {
 
 function mostrarCodigos(lista, ctx) {
   if (!lista.length) { toast("No había estudiantes nuevos para activar."); ctx.recargar(); return; }
+  const portal = new URL(ruta("alumno.html"), location.href).href.replace(/^https?:\/\//, "");
   const tarjetas = h("div.tarjetas-codigo", lista.map((x) => h("div.tarjeta-codigo",
-    h("div.tenue", ctx.cuenta.nombre), h("strong", x.nombre), h("div.cod", x.codigo),
-    h("div.tenue", "Tu código para tareas y exámenes en línea. No lo compartas."))));
+    h("div.tenue", ctx.cuenta.nombre), h("strong", x.nombre),
+    h("div.tenue", "Código de tu profesor"), h("div.cod", ctx.cuenta.codigo),
+    h("div.tenue", "Tu código personal (secreto)"), h("div.cod", x.codigo),
+    h("div.tenue", "Entra en ", h("strong", portal), " o abre el enlace o QR de cada examen."))));
   modal("Códigos de acceso", h("div",
-    h("p", "Estos códigos ", h("strong", "solo se muestran ahora"), ". Imprímelos o entrégalos uno por uno."), tarjetas), [
+    h("p", "Los códigos personales ", h("strong", "solo se muestran ahora"), ". Imprímelos o entrégalos uno por uno. Con la tarjeta, cada estudiante entra a ver todas sus tareas y exámenes."), tarjetas), [
     { texto: "Listo", clase: "btn-sec", onclick: (c) => { c(); ctx.recargar(); } },
     { texto: "Imprimir tarjetas", onclick: () => { imprimir(tarjetas); return false; } },
   ]);

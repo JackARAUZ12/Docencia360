@@ -15,6 +15,13 @@
   .cab-act h1 { color: #F4F6F2; font-size: clamp(1.4rem, 1.1rem + 1.2vw, 1.9rem); margin: .2rem 0 .4rem; }
   .cab-act .tenue { color: rgba(244,246,242,.75); }
   .datos-act { display: flex; flex-wrap: wrap; gap: .4rem 1rem; font-size: .92rem; color: rgba(244,246,242,.85); margin-top: .5rem; }
+  .lista-act { list-style: none; margin: 0; padding: 0; }
+  .act-alumno { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .85rem 0; border-bottom: 1px solid var(--renglon); }
+  .act-alumno:last-child { border-bottom: 0; }
+  .act-alumno .crece { flex: 1 1 220px; min-width: 0; }
+  .act-alumno .btn { flex: none; }
+  @media (max-width: 520px) { .act-alumno .btn { width: 100%; justify-content: center; } }
+  .cab-act .btn.btn-texto, .cab-act .btn.btn-texto:hover { margin-top: .5rem; padding-left: 0; color: inherit; text-decoration: underline; opacity: .9; }
   .pin-alumno { font-size: 2rem; letter-spacing: .5em; text-align: center; font-weight: 800; font-family: var(--display); }
   .pregunta { background: var(--papel); border: 1px solid var(--renglon); border-radius: 14px; padding: 1rem 1.1rem; margin-bottom: .9rem; }
   .pregunta .num { font-size: .82rem; font-weight: 800; color: var(--texto-3); text-transform: uppercase; letter-spacing: .06em; }
@@ -71,8 +78,80 @@ const MOTIVO = {
 
 let info, sesion = null, preguntas = [], respuestas = {}, pin = "", limite = null, desfase = 0, tGuardar, tReloj, enviando = false;
 
+// ---------- Portal: entrar sin enlace y ver todas mis actividades ----------
+const CLAVE_PORTAL = "d360-alumno-portal", CLAVE_PIN = "d360-alumno-pin";
+const leerSS = (k) => { try { return JSON.parse(sessionStorage.getItem(k) || "null"); } catch (_) { return null; } };
+const guardarSS = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
+const MOTIVO_PORTAL = {
+  codigo: "El código de tu profesor o tu código personal no es correcto. Revísalos o pídeselos a tu profesor.",
+  formato: "El código de tu profesor tiene 6 letras o números, y el tuyo 6 números.",
+  no_disponible: MOTIVO.no_disponible,
+};
+
+function pantallaPortal(espIni = "") {
+  document.title = "Mis tareas y exámenes · Docencia360";
+  const esp = h("input.inst", { maxLength: 6, autocomplete: "off", autocapitalize: "characters", spellcheck: false, placeholder: "ABC123", value: espIni, "aria-label": "Código de tu profesor" });
+  esp.addEventListener("input", () => { esp.value = esp.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6); });
+  const inp = h("input.pin-alumno", { inputmode: "numeric", autocomplete: "off", maxLength: 6, placeholder: "••••••", "aria-label": "Tu código personal de 6 números" });
+  inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, "").slice(0, 6); });
+  const btn = h("button.btn.btn-bloque", { type: "submit" }, "Ver mis tareas y exámenes");
+  const form = h("form", { novalidate: true },
+    h("label.campo", h("span", "Código de tu profesor"), esp, h("small", "6 letras y números. Está en la tarjeta que te dio tu profesor.")),
+    h("label.campo", h("span", "Tu código personal"), inp, h("small", "6 números. Es secreto: no lo compartas.")),
+    btn);
+  form.addEventListener("submit", async (e) => { e.preventDefault(); btn.disabled = true; await cargarPortal(esp.value, inp.value); btn.disabled = false; });
+  cont.replaceChildren(
+    h("section.cab-act", h("h1", "Tus tareas y exámenes"), h("p.suave", "Entra con los dos códigos que te dio tu profesor.")),
+    h("section.hoja", form),
+    h("p.tenue", { style: "text-align:center" }, "¿Tu profesor te mandó un enlace o un QR? También puedes abrirlo directamente."));
+  (espIni ? inp : esp).focus();
+}
+
+async function cargarPortal(esp, pinPortal, silencioso) {
+  limpiar();
+  let r;
+  try { r = await rpc("d360_alumno_portal", { p_espacio: esp, p_codigo: pinPortal }); }
+  catch (e) { if (silencioso) pantallaPortal(esp); return mostrar(e.message); }
+  if (!r.ok) {
+    guardarSS(CLAVE_PORTAL, null);
+    if (silencioso) pantallaPortal(esp);
+    return mostrar(r.motivo === "bloqueado" ? `Demasiados intentos. Espera ${r.minutos || 15} minutos.` : MOTIVO_PORTAL[r.motivo] || MOTIVO_PORTAL.codigo);
+  }
+  guardarSS(CLAVE_PORTAL, { esp: esp.toUpperCase(), pin: pinPortal });
+  const ir = (a) => { guardarSS(CLAVE_PIN, pinPortal); location.href = `alumno.html?a=${encodeURIComponent(a.token)}`; };
+  const tarjeta = (a) => {
+    const datos = [a.tipo === "examen" ? "Examen" : "Tarea", a.grupo];
+    if (a.duracion_min) datos.push(`${a.duracion_min} min`);
+    if (a.estado === "abierta" && a.cierra) datos.push(`cierra ${fechaHora(a.cierra)}`);
+    let accion;
+    if (a.estado === "pronto") accion = h("span.estado.info", a.abre ? `Abre ${fechaHora(a.abre)}` : "Aún no abre");
+    else if (a.entregada) accion = h("button.btn.btn-sec", { type: "button", onclick: () => ir(a) }, "Ver mi resultado");
+    else if (a.estado === "abierta") accion = h("button.btn", { type: "button", onclick: () => ir(a) }, a.tipo === "examen" ? "Empezar examen" : "Hacer tarea");
+    else accion = h("span.estado.mal", "Cerrada sin entregar");
+    const nota = a.entregada ? (a.pendiente ? "Entregada · el profesor está revisando" : a.puntaje != null ? `Nota: ${Number(a.puntaje)} de ${Number(a.puntaje_max)}` : "Entregada") : null;
+    return h("li.act-alumno", h("div.crece", h("strong", a.titulo), h("div.tenue", datos.join(" · ")), nota ? h("div", { style: "font-weight:700;margin-top:.2rem" }, nota) : null), accion);
+  };
+  const acts = r.actividades || [];
+  const porHacer = acts.filter((a) => a.estado === "abierta" && !a.entregada);
+  const proximas = acts.filter((a) => a.estado === "pronto");
+  const resto = acts.filter((a) => !porHacer.includes(a) && !proximas.includes(a));
+  const seccion = (t, l, vacio) => h("section.hoja", h("h2", t), l.length ? h("ul.lista-act", l.map(tarjeta)) : h("p.suave", vacio));
+  document.title = "Mis tareas y exámenes · Docencia360";
+  cont.replaceChildren(
+    h("section.cab-act", h("div.tenue", r.institucion), h("h1", `Hola, ${r.nombre}`),
+      h("button.btn.btn-texto.btn-sm", { type: "button", onclick: () => { guardarSS(CLAVE_PORTAL, null); guardarSS(CLAVE_PIN, null); pantallaPortal(); } }, "Salir")),
+    r.cuenta_activa ? null : h("div.aviso.ojo", MOTIVO.cuenta_inactiva),
+    seccion("Por hacer", porHacer, "No tienes tareas ni exámenes pendientes. ¡Bien!"),
+    proximas.length ? seccion("Próximamente", proximas, "") : null,
+    seccion("Entregadas y cerradas", resto, "Todavía no hay actividades anteriores."));
+}
+
 async function inicio() {
-  if (!token) { cont.replaceChildren(h("div.vacio", h("p", "Abre el enlace o escanea el QR que te dio tu profesor."))); return; }
+  if (!token) {
+    const g = leerSS(CLAVE_PORTAL);
+    if (g?.esp && g?.pin) return cargarPortal(g.esp, g.pin, true);
+    return pantallaPortal(new URLSearchParams(location.search).get("p") || "");
+  }
   try { info = await rpc("d360_alumno_ver", { p_token: token }); }
   catch (e) { cont.replaceChildren(h("div.aviso.mal", e.message)); return; }
   if (!info.ok) { cont.replaceChildren(h("div.vacio", h("p", MOTIVO[info.motivo] || MOTIVO.no_existe))); return; }
@@ -96,13 +175,15 @@ function pantallaCodigo() {
   limpiar();
   if (info.estado === "no_disponible") { cont.replaceChildren(cabecera(), h("div.aviso.ojo", MOTIVO.no_disponible)); return; }
   const estado = { pronto: info.abre ? `Abre el ${fechaHora(info.abre)}.` : MOTIVO.pronto, cerrada: MOTIVO.cerrada, cuenta_inactiva: MOTIVO.cuenta_inactiva }[info.estado];
-  const inp = h("input.pin-alumno", { inputmode: "numeric", autocomplete: "off", maxLength: 6, placeholder: "••••••", "aria-label": "Tu código personal de 6 números" });
+  const inp = h("input.pin-alumno", { inputmode: "numeric", autocomplete: "off", maxLength: 6, placeholder: "••••••", "aria-label": "Tu código personal de 6 números", value: leerSS(CLAVE_PIN) || "" });
   inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, "").slice(0, 6); });
   const form = h("form", { novalidate: true },
     h("label.campo", h("span", "Tu código personal"), inp, h("small", "Son 6 números. Te lo dio tu profesor.")),
     h("button.btn.btn-bloque", { type: "submit" }, "Entrar"));
   form.addEventListener("submit", (e) => { e.preventDefault(); pin = inp.value; entrar(false); });
-  cont.replaceChildren(cabecera(),
+  cont.replaceChildren(
+    leerSS(CLAVE_PORTAL) ? h("p", h("a", { href: "alumno.html" }, "← Mis tareas y exámenes")) : null,
+    cabecera(),
     info.instrucciones ? h("section.hoja", h("h2", "Instrucciones"), h("p", { style: "white-space:pre-wrap" }, info.instrucciones)) : null,
     estado && info.estado !== "abierta" ? h("div.aviso.ojo", estado, " Si ya la respondiste, entra con tu código para ver tu resultado.") : null,
     h("section.hoja", form));
