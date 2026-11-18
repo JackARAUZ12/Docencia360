@@ -71,6 +71,7 @@ const mostrar = (m, t = "mal") => aviso.replaceChildren(h(`div.aviso.${t}`, { ro
 const limpiar = () => aviso.replaceChildren();
 const rpc = async (fn, args) => { const { data, error } = await sb.rpc(fn, args); if (error) throw new Error(mensajeError(error)); return data; };
 const fechaHora = (iso) => new Date(iso).toLocaleString("es-NI", { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" });
+const moneda = (n) => new Intl.NumberFormat("es-NI", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0));
 const fechaCorta = (iso) => new Date(String(iso).length === 10 ? iso + "T12:00:00" : iso).toLocaleDateString("es-NI", { day: "numeric", month: "short" });
 
 const CLAVE = "d360-aula";
@@ -243,9 +244,17 @@ function notas() {
       h("div.nota-g", h("h2", g.grupo), h("b", g.promedio == null ? "—" : `${Number(g.promedio)}`)),
       h("p.tenue", g.promedio == null ? "Aún no tienes notas en este grupo." : "Promedio del grupo"),
       g.evaluaciones.length ? h("ul.lista-a", g.evaluaciones.map((e) => h("li.item-a",
-        h("div.crece", h("strong", e.titulo), h("div.tenue", `${fechaCorta(e.fecha)} · ${e.tipo}`)),
+        h("div.crece", h("strong", e.titulo), h("div.tenue", `${fechaCorta(e.fecha)} · ${e.tipo}`),
+          Array.isArray(e.rubrica) && e.rubrica.length ? h("div.tenue", { style: "margin-top:.2rem" }, "Rúbrica: " + e.rubrica.map((d) => `${d.criterio}: ${d.nivel}`).join(" · ")) : null),
         h("strong", e.puntaje == null ? "Sin nota" : `${Number(e.puntaje)} / ${Number(e.puntaje_max)}`)))) : null))
       : h("section.hoja", h("p.suave", "Todavía no estás en ningún grupo.")),
+    Array.isArray(datos.cobros) ? h("section.hoja", h("h2", "Mis pagos"),
+      datos.cobros.length ? h("ul.lista-a", datos.cobros.map((c) => {
+        const saldo = Math.max(Number(c.monto) - Number(c.pagado), 0);
+        const vencido = c.estado !== "pagado" && c.vence < new Date().toISOString().slice(0, 10);
+        return h("li.item-a", h("div.crece", h("strong", c.concepto), h("div.tenue", `Vence ${fechaCorta(c.vence)}`)),
+          h("span.estado." + (c.estado === "pagado" ? "ok" : vencido ? "mal" : "ojo"), c.estado === "pagado" ? "Pagado" : `Debe ${moneda(saldo)}`));
+      })) : h("p.suave", "No tienes cobros registrados.")) : null,
     h("section.hoja", h("h2", "Mi asistencia"),
       as.total ? [
         h("p", h("strong", `${as.porcentaje}%`), ` de asistencia en los últimos 6 meses · ${as.ausentes} ausencia(s), ${as.tardes} tardanza(s), ${as.justificados} justificada(s).`),

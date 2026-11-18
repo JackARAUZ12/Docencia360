@@ -14,6 +14,7 @@ async function editarGrupo(ctx, g) {
     !g && ctx.modalidad === "profesor" ? { name: "asignatura_nueva", label: "…o escribe una asignatura nueva", placeholder: "Ej.: Matemática", maxlength: 100, help: "Opcional. Se crea al guardar." } : null,
     { name: "curso_id", label: "Curso", type: "select", placeholder: "Sin curso", options: cursos.filter((c) => c.activo).map((c) => [c.id, c.nombre]) },
     { name: "cupo", label: "Cupo máximo", type: "number", min: 1, max: 1000 },
+    ctx.modalidad === "profesor" && ctx.f("finanzas") && ctx.esFinanzas ? { name: "mensualidad", label: `Mensualidad por estudiante (${ctx.cuenta.moneda})`, type: "number", min: 0, step: "0.01", help: "Para generar los cobros del mes en «Cobros». Déjalo en 0 si no cobras por este grupo." } : null,
     { name: "estado", label: "Estado", type: "select", options: [["activo", "Activo"], ["planificado", "Planificado"], ["finalizado", "Finalizado"], ["cancelado", "Cancelado"]], value: "activo" },
     { name: "fecha_inicio", label: "Inicia", type: "date" },
     { name: "fecha_fin", label: "Termina", type: "date" },

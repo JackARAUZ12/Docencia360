@@ -9,7 +9,7 @@ import { h, tabla, modal, confirmar, formularioModal, toast, fecha, nombreComple
 import { ICONOS } from "../core/iconos.js";
 import { ruta } from "../core/sesion.js";
 
-const TIPO_P = { opcion: "Opción múltiple", vf: "Verdadero o falso", corta: "Respuesta corta", desarrollo: "Desarrollo" };
+export const TIPO_P = { opcion: "Opción múltiple", vf: "Verdadero o falso", corta: "Respuesta corta", desarrollo: "Desarrollo" };
 const AUTO = (t) => t !== "desarrollo";
 const enlaceAlumno = (token) => new URL(ruta(`alumno.html?a=${encodeURIComponent(token)}`), location.href).href;
 const fechaHora = (iso) => (iso ? new Date(iso).toLocaleString("es-NI", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "—");
@@ -85,6 +85,7 @@ export async function render(el, ctx, { partes, params }) {
   el.append(
     ctx.titulo("Tareas y exámenes en línea",
       ctx.esGestor ? h("a.btn.btn-sec", { href: "#/enlinea/accesos" }, "Accesos de estudiantes") : null,
+      ctx.f("banco_preguntas") ? h("a.btn.btn-sec", { href: "#/banco" }, "Banco de preguntas") : ctx.mejora("Banco de preguntas"),
       grupos.length ? h("button.btn", { onclick: () => editarActividad(ctx, null, grupos) }, h("span", { html: ICONOS.mas_add }), "Nueva actividad") : null),
     h("p.suave", "Creas el examen o la tarea, lo publicas y compartes un QR. Cada estudiante responde desde su teléfono con su código personal; la nota llega sola a Calificaciones."),
     cupo,
@@ -122,7 +123,8 @@ async function usoAccesos(ctx) {
 }
 
 // ---------- Crear o editar los datos de la actividad ----------
-function editarActividad(ctx, a, grupos) {
+async function editarActividad(ctx, a, grupos) {
+  const rubs = await (await import("./rubricas.js")).cargarRubricas(ctx).catch(() => []);
   return formularioModal(a ? "Editar actividad" : "Nueva actividad en línea", [
     { name: "titulo", label: "Título", required: true, full: true, maxlength: 140, placeholder: "Ej.: Examen de cinemática" },
     { name: "grupo_id", label: "Grupo", type: "select", required: true, options: grupos.filter((g) => g.estado === "activo" || g.id === a?.grupo_id).map((g) => [g.id, g.nombre]) },
@@ -139,9 +141,11 @@ function editarActividad(ctx, a, grupos) {
     { name: "permite_archivos", label: "El estudiante sube fotos o PDF de su trabajo (hasta 5 archivos de 5 MB)", type: "checkbox", value: false, full: true },
     { name: "puntos_archivo", label: "Puntos del trabajo en archivo", type: "number", min: 0, max: 100, step: "0.5", value: 10,
       help: "Lo calificas tú al revisar. Puede ser una tarea solo con archivo, sin preguntas." },
-  ], a ? { ...a, abre: aLocal(a.abre), cierra: aLocal(a.cierra) } : null, async (d, cerrar) => {
+    ctx.f("rubricas") ? { name: "rubrica_id", label: "Rúbrica para calificar el archivo (opcional)", type: "select", placeholder: rubs.length ? "Sin rúbrica" : "Aún no tienes rúbricas", options: rubs.map((r) => [r.id, r.nombre]) } : null,
+  ].filter(Boolean), a ? { ...a, abre: aLocal(a.abre), cierra: aLocal(a.cierra) } : null, async (d, cerrar) => {
     const fila = { ...d, abre: aISO(d.abre), cierra: aISO(d.cierra), duracion_min: d.duracion_min || null, intentos: d.intentos || 1, peso: d.peso ?? 0,
       permite_archivos: !!d.permite_archivos, puntos_archivo: d.permite_archivos ? Number(d.puntos_archivo || 0) : 0 };
+    if ("rubrica_id" in fila) fila.rubrica_id = fila.rubrica_id || null;
     if (fila.abre && fila.cierra && fila.cierra <= fila.abre) throw new Error("La fecha de cierre debe ser posterior a la de apertura.");
     if (a) { await q(sb.from("actividades").update(fila).eq("id", a.id)); cerrar(); ctx.recargar(); }
     else {
@@ -152,7 +156,8 @@ function editarActividad(ctx, a, grupos) {
 }
 
 // ---------- Editor de una pregunta ----------
-function editarPregunta(ctx, act, p, orden, alGuardar) {
+export function editarPregunta(ctx, act, p, orden, alGuardar, { banco = false } = {}) {
+  const tema = banco ? h("input", { maxLength: 80, value: p?.tema || "General", placeholder: "Ej.: Fracciones", "aria-label": "Tema" }) : null;
   let tipo = p?.tipo || "opcion";
   let opciones = p?.tipo === "opcion" ? [...p.opciones] : ["", "", ""];
   let correcta = p?.tipo === "opcion" ? Number(p.correcta) : 0;
@@ -184,6 +189,7 @@ function editarPregunta(ctx, act, p, orden, alGuardar) {
   }
   pintar();
   const m = modal(p ? "Editar pregunta" : "Nueva pregunta", h("div.editor-preg", err, selTipo,
+    tema ? h("label.campo", h("span", "Tema (para encontrarla después)"), tema) : null,
     h("label.campo", h("span", "Pregunta"), enun), zona, h("label.campo", { style: "max-width:160px" }, h("span", "Puntos"), puntos)), [
     { texto: "Cancelar", clase: "btn-sec" },
     { texto: "Guardar pregunta", onclick: async (cerrar) => {
@@ -201,7 +207,11 @@ function editarPregunta(ctx, act, p, orden, alGuardar) {
           if (!acc.length) throw new Error("Escribe al menos una respuesta aceptada.");
           fila.correcta = acc;
         }
-        if (p) await q(sb.from("preguntas").update(fila).eq("id", p.id));
+        if (banco) {
+          fila.tema = (tema.value || "").trim() || "General";
+          if (p) await q(sb.from("banco_preguntas").update(fila).eq("id", p.id));
+          else await q(sb.from("banco_preguntas").insert({ ...fila, cuenta_id: ctx.id }));
+        } else if (p) await q(sb.from("preguntas").update(fila).eq("id", p.id));
         else await q(sb.from("preguntas").insert({ ...fila, cuenta_id: ctx.id, actividad_id: act.id, orden }));
         cerrar(); alGuardar();
       } catch (e) { err.textContent = e.message; err.classList.remove("oculto"); }
@@ -291,7 +301,15 @@ async function detalle(el, ctx, id) {
     // Preguntas
     h("section.hoja",
       h("div.hoja-titulo", h("h2", "Preguntas"),
-        editable ? h("button.btn.btn-sm", { onclick: () => editarPregunta(ctx, a, null, preguntas.length, ctx.recargar) }, h("span", { html: ICONOS.mas_add }), "Agregar pregunta") : null),
+        h("div", { style: "display:flex;gap:.5rem;flex-wrap:wrap" },
+          editable && ctx.f("banco_preguntas") ? h("button.btn.btn-sec.btn-sm", { onclick: async () => (await import("./banco.js")).elegirDelBanco(ctx, a, ctx.recargar) }, "Agregar del banco") : null,
+          preguntas.length && ctx.f("banco_preguntas") ? h("button.btn.btn-texto.btn-sm", { onclick: () => formularioModal("Guardar en el banco", [
+            { name: "tema", label: "Tema", required: true, maxlength: 80, value: a.titulo, full: true, help: "Así las encuentras después para armar otros exámenes. No se guardan repetidas." },
+          ], {}, async (d, cerrar) => {
+            const n = await q(sb.rpc("d360_actividad_a_banco", { p_actividad: a.id, p_tema: d.tema }));
+            cerrar(); toast(n ? `${n} pregunta(s) guardadas en el banco` : "Esas preguntas ya estaban en el banco.");
+          }, { boton: "Guardar" }) }, "Guardar en el banco") : null,
+          editable ? h("button.btn.btn-sm", { onclick: () => editarPregunta(ctx, a, null, preguntas.length, ctx.recargar) }, h("span", { html: ICONOS.mas_add }), "Agregar pregunta") : null)),
       !editable ? h("p.tenue", "Ya hay respuestas de estudiantes: las preguntas no se pueden cambiar para que las notas cuadren.") : null,
       preguntas.length ? h("ol.lista-preguntas", preguntas.map((p, i) => h("li",
         h("div.crece",
@@ -311,10 +329,12 @@ async function detalle(el, ctx, id) {
 // ---------- Ver y revisar una entrega ----------
 async function verEntrega(ctx, a, preguntas, r) {
   const [e, adjuntos] = await Promise.all([
-    q(sb.from("entregas").select("id,respuestas,puntos_auto,puntos_manual,puntaje,puntaje_max,pendiente,comentario,enviada,intento").eq("id", r.entrega.id).single()),
+    q(sb.from("entregas").select("id,respuestas,puntos_auto,puntos_manual,puntaje,puntaje_max,pendiente,comentario,enviada,intento,rubrica_detalle").eq("id", r.entrega.id).single()),
     a.permite_archivos ? q(sb.from("entrega_archivos").select("id,path,nombre,tamano,tipo").eq("entrega_id", r.entrega.id).order("creado")) : [],
   ]);
   const inputs = {};
+  let rubricaDetalle = e.rubrica_detalle || null;
+  const detalleTxt = h("p.tenue", rubricaDetalle ? rubricaDetalle.map((d) => `${d.criterio}: ${d.nivel}`).join(" · ") : "");
   const comentario = h("textarea", { rows: 2, maxLength: 1000, placeholder: "Comentario para el estudiante (opcional)" }, e.comentario || "");
   const fila = (p, i) => {
     const resp = e.respuestas[p.id];
@@ -347,7 +367,18 @@ async function verEntrega(ctx, a, preguntas, r) {
           try { const { urlParaProfesor } = await import("./archivos.js"); const url = await urlParaProfesor(f.path); if (v) v.location = url; else location.href = url; }
           catch (err) { v?.close(); toast(err.message, "mal"); } finally { b.disabled = false; }
         } }, "Abrir")))) : h("p.tenue", "No subió archivos."),
-      inputs.archivo ? h("label.puntos-dev", inputs.archivo, ` / ${pts(a.puntos_archivo)} pts por el archivo`) : null);
+      inputs.archivo ? h("label.puntos-dev", inputs.archivo, ` / ${pts(a.puntos_archivo)} pts por el archivo`) : null,
+      inputs.archivo && a.rubrica_id ? h("button.btn.btn-sec.btn-sm", { type: "button", style: "margin-top:.5rem", onclick: async () => {
+        const R = await import("./rubricas.js");
+        const rub = (await R.cargarRubricas(ctx)).find((x) => x.id === a.rubrica_id);
+        if (!rub) { toast("La rúbrica ya no existe.", "mal"); return; }
+        const res = await R.calificarConRubrica(rub, rubricaDetalle, `${r.nombre} · ${rub.nombre}`);
+        if (!res) return;
+        rubricaDetalle = res.detalle;
+        inputs.archivo.value = String(Math.round((res.obtenidos / (res.maximo || 1)) * Number(a.puntos_archivo) * 100) / 100);
+        detalleTxt.textContent = res.detalle.map((d) => `${d.criterio}: ${d.nivel}`).join(" · ");
+      } }, "Calificar con rúbrica") : null,
+      detalleTxt);
   }
   const tieneDesarrollo = true;
   modal("Respuestas", cuerpo, tieneDesarrollo ? [
@@ -355,7 +386,7 @@ async function verEntrega(ctx, a, preguntas, r) {
     { texto: "Guardar revisión", onclick: async (cerrar) => {
       const puntos = {};
       for (const [k, inp] of Object.entries(inputs)) if (inp.value !== "") puntos[k] = Number(inp.value);
-      try { const x = await q(sb.rpc("d360_entrega_revisar", { p_entrega: e.id, p_puntos: puntos, p_comentario: comentario.value || null }));
+      try { const x = await q(sb.rpc("d360_entrega_revisar", { p_entrega: e.id, p_puntos: puntos, p_comentario: comentario.value || null, p_rubrica: rubricaDetalle }));
         toast(x.pendiente ? "Guardado. Aún falta revisar alguna pregunta." : `Nota final: ${pts(x.puntaje)} / ${pts(x.puntaje_max)}. Ya está en Calificaciones.`);
         cerrar(); ctx.recargar(); }
       catch (err) { toast(err.message, "mal"); }

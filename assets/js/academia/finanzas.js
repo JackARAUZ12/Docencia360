@@ -22,7 +22,7 @@ export function recibo(ctx, p, cargo, est) {
       h("span", "_____________________", h("br"), "Recibido por"), h("span", "_____________________", h("br"), "Firma")));
 }
 
-function verRecibo(ctx, p, cargo, est) {
+export function verRecibo(ctx, p, cargo, est) {
   const doc = recibo(ctx, p, cargo, est);
   modal(`Recibo N.º ${p.recibo}`, doc, [
     { texto: "Cerrar", clase: "btn-sec" },

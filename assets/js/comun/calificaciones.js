@@ -4,10 +4,12 @@ import { sb, q } from "../core/sb.js";
 import { h, formularioModal, confirmar, fechaCorta, hoyISO, nombreCompleto, nota, descargarCSV } from "../core/ui.js";
 const ESTRECHA = () => matchMedia("(max-width: 700px)").matches;
 import { ICONOS } from "../core/iconos.js";
+import { cargarRubricas, calificarConRubrica } from "./rubricas.js";
 
 export const TIPOS = [["examen", "Examen"], ["tarea", "Tarea"], ["proyecto", "Proyecto"], ["practica", "Práctica"], ["participacion", "Participación"], ["otro", "Otro"]];
 
-export function editarEvaluacion(ctx, grupoId, ev, alGuardar, tipoInicial) {
+export async function editarEvaluacion(ctx, grupoId, ev, alGuardar, tipoInicial) {
+  const rubs = await cargarRubricas(ctx).catch(() => []);
   formularioModal(ev ? "Editar evaluación" : (tipoInicial === "tarea" ? "Nueva tarea" : "Nueva evaluación"), [
     { name: "titulo", label: "Título", required: true, maxlength: 140, placeholder: "Ej.: Examen parcial 1", full: true },
     { name: "tipo", label: "Tipo", type: "select", options: TIPOS, value: tipoInicial || "examen" },
@@ -16,8 +18,11 @@ export function editarEvaluacion(ctx, grupoId, ev, alGuardar, tipoInicial) {
       help: "Déjalo en 0 si todas valen lo mismo." },
     { name: "puntaje_max", label: "Puntaje máximo", type: "number", min: 1, max: 1000, step: "0.5", value: 100, required: true },
     { name: "descripcion", label: "Indicaciones", type: "textarea", full: true },
-  ], ev, async (d, cerrar) => {
+    ctx.f("rubricas") ? { name: "rubrica_id", label: "Rúbrica (opcional)", type: "select", placeholder: rubs.length ? "Sin rúbrica" : "Aún no tienes rúbricas", options: rubs.map((r) => [r.id, r.nombre]),
+      help: "Con rúbrica, al poner notas eliges un nivel por criterio y la nota se calcula sola. Créalas en «Rúbricas»." } : null,
+  ].filter(Boolean), ev, async (d, cerrar) => {
     d.peso = d.peso ?? 0;
+    if ("rubrica_id" in d) d.rubrica_id = d.rubrica_id || null;
     let id = ev?.id;
     if (ev) await q(sb.from("evaluaciones").update(d).eq("id", ev.id));
     else id = (await q(sb.from("evaluaciones").insert({ ...d, cuenta_id: ctx.id, grupo_id: grupoId }).select("id").single()))?.id;
@@ -48,6 +53,7 @@ export async function render(el, ctx, { params }) {
   const cuerpo = h("div");
   el.append(ctx.titulo(ctx.modalidad === "profesor" ? "Notas y tareas" : "Calificaciones",
     ctx.f("tareas") ? h("a.btn.btn-sec", { href: "#/tareas" }, h("span", { html: ICONOS.tareas }), "Tareas y entregas") : null,
+    ctx.f("rubricas") ? h("a.btn.btn-sec", { href: "#/rubricas" }, "Rúbricas") : null,
     h("button.btn", { onclick: () => editarEvaluacion(ctx, grupoId, null, irA) }, h("span", { html: ICONOS.mas_add }), "Nueva evaluación")),
     h("div.barra-filtros", sel, segs), cuerpo);
   if (params.get("nuevo") === "1") { history.replaceState(null, "", `#/calificaciones?grupo=${grupoId}`); setTimeout(() => editarEvaluacion(ctx, grupoId, null, irA), 50); }
@@ -61,7 +67,10 @@ export async function render(el, ctx, { params }) {
       q(sb.from("grupo_estudiantes").select("estudiante_id, estudiantes(nombres,apellidos)").eq("grupo_id", grupoId).eq("estado", "activo")),
       q(sb.rpc("d360_promedios_grupo", { p_grupo: grupoId })),
     ]);
-    const notas = evals.length ? await q(sb.from("calificaciones").select("id,evaluacion_id,estudiante_id,puntaje,entregado").in("evaluacion_id", evals.map((e) => e.id))) : [];
+    const notas = evals.length ? await q(sb.from("calificaciones").select("id,evaluacion_id,estudiante_id,puntaje,entregado,rubrica_detalle").in("evaluacion_id", evals.map((e) => e.id))) : [];
+    const rubricas = evals.some((e) => e.rubrica_id) ? await cargarRubricas(ctx).catch(() => []) : [];
+    const detallePrevio = {}; notas.forEach((n) => { if (n.rubrica_detalle) detallePrevio[`${n.evaluacion_id}|${n.estudiante_id}`] = n.rubrica_detalle; });
+    const detalles = new Map();
     miembros.sort((a, b) => nombreCompleto(a.estudiantes).localeCompare(nombreCompleto(b.estudiantes)));
     const valor = {}; notas.forEach((n) => (valor[`${n.evaluacion_id}|${n.estudiante_id}`] = n.puntaje));
     const promedio = Object.fromEntries(proms.map((p) => [p.estudiante_id, p]));
@@ -135,24 +144,42 @@ export async function render(el, ctx, { params }) {
         evalSel = e.target.value; pintar(); } },
         evals.map((e) => h("option", { value: e.id, selected: e.id === evalSel }, `${e.titulo} · ${fechaCorta(e.fecha)}${sinNota(e) ? ` · faltan ${sinNota(e)}` : " · completa"}`)));
       const faltan = sinNota(ev);
+      const rub = ev.rubrica_id ? rubricas.find((r) => r.id === ev.rubrica_id) : null;
       cuerpo.replaceChildren(
         h("section.hoja",
           h("div.barra-filtros", selEval,
             h("button.btn.btn-texto.btn-sm", { type: "button", onclick: () => menuEval(ev) }, "Editar evaluación")),
           h("p.tenue", { style: "margin:-.25rem 0 .75rem" }, `Sobre ${Number(ev.puntaje_max)} puntos${Number(ev.peso) ? ` · vale ${Number(ev.peso)}% del promedio` : ""} · `,
             faltan ? h("strong", `faltan ${faltan} de ${miembros.length}`) : "todos calificados"),
-          miembros.length ? h("ul.calificar", miembros.map((m) => h("li",
-            h("div", h("div.nombre", nombreCompleto(m.estudiantes)), h("div.tenue", "Promedio: ", nota(promedio[m.estudiante_id]?.promedio))),
-            h("div.campo-nota", casilla(ev, m), h("span.tenue", `/ ${Number(ev.puntaje_max)}`))))) : null,
+          rub ? h("p.tenue", "Con rúbrica «", rub.nombre, "»: toca «Rúbrica» junto a cada estudiante, elige un nivel por criterio y la nota se calcula sola.") : null,
+          miembros.length ? h("ul.calificar", miembros.map((m) => {
+            const inp = casilla(ev, m);
+            const k = `${ev.id}|${m.estudiante_id}`;
+            return h("li",
+              h("div", h("div.nombre", nombreCompleto(m.estudiantes)), h("div.tenue", "Promedio: ", nota(promedio[m.estudiante_id]?.promedio))),
+              h("div.campo-nota", inp, h("span.tenue", `/ ${Number(ev.puntaje_max)}`),
+                rub ? h("button.btn.btn-sec.btn-sm" + (detallePrevio[k] || detalles.has(k) ? ".con-rubrica" : ""), { type: "button", onclick: async (e) => {
+                  const b = e.currentTarget;
+                  const r = await calificarConRubrica(rub, detalles.get(k) || detallePrevio[k], `${nombreCompleto(m.estudiantes)} · ${rub.nombre}`);
+                  if (!r) return;
+                  detalles.set(k, r.detalle);
+                  inp.value = String(Math.round((r.obtenidos / (r.maximo || 1)) * Number(ev.puntaje_max) * 100) / 100);
+                  inp.dispatchEvent(new Event("input"));
+                  if (!cambios.has(k)) cambios.set(k, { ev, est: m.estudiante_id, n: Number(inp.value) });
+                  pendientes = cambios.size; guardar.disabled = false; guardar.textContent = `Guardar ${cambios.size} nota(s)`;
+                  b.classList.add("con-rubrica");
+                } }, "Rúbrica") : null));
+          })) : null,
           h("div.pie-fijo", guardar)));
     }
 
     async function guardarCambios() {
       guardar.disabled = true;
       const upserts = [], borrar = [];
-      for (const { ev, est, n } of cambios.values()) {
+      for (const [k, { ev, est, n }] of cambios.entries()) {
         if (n == null) borrar.push({ ev: ev.id, est });
-        else upserts.push({ cuenta_id: ctx.id, evaluacion_id: ev.id, estudiante_id: est, puntaje: n, entregado: true, actualizado: new Date().toISOString() });
+        else upserts.push({ cuenta_id: ctx.id, evaluacion_id: ev.id, estudiante_id: est, puntaje: n, entregado: true, actualizado: new Date().toISOString(),
+          rubrica_detalle: detalles.get(k) ?? null });
       }
       try {
         if (upserts.length) await q(sb.from("calificaciones").upsert(upserts, { onConflict: "evaluacion_id,estudiante_id" }));
@@ -163,7 +190,7 @@ export async function render(el, ctx, { params }) {
   }
 
   async function menuEval(ev) {
-    editarEvaluacion(ctx, grupoId, ev, pintar);
+    await editarEvaluacion(ctx, grupoId, ev, pintar);
     // Botón de borrar dentro del modal abierto
     const pie = document.querySelector("dialog.modal .modal-pie");
     pie?.prepend(h("button.btn.btn-texto", { type: "button", style: "margin-right:auto", onclick: async () => {

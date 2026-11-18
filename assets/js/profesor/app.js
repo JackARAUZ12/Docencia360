@@ -20,6 +20,7 @@ const AYUDAS = {
   enlinea: "crea un examen o una tarea, publícalo y compártelo con un enlace o QR. Cada estudiante entra con su código personal y la nota se calcula sola.",
   calendario: "agrega reuniones, feriados y fechas importantes. Las evaluaciones aparecen solas.",
   informes: "resumen de asistencia y promedios por grupo, listo para imprimir o compartir.",
+  cobros: "pon la mensualidad de cada grupo, genera los cobros del mes con un toque y registra los pagos con recibo. Desde aquí envías recordatorios por WhatsApp.",
   aula: "publica avisos y materiales (PDF, fotos o enlaces) por grupo. Tus estudiantes los ven en su aula junto con sus tareas, exámenes y notas.",
 };
 
@@ -34,9 +35,12 @@ const RUTAS = [
   { r: "grupos", t: "Grupos y horarios", corto: "Grupos", i: "grupos", b: "clases", m: () => import("../comun/grupos.js") },
   { r: "estudiantes", t: "Estudiantes", i: "estudiantes", b: "clases", m: () => import("../comun/estudiantes.js") },
   { r: "calendario", t: "Calendario", i: "calendario", b: "clases", m: () => import("../comun/calendario.js") },
+  { r: "cobros", t: "Cobros", i: "cobros", b: "clases", plan: "finanzas", solo: (c) => c.esFinanzas, m: () => import("./cobros.js") },
   { r: "informes", t: "Informes", i: "informes", b: "mas", m: () => import("./informes.js") },
   { r: "cuenta", t: "Mi cuenta", i: "cuenta", b: "mas", m: () => import("../comun/cuenta.js") },
   { r: "tareas", t: "Tareas", i: "tareas", padre: "calificaciones", m: () => import("../comun/tareas.js") },
+  { r: "rubricas", t: "Rúbricas", i: "notas", padre: "calificaciones", m: () => import("../comun/rubricas.js") },
+  { r: "banco", t: "Banco de preguntas", i: "enlinea", padre: "enlinea", m: () => import("../comun/banco.js") },
   { r: "cursos", t: "Asignaturas y cursos", i: "cursos", padre: "grupos", m: () => import("./cursos.js") },
 ];
 const BLOQUES = [["dia", "Día a día"], ["clases", "Mis clases"], ["mas", "Más"]];
@@ -48,7 +52,7 @@ const bloqueada = (x) => x.plan && !ctx.f(x.plan);
 const enlace = (x) => h("a", { href: "#/" + x.r, dataset: { r: x.r }, title: bloqueada(x) ? "No incluido en tu plan: toca para ver qué hace" : null },
   icono(x.i), h("span", x.t), bloqueada(x) ? h("span.candado", { html: ICONOS.candado, "aria-label": "No incluido en tu plan" }) : null);
 const menuPorBloques = (filtro = () => true) => BLOQUES.map(([b, titulo]) => {
-  const items = RUTAS.filter((x) => x.b === b && filtro(x));
+  const items = RUTAS.filter((x) => x.b === b && filtro(x) && (!x.solo || x.solo(ctx)));
   return items.length ? h("div.bloque-menu", h("p.titulo-bloque", titulo), items.map(enlace)) : null;
 });
 const enlaceSalir = () => h("a", { href: "#", onclick: (e) => { e.preventDefault(); salir(); } }, icono("salir"), h("span", "Salir"));
@@ -68,6 +72,11 @@ document.getElementById("app").replaceChildren(
   h("nav.p-barra", { "aria-label": "Menú rápido" },
     RUTAS.filter((x) => EN_BARRA.includes(x.r)).map((x) => h("a", { href: "#/" + x.r, dataset: { r: x.r } }, icono(x.i), x.corto || x.t)),
     h("a", { href: "#/mas", dataset: { r: "mas" } }, icono("mas"), "Más")));
+
+// Extensiones de la ficha del estudiante: pagos y descuento (control de pagos)
+ctx.seccionesFicha = [(c, e) => (c.esFinanzas && c.f("finanzas") ? import("./cobros.js").then((m) => m.seccionPagosFicha(c, e)) : null)];
+ctx.camposEstudianteExtra = ctx.f("finanzas") && ctx.esFinanzas
+  ? [{ name: "descuento_pct", label: "Descuento en mensualidades (%)", type: "number", min: 0, max: 100, step: "0.5", help: "Por ejemplo, 50 para media beca. Se aplica al generar las mensualidades." }] : [];
 
 const guia = botonGuia(ctx);
 document.body.append(guia);

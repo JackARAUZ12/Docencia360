@@ -10,9 +10,9 @@ const est = [["Ana", "López"], ["Luis", "Pérez"], ["María José", "Gutiérrez
   id: E(i + 1), cuenta_id: C, nombres: n, apellidos: a, estado: i === 3 ? "retirado" : "activo", telefono: "8888-000" + i,
   contacto_nombre: "Responsable " + i, contacto_telefono: "7777-000" + i, creado: hoy + "T10:00:00Z", fecha_nacimiento: "2010-05-0" + (i + 1) }));
 const planes = [
-  { id: "prof_basico", modalidad: "profesor", nombre: "Básico", orden: 1, resumen: "Para empezar", precio_usd: 4, precio_nio: 149, max_estudiantes: null, max_estudiantes_portal: 0, max_docentes: 0, max_grupos: 4, max_admins: 0, almacenamiento_mb: 200, funciones: { tareas: true, exportar: false, asistentes: false, calendario: true, reportes_pdf: false, portal_estudiantes: false, reporte_whatsapp: false }, activo: true },
-  { id: "prof_profesional", modalidad: "profesor", nombre: "Profesional", orden: 2, resumen: "Varios grupos", precio_usd: 8, precio_nio: 295, max_estudiantes: null, max_estudiantes_portal: 250, max_docentes: 0, max_grupos: 15, max_admins: 0, almacenamiento_mb: 1024, funciones: { tareas: true, exportar: true, asistentes: false, calendario: true, reportes_pdf: true, portal_estudiantes: true, reporte_whatsapp: true }, activo: true },
-  { id: "prof_premium", modalidad: "profesor", nombre: "Premium", orden: 3, resumen: "Con asistente", precio_usd: 14, precio_nio: 515, max_estudiantes: null, max_estudiantes_portal: 600, max_docentes: 1, max_grupos: null, max_admins: 0, almacenamiento_mb: 3072, funciones: { tareas: true, exportar: true, asistentes: true, calendario: true, reportes_pdf: true, portal_estudiantes: true, reporte_whatsapp: true }, activo: true },
+  { id: "prof_basico", modalidad: "profesor", nombre: "Básico", orden: 1, resumen: "Para empezar", precio_usd: 4, precio_nio: 149, max_estudiantes: null, max_estudiantes_portal: 0, max_docentes: 0, max_grupos: 4, max_admins: 0, almacenamiento_mb: 200, funciones: { tareas: true, exportar: false, asistentes: false, calendario: true, reportes_pdf: false, portal_estudiantes: false, reporte_whatsapp: false, finanzas: false, rubricas: false, banco_preguntas: false }, activo: true },
+  { id: "prof_profesional", modalidad: "profesor", nombre: "Profesional", orden: 2, resumen: "Varios grupos", precio_usd: 8, precio_nio: 295, max_estudiantes: null, max_estudiantes_portal: 250, max_docentes: 0, max_grupos: 15, max_admins: 0, almacenamiento_mb: 1024, funciones: { tareas: true, exportar: true, asistentes: false, calendario: true, reportes_pdf: true, portal_estudiantes: true, reporte_whatsapp: true, finanzas: true, rubricas: true, banco_preguntas: false }, activo: true },
+  { id: "prof_premium", modalidad: "profesor", nombre: "Premium", orden: 3, resumen: "Con asistente", precio_usd: 14, precio_nio: 515, max_estudiantes: null, max_estudiantes_portal: 600, max_docentes: 1, max_grupos: null, max_admins: 0, almacenamiento_mb: 3072, funciones: { tareas: true, exportar: true, asistentes: true, calendario: true, reportes_pdf: true, portal_estudiantes: true, reporte_whatsapp: true, finanzas: true, rubricas: true, banco_preguntas: true }, activo: true },
   { id: "col_avanzado", modalidad: "colegio", nombre: "Avanzado", orden: 2, resumen: "Colegios", precio_usd: 99, precio_nio: 3625, max_estudiantes: 1200, max_docentes: 80, max_grupos: null, max_admins: 10, almacenamiento_mb: 51200, funciones: {}, activo: true },
 ];
 const grupos = [
@@ -30,6 +30,9 @@ const PREGUNTAS = [
 ];
 const sinCorrecta = PREGUNTAS.map(({ correcta, ...p }) => p);
 const F = {
+  rubricas: [{ id: "rb1", cuenta_id: C, nombre: "Exposición oral", criterios: [{ nombre: "Dominio del tema", niveles: [{ nombre: "Excelente", puntos: 4 }, { nombre: "Bueno", puntos: 3 }, { nombre: "Regular", puntos: 2 }] }, { nombre: "Claridad", niveles: [{ nombre: "Excelente", puntos: 4 }, { nombre: "Regular", puntos: 2 }] }] }],
+  banco_preguntas: [{ id: "bp1", cuenta_id: C, tema: "Fracciones", tipo: "vf", enunciado: "1/2 es mayor que 1/3.", opciones: [], correcta: true, puntos: 1, usada: 2 },
+                    { id: "bp2", cuenta_id: C, tema: "Ecuaciones", tipo: "corta", enunciado: "Si 2x = 10, ¿cuánto vale x?", opciones: [], correcta: ["5"], puntos: 2, usada: 0 }],
   avisos_aula: [{ id: "av1", cuenta_id: C, grupo_id: G1, texto: "Mañana hay examen de fracciones.", creado: hoy + "T14:00:00Z" }],
   materiales: [{ id: "ma1", cuenta_id: C, grupo_id: G1, titulo: "Guía unidad 3", descripcion: "Resolver del 1 al 10", url: null, archivo_path: C + "/materiales/x.pdf", archivo_nombre: "guia.pdf", archivo_tamano: 120000, archivo_tipo: "application/pdf", creado: hoy + "T13:00:00Z" }],
   entrega_archivos: [{ id: "ea1", path: C + "/entregas/e/f.jpg", nombre: "cuaderno.jpg", tamano: 250000, tipo: "image/jpeg" }],
@@ -51,7 +54,7 @@ const F = {
   estudiantes_acceso: [{ estudiante_id: E(1), cuenta_id: C, activo: true, ultimos: "42", ultimo_acceso: hoy + "T09:30:00Z" }, { estudiante_id: E(2), cuenta_id: C, activo: true, ultimos: "17", ultimo_acceso: null }],
   evaluaciones: [
     { id: EV1, cuenta_id: C, grupo_id: G1, titulo: "Examen parcial", tipo: "examen", fecha: hoy, peso: 60, puntaje_max: 100, grupos: { nombre: "Matemática 9no" } },
-    { id: EV2, cuenta_id: C, grupo_id: G1, titulo: "Tarea de ecuaciones", tipo: "tarea", fecha: hoy, peso: 40, puntaje_max: 20, grupos: { nombre: "Matemática 9no" } }],
+    { id: EV2, cuenta_id: C, grupo_id: G1, titulo: "Tarea de ecuaciones", tipo: "tarea", fecha: hoy, peso: 40, puntaje_max: 20, rubrica_id: "rb1", grupos: { nombre: "Matemática 9no" } }],
   calificaciones: [{ id: "k1", evaluacion_id: EV1, estudiante_id: E(1), puntaje: 85, entregado: true, evaluaciones: { titulo: "Examen parcial", tipo: "examen", fecha: hoy, peso: 60, puntaje_max: 100, grupo_id: G1, grupos: { nombre: "Matemática 9no" } } }],
   asistencias: [{ fecha: hoy, estado: "ausente", estudiante_id: E(2), grupo_id: G1, nota: "Enfermo", grupos: { nombre: "Matemática 9no" } }],
   eventos: [{ id: "ev1", cuenta_id: C, titulo: "Reunión de padres", fecha: hoy, tipo: "reunion", hora_inicio: "17:00:00" }],
@@ -107,6 +110,7 @@ const RPC = {
   d360_aceptar_terminos: null,
   d360_guia: {}, d360_guia_guardar: {},
   d360_aula_salir: null,
+  d360_cobros_generar: { creados: 3, ya_existian: 0 }, d360_banco_a_actividad: 2, d360_actividad_a_banco: 2,
   d360_alumno_archivos: { ok: true, archivos: [] },
   d360_aula_inicio: { ok: true, nombre: "Ana López", institucion: "Clases de la Prof. Ana", cuenta_activa: true,
     grupos: [{ id: G1, nombre: "Matemática 9no" }],
@@ -117,7 +121,9 @@ const RPC = {
     avisos: [{ texto: "Mañana hay examen de fracciones.", creado: hoy + "T14:00:00Z", grupo: "Matemática 9no" }],
     materiales: [{ id: "ma1", titulo: "Guía unidad 3", descripcion: "Resolver del 1 al 10", archivo: true, archivo_nombre: "guia.pdf", archivo_tipo: "application/pdf", creado: hoy + "T13:00:00Z", grupo: "Matemática 9no" },
                  { id: "ma2", titulo: "Video de repaso", url: "https://www.youtube.com/watch?v=x", archivo: false, creado: hoy + "T12:00:00Z", grupo: "Matemática 9no" }],
-    notas: [{ grupo: "Matemática 9no", promedio: 85, evaluaciones: [{ titulo: "Examen parcial", tipo: "examen", fecha: hoy, puntaje: 85, puntaje_max: 100 }] }],
+    notas: [{ grupo: "Matemática 9no", promedio: 85, evaluaciones: [{ titulo: "Examen parcial", tipo: "examen", fecha: hoy, puntaje: 85, puntaje_max: 100 },
+      { titulo: "Exposición", tipo: "proyecto", fecha: hoy, puntaje: 7, puntaje_max: 8, rubrica: [{ criterio: "Dominio del tema", nivel: "Excelente", puntos: 4 }, { criterio: "Claridad", nivel: "Bueno", puntos: 3 }] }] }],
+    cobros: [{ concepto: "Mensualidad noviembre 2026 · Matemática 9no", monto: 500, pagado: 0, vence: hoy, estado: "pendiente" }, { concepto: "Mensualidad octubre 2026 · Matemática 9no", monto: 500, pagado: 500, vence: "2026-10-05", estado: "pagado" }],
     asistencia: { presentes: 10, ausentes: 1, tardes: 1, justificados: 0, total: 12, porcentaje: 91.7, recientes: [{ fecha: hoy, estado: "ausente", grupo: "Matemática 9no" }] } },
   d360_alumno_portal: { ok: true, nombre: "Ana", institucion: "Clases de la Prof. Ana", cuenta_activa: true, actividades: [
     { token: "fisica2026", titulo: "Examen de cinemática", tipo: "examen", grupo: "Física sabatino", estado: "abierta", duracion_min: 30, entregada: false },

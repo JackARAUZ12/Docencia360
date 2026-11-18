@@ -27,6 +27,7 @@ const AREAS = [
     { r: "asistencia", t: "Asistencia", i: "asistencia", m: () => import("../comun/asistencia.js"), ver: G || D },
     { r: "calificaciones", t: "Evaluaciones", i: "notas", m: () => import("../comun/calificaciones.js"), ver: G || D },
     { r: "tareas", t: "Actividades", i: "tareas", m: () => import("../comun/tareas.js"), ver: G || D },
+    { r: "rubricas", t: "Rúbricas", i: "notas", m: () => import("../comun/rubricas.js"), ver: (G || D) && ctx.f("rubricas") },
     { r: "calendario", t: "Calendario", i: "calendario", m: () => import("../comun/calendario.js"), ver: true },
   ]],
   ["Operación", [

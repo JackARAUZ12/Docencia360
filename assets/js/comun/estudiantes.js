@@ -26,7 +26,7 @@ export const CAMPOS_ESTUDIANTE = [
 ];
 
 export function editarEstudiante(ctx, est, alGuardar) {
-  formularioModal(est ? "Editar estudiante" : "Nuevo estudiante", CAMPOS_ESTUDIANTE, est, async (d, cerrar) => {
+  formularioModal(est ? "Editar estudiante" : "Nuevo estudiante", [...CAMPOS_ESTUDIANTE, ...(ctx.camposEstudianteExtra || [])], est, async (d, cerrar) => {
     if (est) await q(sb.from("estudiantes").update(d).eq("id", est.id));
     else await q(sb.from("estudiantes").insert({ ...d, cuenta_id: ctx.id }));
     ctx.datos.invalidar("estudiantes");

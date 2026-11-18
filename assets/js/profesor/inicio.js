@@ -1,7 +1,7 @@
 // Inicio del profesor: qué toca hoy, qué está pendiente y cómo va todo.
 import { sb, q } from "../core/sb.js";
 import { pasosProfesor, listaPasos, bienvenida } from "../core/guia.js";
-import { h, hoyISO, sumarDias, diaLargo, fechaCorta, hora, nota } from "../core/ui.js";
+import { h, dinero, hoyISO, sumarDias, diaLargo, fechaCorta, hora, nota } from "../core/ui.js";
 
 const u_al_limite = (filas) => filas.some(([u, m]) => u >= m);
 
@@ -45,6 +45,18 @@ export async function render(el, ctx) {
   if (ctx.esDocente) evals.splice(0, evals.length, ...evals.filter((e) => visibles.has(e.grupo_id)));
   const sinLista = [...new Map(clasesHoy.filter((c) => !conLista.has(c.grupo_id)).map((c) => [c.grupo_id, c])).values()];
 
+  // Cobros atrasados (control de pagos)
+  let avisoCobros = null;
+  if (ctx.f("finanzas") && ctx.esFinanzas) {
+    const atrasados = await q(sb.from("cargos").select("estudiante_id,monto,descuento,pagado").eq("cuenta_id", ctx.id).in("estado", ["pendiente", "parcial"]).lt("vence", hoy)).catch(() => []);
+    if (atrasados.length) {
+      const total = atrasados.reduce((s, c) => s + Number(c.monto) - Number(c.descuento) - Number(c.pagado), 0);
+      const n = new Set(atrasados.map((c) => c.estudiante_id)).size;
+      avisoCobros = h("div.aviso.ojo", { style: "margin-bottom:1rem" }, h("strong", `${n} estudiante${n === 1 ? "" : "s"} con pagos atrasados `),
+        `(${dinero(total, ctx.cuenta.moneda)}). `, h("a", { href: "#/cobros" }, "Ver cobros"));
+    }
+  }
+
   // Clase de ahora (o la próxima de hoy): un toque para pasar lista
   const ahoraMin = (() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); })();
   const aMin = (t) => { const [hh, mm] = String(t).split(":").map(Number); return hh * 60 + mm; };
@@ -79,6 +91,7 @@ export async function render(el, ctx) {
   el.append(
     h("div.p-titulo", h("div", h("p.tenue", { style: "margin:0" }, diaLargo(hoy)), h("h1", `Hola, ${nombre}`))),
     avisoLimite,
+    avisoCobros,
     enCurso ? claseAhora(enCurso, true) : proxima ? claseAhora(proxima, false) : null,
     notifs.length ? h("div", notifs.map((n) => h("div.aviso.ojo", h("strong", n.titulo + ". "), n.cuerpo || "",
       n.enlace ? [" ", h("a", { href: n.enlace }, "Ver")] : null,

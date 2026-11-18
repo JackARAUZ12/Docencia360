@@ -357,3 +357,20 @@ dialog.modal.ancho { width: min(96vw, 860px); }
 .reporte-wa textarea { width: 100%; font: inherit; }
 /* Los avisos «mejora tu plan» pueden partir en dos líneas en pantallas angostas */
 a.btn-texto[href="#/cuenta"] { white-space: normal; text-align: left; max-width: 100%; }
+
+/* ---------- Cobros, rúbricas y banco ---------- */
+.lista-cobros li { flex-wrap: wrap; }
+.lista-cobros .acciones-cobro { display: flex; gap: .4rem; flex-wrap: wrap; }
+@media (max-width: 600px) { .lista-cobros .acciones-cobro { width: 100%; } .lista-cobros .acciones-cobro .btn { flex: 1; justify-content: center; } }
+.rub-criterio { border: 1px solid var(--renglon); border-radius: var(--radio-sm); padding: .75rem; margin-bottom: .6rem; }
+.rub-cab { display: flex; gap: .5rem; align-items: center; margin-bottom: .5rem; }
+.rub-cab input { flex: 1; font-weight: 700; }
+.rub-niveles { display: grid; gap: .35rem; }
+.rub-nivel { display: flex; gap: .4rem; align-items: center; }
+.rub-nivel input:first-child { flex: 1; min-width: 0; }
+.rub-fila { border: 0; padding: 0; margin: 0 0 .9rem; }
+.rub-fila legend { font-weight: 800; margin-bottom: .3rem; }
+.rub-resumen { font-weight: 800; font-size: 1.1rem; }
+.btn.con-rubrica { border-color: var(--aprobado); color: var(--aprobado); }
+.banco-elegir { max-height: 55vh; overflow-y: auto; }
+.banco-elegir li { border-bottom: 1px solid var(--renglon); padding: .5rem 0; }
