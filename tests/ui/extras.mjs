@@ -22,7 +22,7 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   // ---- Básico: candados ----
   let p = await pagina(ctxB, "prof_basico", tag);
   await p.goto(BASE + "/app/profesor.html#/cobros"); await p.waitForTimeout(1200);
-  ok(await p.getByText("Lleva el control de lo que te pagan").isVisible() && await p.getByText("Control de pagos · mejora tu plan").isVisible(), `${tag} básico: Cobros muestra qué hace y el candado`);
+  ok(await p.getByText("Lleva tus cuentas sin complicarte").isVisible() && await p.getByText("Finanzas · mejora tu plan").isVisible(), `${tag} básico: Finanzas muestra qué hace y el candado`);
   await p.goto(BASE + "/app/profesor.html#/calificaciones"); await p.waitForTimeout(1000);
   ok(!(await p.locator('a[href="#/rubricas"]').count()), `${tag} básico: sin rúbricas en Notas`);
   await p.close();
@@ -31,10 +31,42 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   p = await pagina(ctxB, "prof_profesional", tag);
   await p.goto(BASE + "/app/profesor.html#/inicio"); await p.waitForTimeout(1300);
   ok(await p.getByText(/con pagos atrasados/).isVisible(), `${tag} Inicio avisa de pagos atrasados`);
+  ok(await p.locator('nav a[href="#/cobros"]').first().textContent().then((t) => t.includes("Finanzas")), `${tag} el menú dice «Finanzas»`);
   await p.goto(BASE + "/app/profesor.html#/cobros"); await p.waitForTimeout(1300);
-  ok(await p.getByText("por cobrar").isVisible() && await p.locator(".lista-cobros li").count() >= 1, `${tag} Cobros muestra cifras y quién debe`);
-  await ancho(p, w, `${tag} Cobros`);
-  await p.screenshot({ path: `${OUT}/${tag}-cobros.png`, fullPage: true });
+  ok(await p.getByText("ganancia", { exact: true }).isVisible() && await p.getByText("te deben", { exact: true }).isVisible(), `${tag} Finanzas: resumen del mes con ingresos, gastos, ganancia y lo que te deben`);
+  ok(await p.getByText("Clases particulares").first().isVisible() && await p.getByText("Talleres").first().isVisible() && await p.locator(".barras-cat li").count() === 2, `${tag} Finanzas: de dónde entró y en qué gastaste`);
+  ok(await p.getByRole("heading", { name: "¿Cómo cobras a tus estudiantes?" }).isVisible(), `${tag} Finanzas pregunta cómo cobras`);
+  await ancho(p, w, `${tag} Finanzas`);
+  await p.screenshot({ path: `${OUT}/${tag}-finanzas.png`, fullPage: true });
+  // Gasto
+  let mov = null; p.on("request", (r) => { if (r.url().includes("/rest/v1/movimientos") && r.method() === "POST") mov = JSON.parse(r.postData() || "null"); });
+  await p.getByRole("button", { name: "Registrar gasto" }).first().click(); await p.waitForTimeout(400);
+  { const d = p.locator("dialog.modal").last();
+    await d.locator('[name="concepto"]').fill("Hojas para el examen");
+    await d.locator('[name="monto"]').fill("120");
+    await p.screenshot({ path: `${OUT}/${tag}-gasto.png` });
+    await d.getByRole("button", { name: /Guardar/ }).click(); await p.waitForTimeout(600); }
+  const m1 = Array.isArray(mov) ? mov[0] : mov;
+  ok(m1 && m1.tipo === "gasto" && Number(m1.monto) === 120 && m1.concepto === "Hojas para el examen", `${tag} registra un gasto`);
+  // Clase particular
+  let clase = null; p.on("request", (r) => { if (r.url().includes("rpc/d360_cobro_clase")) clase = JSON.parse(r.postData() || "{}"); });
+  await p.goto(BASE + "/app/profesor.html#/cobros?vista=clases"); await p.waitForTimeout(1200);
+  await p.getByRole("button", { name: "Registrar clase" }).first().click(); await p.waitForTimeout(400);
+  { const d = p.locator("dialog.modal").last();
+    await d.locator('[name="estudiante_id"]').selectOption({ index: 0 });
+    const monto = d.locator('[name="monto"]'); if (!(await monto.inputValue())) await monto.fill("300");
+    await p.screenshot({ path: `${OUT}/${tag}-clase.png` });
+    await d.getByRole("button", { name: /Registrar|Guardar/ }).last().click(); await p.waitForTimeout(700); }
+  ok(clase && clase.p_estudiante && Number(clase.p_monto) > 0 && clase.p_fecha, `${tag} registra una clase particular`);
+  await p.keyboard.press("Escape"); await p.waitForTimeout(300);
+  // Gastos e ingresos
+  await p.goto(BASE + "/app/profesor.html#/cobros?vista=movimientos"); await p.waitForTimeout(1200);
+  ok(await p.getByText("Fotocopias del examen").isVisible() && await p.getByText("Taller de repaso").isVisible(), `${tag} lista de gastos e ingresos`);
+  await ancho(p, w, `${tag} Gastos e ingresos`);
+  // Quién debe
+  await p.goto(BASE + "/app/profesor.html#/cobros?vista=deben"); await p.waitForTimeout(1300);
+  ok(await p.locator(".lista-cobros li").count() >= 1, `${tag} Finanzas: quién debe`);
+  await ancho(p, w, `${tag} Quién debe`);
   let pago = null; p.on("request", (r) => { if (r.url().includes("/rest/v1/pagos") && r.method() === "POST") pago = JSON.parse(r.postData() || "null"); });
   await p.locator(".lista-cobros li").first().getByRole("button", { name: "Registrar pago" }).click(); await p.waitForTimeout(500);
   const dlg = p.locator("dialog.modal").last();
@@ -42,7 +74,7 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   await p.locator("dialog.modal").last().getByRole("button", { name: "Registrar pago" }).click(); await p.waitForTimeout(700);
   ok(pago && pago.cargo_id && pago.monto > 0, `${tag} registra el pago de un cobro`);
   await p.keyboard.press("Escape"); await p.waitForTimeout(300); await p.keyboard.press("Escape"); await p.waitForTimeout(300);
-  await p.goto(BASE + "/app/profesor.html#/cobros"); await p.waitForTimeout(1200);
+  await p.goto(BASE + "/app/profesor.html#/cobros?vista=deben"); await p.waitForTimeout(1200);
   await p.locator(".lista-cobros li").first().getByRole("button", { name: "WhatsApp" }).click(); await p.waitForTimeout(400);
   ok((await p.locator("dialog.modal textarea").inputValue()).includes("pago pendiente"), `${tag} recordatorio de pago por WhatsApp listo para revisar`);
   await p.keyboard.press("Escape"); await p.waitForTimeout(300);

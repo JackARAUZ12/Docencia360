@@ -49,6 +49,15 @@ export async function pasosProfesor(ctx) {
     ctx.f("portal_estudiantes") ? existe(uno("actividades").neq("estado", "borrador")) : false,
     ctx.f("asistentes") ? existe(uno("miembros").eq("rol", "docente")) : false,
   ]);
+  const fin = ctx.f("finanzas") && ctx.esFinanzas;
+  const [mensual, clase, gasto, rubrica, banco] = await Promise.all([
+    fin ? existe(uno("cargos").eq("tipo", "mensualidad")) : false,
+    fin ? existe(uno("cargos").eq("tipo", "clase")) : false,
+    fin ? existe(uno("movimientos")) : false,
+    ctx.f("rubricas") ? existe(uno("rubricas")) : false,
+    ctx.f("banco_preguntas") ? existe(uno("banco_preguntas")) : false,
+  ]);
+  const extra = { mensual, clase, gasto, rubrica, banco };
   const g1 = grupos[0]?.id;
   const pasos = [
     { k: "grupo", hecho: !!g1, t: "Crea tu primer grupo", d: "Un grupo es una clase: reúne a los estudiantes que ves juntos.", href: "#/grupos?nuevo=1", b: "Crear grupo" },
@@ -63,9 +72,23 @@ export async function pasosProfesor(ctx) {
       { k: "examen", hecho: publicada, t: "Publica tu primer examen en línea", d: "Compártelo con un enlace o QR; la nota se calcula sola.", href: "#/enlinea?nueva=1", b: "Crear examen" });
   }
   if (ctx.f("asistentes")) {
-    pasos.push({ k: "asistente", hecho: asistente, t: "Invita a tu asistente", d: "Tendrá su propio acceso y verá solo los grupos que le asignes.", href: "#/cuenta", b: "Invitar" });
+    pasos.push({ k: "asistente", hecho: asistente, t: "Invita a tu asistente", d: "Tendrá su propio acceso y verá solo los grupos que le asignes.", href: "#/cuenta", b: "Invitar", opcional: true });
   }
-  return { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: g1 };
+  // Finanzas: solo lo que aplica según cómo cobra (un profesor de colegio puede no cobrar)
+  if (ctx.f("finanzas") && ctx.esFinanzas) {
+    const forma = ctx.guia?.cobro;
+    if (!forma) pasos.push({ k: "cobro", hecho: false, t: "Cuéntanos cómo cobras", d: "Por mes, por clase o no cobras: así Finanzas te muestra solo lo que te sirve.", href: "#/cobros", b: "Elegir", opcional: true });
+    else {
+      if (["mensual", "ambos"].includes(forma)) pasos.push({ k: "mensual", hecho: extra.mensual, t: "Pon la mensualidad y genera los cobros del mes", d: "En Finanzas → Mensualidades, y luego «Generar mensualidades».", href: "#/cobros?vista=mensualidades", b: "Ir", opcional: true });
+      if (["clase", "ambos"].includes(forma)) pasos.push({ k: "clase", hecho: extra.clase, t: "Registra tu primera clase particular", d: "Si ya te pagó, queda con su recibo; si no, aparece en «Quién debe».", href: "#/cobros?vista=clases", b: "Registrar", opcional: true });
+      pasos.push({ k: "gasto", hecho: extra.gasto, t: "Anota un gasto de tus clases", d: "Fotocopias, materiales, transporte… y verás tu ganancia real del mes.", href: "#/cobros?vista=movimientos", b: "Anotar", opcional: true });
+    }
+  }
+  if (ctx.f("rubricas")) pasos.push({ k: "rubrica", hecho: extra.rubrica, t: "Crea tu primera rúbrica", d: "Empieza con una plantilla y califica exposiciones o proyectos eligiendo niveles.", href: "#/rubricas", b: "Crear", opcional: true });
+  if (ctx.f("banco_preguntas")) pasos.push({ k: "banco", hecho: extra.banco, t: "Guarda preguntas en tu banco", d: "Desde un examen, «Guardar en el banco», para reusarlas en otros.", href: "#/banco", b: "Ver banco", opcional: true });
+  const obligatorios = pasos.filter((p) => !p.opcional);
+  // La guía se da por completa con los pasos obligatorios; los opcionales siguen en la lista.
+  return { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: g1, completa: obligatorios.every((p) => p.hecho) };
 }
 
 /** Lista de pasos (se usa en Inicio y en el panel del botón flotante). */
@@ -76,7 +99,7 @@ export function listaPasos({ pasos, hechos }, alElegir) {
       h("span", { style: `width:${(hechos / pasos.length) * 100}%` })),
     h("ol.pasos-guia", pasos.map((p, i) => h("li" + (p.hecho ? ".hecho" : ""),
       h("span.num", p.hecho ? "✓" : String(i + 1)),
-      h("div.crece", h("div.titulo", p.t), p.hecho ? null : h("div.tenue", p.d)),
+      h("div.crece", h("div.titulo", p.t, p.opcional && !p.hecho ? h("span.tenue", " (opcional)") : null), p.hecho ? null : h("div.tenue", p.d)),
       p.hecho ? null : h("a.btn.btn-sm" + (i === siguiente ? "" : ".btn-sec"), { href: p.href, onclick: () => alElegir?.() }, p.b)))));
 }
 
@@ -100,7 +123,7 @@ export function botonGuia(ctx) {
     if (!ctx.esDueno || ctx.guia?.oculta) { btn.hidden = true; return; }
     try { ultimo = await pasosProfesor(ctx); } catch (_) { return; }
     const { hechos, pasos } = ultimo;
-    if (hechos >= pasos.length) {
+    if (hechos >= pasos.length || ultimo.completa) {
       btn.hidden = true;
       if (!ctx.guia.completa) { ctx.guiaGuardar({ completa: true }); ctx.toast("¡Completaste los primeros pasos! Tu cuenta está lista."); }
       return;
@@ -293,6 +316,17 @@ export async function bienvenida(ctx, { forzar = false } = {}) {
   };
 
   // Paso 4 · listo
+  // Solo si el plan tiene Finanzas: cómo cobra (un profesor de colegio puede no cobrar).
+  const FORMAS = [["mensual", "Mensualidad"], ["clase", "Por clase"], ["ambos", "Las dos"], ["no", "No cobro"]];
+  const preguntaFinanzas = () => {
+    if (!ctx.f("finanzas") || !ctx.esFinanzas) return null;
+    const caja = h("fieldset.campo.bv-cobro", h("legend", "¿Cómo cobras a tus estudiantes? (opcional)"));
+    const pintar = () => caja.replaceChildren(caja.firstChild, h("div.chips", FORMAS.map(([v, t]) => h("button.chip", { type: "button", "aria-pressed": String(ctx.guia?.cobro === v),
+      onclick: async () => { await ctx.guiaGuardar({ cobro: v }); pintar(); } }, t))),
+      h("p.tenue", ctx.guia?.cobro === "no" ? "Perfecto: en Finanzas solo anotarás tus gastos." : "Así Finanzas te muestra solo lo que usas. Puedes cambiarlo después."));
+    pintar();
+    return caja;
+  };
   const paso4 = (omitidos) => {
     marcar(3);
     cuerpo.replaceChildren(
@@ -301,6 +335,7 @@ export async function bienvenida(ctx, { forzar = false } = {}) {
         h("li", "✓ Grupo «", estado.grupoNombre, "»"),
         estado.agregados ? h("li", `✓ ${estado.agregados} estudiante${estado.agregados === 1 ? "" : "s"} agregado${estado.agregados === 1 ? "" : "s"}`) : h("li.tenue", "Aún sin estudiantes: agrégalos desde el grupo cuando quieras.")),
       omitidos.length ? h("div.aviso.ojo", `${omitidos.length} nombre(s) no se agregaron: `, omitidos.slice(0, 5).map((o) => `${o.nombre || "fila " + o.fila} (${o.motivo})`).join("; "), omitidos.length > 5 ? "…" : "") : null,
+      preguntaFinanzas(),
       h("p.suave", "Lo siguiente es pasar tu primera lista. El botón «Primeros pasos» te acompaña con lo que falta."),
       h("div.bv-pie",
         h("button.btn.btn-sec", { type: "button", onclick: () => salir("hecha") }, "Ir a Inicio"),

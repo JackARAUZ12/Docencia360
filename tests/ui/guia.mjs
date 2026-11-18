@@ -70,6 +70,11 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   await page.screenshot({ path: `${OUT}/${tag}-4-listo.png` });
   let guardado = null;
   page.on("request", (r) => { if (r.url().includes("rpc/d360_guia_guardar")) guardado = JSON.parse(r.postData() || "{}"); });
+  ok(await bv.getByText("¿Cómo cobras a tus estudiantes? (opcional)").isVisible(), `${tag} con Finanzas, la bienvenida pregunta cómo cobra (opcional)`);
+  await bv.getByRole("button", { name: "Por clase" }).click(); await page.waitForTimeout(400);
+  ok(guardado?.p_cambios?.cobro === "clase" && await bv.getByRole("button", { name: "Por clase" }).getAttribute("aria-pressed") === "true", `${tag} la forma de cobro se guarda en el servidor`);
+  await bv.getByRole("button", { name: "No cobro" }).click(); await page.waitForTimeout(400);
+  ok(guardado?.p_cambios?.cobro === "no" && await bv.getByText(/solo anotarás tus gastos/).isVisible(), `${tag} «No cobro» (profesor de colegio) queda guardado`);
   await bv.getByRole("button", { name: "Ir a Inicio" }).click();
   await page.waitForTimeout(900);
   ok(guardado?.p_cambios?.bienvenida === "hecha", `${tag} la bienvenida queda marcada en el servidor`);

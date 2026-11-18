@@ -20,7 +20,7 @@ const AYUDAS = {
   enlinea: "crea un examen o una tarea, publícalo y compártelo con un enlace o QR. Cada estudiante entra con su código personal y la nota se calcula sola.",
   calendario: "agrega reuniones, feriados y fechas importantes. Las evaluaciones aparecen solas.",
   informes: "resumen de asistencia y promedios por grupo, listo para imprimir o compartir.",
-  cobros: "pon la mensualidad de cada grupo, genera los cobros del mes con un toque y registra los pagos con recibo. Desde aquí envías recordatorios por WhatsApp.",
+  cobros: "aquí ves cuánto entró, cuánto gastaste y cuánto ganaste en el mes. Registras pagos con recibo, clases particulares, gastos y otros ingresos.",
   aula: "publica avisos y materiales (PDF, fotos o enlaces) por grupo. Tus estudiantes los ven en su aula junto con sus tareas, exámenes y notas.",
 };
 
@@ -35,7 +35,7 @@ const RUTAS = [
   { r: "grupos", t: "Grupos y horarios", corto: "Grupos", i: "grupos", b: "clases", m: () => import("../comun/grupos.js") },
   { r: "estudiantes", t: "Estudiantes", i: "estudiantes", b: "clases", m: () => import("../comun/estudiantes.js") },
   { r: "calendario", t: "Calendario", i: "calendario", b: "clases", m: () => import("../comun/calendario.js") },
-  { r: "cobros", t: "Cobros", i: "cobros", b: "clases", plan: "finanzas", solo: (c) => c.esFinanzas, m: () => import("./cobros.js") },
+  { r: "cobros", t: "Finanzas", i: "cobros", b: "clases", plan: "finanzas", solo: (c) => c.esFinanzas, m: () => import("./cobros.js") },
   { r: "informes", t: "Informes", i: "informes", b: "mas", m: () => import("./informes.js") },
   { r: "cuenta", t: "Mi cuenta", i: "cuenta", b: "mas", m: () => import("../comun/cuenta.js") },
   { r: "tareas", t: "Tareas", i: "tareas", padre: "calificaciones", m: () => import("../comun/tareas.js") },
@@ -76,7 +76,8 @@ document.getElementById("app").replaceChildren(
 // Extensiones de la ficha del estudiante: pagos y descuento (control de pagos)
 ctx.seccionesFicha = [(c, e) => (c.esFinanzas && c.f("finanzas") ? import("./cobros.js").then((m) => m.seccionPagosFicha(c, e)) : null)];
 ctx.camposEstudianteExtra = ctx.f("finanzas") && ctx.esFinanzas
-  ? [{ name: "descuento_pct", label: "Descuento en mensualidades (%)", type: "number", min: 0, max: 100, step: "0.5", help: "Por ejemplo, 50 para media beca. Se aplica al generar las mensualidades." }] : [];
+  ? [{ name: "descuento_pct", label: "Descuento en mensualidades (%)", type: "number", min: 0, max: 100, step: "0.5", help: "Por ejemplo, 50 para media beca. Se aplica al generar las mensualidades." },
+     { name: "tarifa_clase", label: `Tarifa por clase particular (${ctx.cuenta.moneda})`, type: "number", min: 0, step: "0.01", help: "Opcional. Se propone sola al registrar una clase de este estudiante." }] : [];
 
 const guia = botonGuia(ctx);
 document.body.append(guia);
