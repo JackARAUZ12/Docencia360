@@ -43,6 +43,7 @@
     <li><strong>Propietario de la cuenta:</strong> nombre, correo, teléfono, nombre de la institución, plan y pagos de la suscripción.</li>
     <li><strong>Personal y familias con acceso:</strong> nombre, rol, y de forma opcional teléfono, correo y especialidad. Los códigos personales se guardan cifrados (no se pueden leer, ni siquiera por nosotros).</li>
     <li><strong>Estudiantes:</strong> lo que la institución registre: nombres, fecha de nacimiento, género, documento, contacto de la familia, dirección, foto, matrícula, asistencia, calificaciones, observaciones, cobros y pagos, certificados y comentarios de boletín.</li>
+    <li><strong>Aula virtual (si el plan la incluye):</strong> las respuestas de los estudiantes a tareas y exámenes en línea, las fotos y PDF que suben como entrega, los materiales y avisos que publica el profesor, y la fecha de su último acceso. El estudiante no necesita correo: entra con el código del profesor y su código personal, que se guarda cifrado.</li>
     <li><strong>Datos técnicos:</strong> registro de operaciones importantes (quién creó, cambió o anuló algo y cuándo), e intentos de acceso con código, incluida la dirección IP, solo para bloquear intentos repetidos.</li>
   </ul>
   <p>Cuando importas una lista desde Excel o CSV, el archivo se lee en tu navegador: solo se envían y guardan los estudiantes que decides importar.</p>
@@ -60,12 +61,13 @@
     <li>Cada cuenta está aislada: ninguna institución puede ver los datos de otra.</li>
     <li>Dentro de una institución, cada rol ve solo lo que le corresponde: un docente ve sus grupos o secciones; caja ve cobros; una familia ve solo a sus hijos. Estas reglas se aplican en el servidor, no solo en la pantalla.</li>
     <li>Las familias ven las notas, asistencia, comunicados y pagos de sus hijos en el portal, si el plan lo incluye.</li>
+    <li>En el aula virtual, cada estudiante ve solo lo suyo: sus actividades, sus archivos, sus notas y su asistencia, y los avisos y materiales de sus grupos. Los archivos que sube solo los ven él y el personal de su institución que atiende su grupo.</li>
     <li>La verificación pública de certificados muestra solo los datos mínimos impresos en el certificado (nombre, título, institución, fecha y folio).</li>
     <li>Nuestro equipo solo accede a datos de una institución cuando es necesario para soporte o seguridad.</li>
   </ul>
 
   <h2 id="menores">5. Datos de menores de edad</h2>
-  <p>Muchos estudiantes son menores. La institución debe contar con la autorización de sus madres, padres o tutores para registrarlos y debe limitarse a los datos necesarios. Las familias pueden pedir a la institución que corrija o elimine los datos de sus hijos; si no reciben respuesta, pueden escribirnos y trasladaremos la solicitud a la institución.</p>
+  <p>Muchos estudiantes son menores. La institución o el profesor debe contar con la autorización de sus madres, padres o tutores para registrarlos, darles acceso al aula virtual y recibir sus fotos o documentos, y debe limitarse a los datos necesarios. Recomendamos pedir a los estudiantes que en las fotos de sus tareas aparezca solo el trabajo, no su cara ni la de otras personas. Las familias pueden pedir a la institución que corrija o elimine los datos de sus hijos; si no reciben respuesta, pueden escribirnos y trasladaremos la solicitud a la institución.</p>
 
   <h2 id="proteccion">6. Cómo se protegen</h2>
   <ul>
@@ -73,7 +75,8 @@
     <li>Permisos por rol aplicados en la base de datos, con pruebas automáticas que verifican que una cuenta no pueda ver datos de otra.</li>
     <li>Códigos de acceso cifrados y bloqueo tras varios intentos fallidos.</li>
     <li>Las sesiones se cierran solas tras un tiempo sin actividad, pensando en computadoras compartidas.</li>
-    <li>Fotos y logos en almacenamiento privado, visible solo para la institución.</li>
+    <li>Fotos, logos y archivos del aula virtual en almacenamiento privado. Para abrir o subir un archivo se usan enlaces firmados que vencen a los pocos minutos y que el servidor entrega solo después de verificar quién los pide.</li>
+    <li>Los archivos del aula se limitan a fotos y PDF de hasta 5 MB; las fotos se reducen en el propio teléfono antes de subirse.</li>
   </ul>
   <p>Ningún sistema es infalible. Si ocurre un incidente que afecte datos personales, avisaremos a los propietarios de las cuentas afectadas lo antes posible.</p>
 
@@ -84,6 +87,9 @@
   <ul>
     <li>Mientras la cuenta exista, aunque esté suspendida o en solo lectura, para que la institución no pierda su historial académico.</li>
     <li>Los intentos de acceso se borran automáticamente con el tiempo.</li>
+    <li>Los archivos que los estudiantes suben como entrega se borran automáticamente <strong>un año después</strong> de subirse. La nota y el comentario del profesor se conservan.</li>
+    <li>Los materiales del profesor se guardan hasta que él los borre. Cuando se borra un material, una entrega, un grupo o la cuenta, sus archivos se eliminan del almacenamiento en la limpieza de esa noche.</li>
+    <li>Las sesiones del aula virtual vencen solas (30 días si el estudiante pidió que lo recuerden, 12 horas si no) y se cierran al tocar «Salir».</li>
     <li>Si el propietario pide eliminar la cuenta, borramos sus datos en un plazo máximo de 30 días, salvo lo que la ley obligue a conservar.</li>
   </ul>
 
@@ -91,7 +97,7 @@
   <p>Puedes pedir acceso, corrección, cancelación u oposición al tratamiento de tus datos. Si eres estudiante o familia, dirígete primero a tu institución, que administra esos datos. Si eres propietario de una cuenta, o la institución no responde, escríbenos a <span data-contacto>los datos de contacto que aparecen en la página principal</span>.</p>
 
   <h2 id="navegador">10. Navegador y cookies</h2>
-  <p>No usamos cookies de publicidad ni de rastreo. El navegador guarda tu sesión y preferencias (por ejemplo, el modo claro u oscuro y la cuenta elegida) para que no tengas que entrar cada vez. Al cerrar sesión, la sesión se borra.</p>
+  <p>No usamos cookies de publicidad ni de rastreo. El navegador guarda tu sesión y preferencias (por ejemplo, el modo claro u oscuro y la cuenta elegida) para que no tengas que entrar cada vez. En el aula virtual, el estudiante elige si el aparato lo recuerda. Al cerrar sesión, la sesión se borra.</p>
 
   <footer>
     Cambios: cuando esta política cambie, publicaremos la nueva versión aquí y el propietario de cada cuenta deberá aceptarla al entrar al panel.<br>

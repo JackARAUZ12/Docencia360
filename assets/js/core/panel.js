@@ -88,7 +88,8 @@ export function avisoPlan(ctx, rutaCuenta = "#/cuenta") {
   const c = ctx.cuenta;
   if (c.es_demo) {
     return h("div.franja-demo",
-      h("span", h("strong", "Estás en una demostración. "), "Prueba todo lo que quieras: los datos se reinician cada noche."),
+      h("span", h("strong", "Estás en una demostración. "), "Prueba todo lo que quieras: los datos se reinician cada noche.",
+        ctx.modalidad === "profesor" ? [" Mira también ", h("a", { href: ruta("aula.html?p=DEMOPR"), target: "_blank", rel: "noopener" }, "el aula del estudiante"), " con el código ", h("strong", "246810"), "."] : null),
       h("span", { style: "display:flex;gap:1rem;flex-wrap:wrap" },
         h("a", { href: ruta("registro.html") }, "Crear mi cuenta"),
         h("a", { href: "#", onclick: (e) => { e.preventDefault(); salir(); } }, "Salir de la demo")));
