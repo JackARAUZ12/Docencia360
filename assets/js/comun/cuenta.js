@@ -26,7 +26,7 @@ export async function render(el, ctx) {
   const incluye = (p) => {
     const f = p.funciones || {};
     const filas = [[lim(p.max_estudiantes, "Estudiantes activos"), true], [lim(p.max_grupos, "Grupos"), true],
-      ["Asistencia, notas, tareas y calendario", true], ["Informes en PDF", !!f.reportes_pdf], ["Exportar listas a Excel (CSV)", !!f.exportar]];
+      ["Asistencia, notas, tareas y calendario", true], ["Informes en PDF", !!f.reportes_pdf], ["Exportar listas a Excel (CSV)", !!f.exportar], ["Reporte a padres por WhatsApp", !!f.reporte_whatsapp]];
     if (ctx.modalidad === "profesor") {
       filas.push([p.max_estudiantes_portal ? `Exámenes y tareas en línea · ${p.max_estudiantes_portal} estudiantes con acceso` : "Exámenes y tareas en línea con calificación automática", !!(f.portal_estudiantes && p.max_estudiantes_portal)]);
       filas.push([p.max_docentes ? `${p.max_docentes} asistente con su propio acceso` : "Asistente con su propio acceso", !!(f.asistentes && p.max_docentes)]);

@@ -2,6 +2,7 @@
 import { sb, q } from "../core/sb.js";
 import { h, tabla, fecha, fechaCorta, hoyISO, nombreCompleto, nota, descargarCSV } from "../core/ui.js";
 import { ICONOS } from "../core/iconos.js";
+import { botonReporte } from "../comun/reporte.js";
 
 export async function render(el, ctx, { params }) {
   const [grupos, estudiantes] = await Promise.all([ctx.datos.grupos(), ctx.datos.estudiantes()]);
@@ -63,7 +64,9 @@ export async function render(el, ctx, { params }) {
           { t: "Ausencias", v: (m) => A[m.estudiante_id]?.ausentes ?? 0, clase: "derecha" },
           { t: "Promedio", v: (m) => nota(P[m.estudiante_id]?.promedio), clase: "derecha" },
           { t: "Situación", v: (m) => P[m.estudiante_id]?.promedio == null ? h("span.tenue", "Sin notas") : riesgo(m.estudiante_id) ? h("span.estado.mal", "En riesgo") : h("span.estado.ok", "Al día") },
-        ], miembros)),
+          ctx.f("reporte_whatsapp") ? { t: "Familia", clase: "acciones no-imprimir", v: (m) => { const est = estudiantes.find((x) => x.id === m.estudiante_id); return est ? botonReporte(ctx, est, { grupo: grupoId, chico: true }) : null; } } : null,
+        ].filter(Boolean), miembros)),
+        ctx.f("reporte_whatsapp") ? null : h("p.no-imprimir", ctx.mejora("Reporte por WhatsApp")),
         h("p.tenue", { style: "margin-top:1rem" }, "En riesgo: promedio menor a 60 o asistencia menor a 80%."),
         ctx.f("exportar") ? h("button.btn.btn-texto.btn-sm.no-imprimir", { onclick: () => descargarCSV(`informe-${g.nombre}.csv`,
           [["Estudiante", "Calificadas", "Asistencia %", "Ausencias", "Promedio"],
@@ -83,7 +86,7 @@ export async function render(el, ctx, { params }) {
     const a = asis[0];
     cont.replaceChildren(h("div.hoja.informe",
       cabecera("Informe de rendimiento"),
-      h("h2", nombreCompleto(e)),
+      h("div.hoja-titulo", h("h2", nombreCompleto(e)), h("div.no-imprimir", botonReporte(ctx, e))),
       h("section.cifras",
         h("div.cifra", h("b", a?.porcentaje == null ? "—" : `${a.porcentaje}%`), h("span", "asistencia")),
         h("div.cifra", h("b", a?.ausentes ?? 0), h("span", "ausencias")),

@@ -2,6 +2,7 @@
 import { sb, q } from "../core/sb.js";
 import { h, tabla, formularioModal, confirmar, fecha, fechaCorta, nombreCompleto, nota, descargarCSV } from "../core/ui.js";
 import { ICONOS } from "../core/iconos.js";
+import { botonReporte } from "./reporte.js";
 
 const ESTADOS = [["activo", "Activo"], ["inactivo", "Inactivo"], ["retirado", "Retirado"], ["egresado", "Egresado"]];
 const claseEstado = { activo: "ok", inactivo: "", retirado: "mal", egresado: "info" };
@@ -110,6 +111,7 @@ async function ficha(el, ctx, id) {
     h("p", h("a", { href: "#/estudiantes" }, "← Estudiantes")),
     ctx.titulo(nombreCompleto(e),
       (ctx.accionesFicha || []).map((fn) => fn(ctx, e)),
+      ctx.modalidad === "profesor" ? botonReporte(ctx, e) : null,
       h("a.btn.btn-sec", { href: `#/informes?estudiante=${e.id}` }, "Informe"),
       ctx.esGestor ? h("button.btn.btn-sec", { onclick: () => editarEstudiante(ctx, e, ctx.recargar) }, "Editar") : null,
       !ctx.esGestor ? null : h("button.btn.btn-texto", { onclick: async () => {

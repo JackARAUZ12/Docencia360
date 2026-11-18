@@ -12,7 +12,7 @@ if (!esAdmin) { location.replace(ruta("admin/entrar.html")); await new Promise((
 
 const MOD = { profesor: "Profesor", academia: "Academia", colegio: "Colegio" };
 const EST = { pendiente: "ojo", prueba: "info", activa: "ok", vencida: "ojo", suspendida: "mal", cancelada: "mal" };
-const FUNCIONES = [["tareas", "Tareas"], ["calendario", "Calendario"], ["reportes_pdf", "Informes PDF"], ["exportar", "Exportar CSV"], ["asistentes", "Asistentes"],
+const FUNCIONES = [["tareas", "Tareas"], ["calendario", "Calendario"], ["reportes_pdf", "Informes PDF"], ["exportar", "Exportar CSV"], ["asistentes", "Asistentes"], ["reporte_whatsapp", "Reporte WhatsApp"],
   ["finanzas", "Finanzas"], ["certificados", "Certificados"], ["comunicados", "Comunicados"], ["portal_familias", "Portal familias"], ["horarios", "Horarios"],
   ["boletines", "Boletines"], ["auditoria", "Auditoría"], ["sedes", "Sedes"], ["portal_estudiantes", "Exámenes en línea"]];
 

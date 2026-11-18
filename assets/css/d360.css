@@ -340,3 +340,20 @@ dialog.modal.ancho { width: min(96vw, 860px); }
 .plan-card ul.incluye li.no { color: var(--texto-3); }
 .plan-card ul.incluye li.no::before { content: "—"; position: absolute; left: 0; }
 .plan-card .btn { width: 100%; justify-content: center; }
+
+/* ---------- Pase de lista rápido y observación de un toque ---------- */
+.pase-rapido { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin-bottom: .75rem; }
+.pase-rapido .btn { min-height: 46px; font-size: 1rem; }
+.pase-rapido .tenue { flex: 1 1 260px; font-size: .9rem; }
+@media (max-width: 600px) { .pase-rapido .btn { width: 100%; justify-content: center; } }
+.pase .nombre { display: inline-flex; align-items: center; gap: .35rem; min-width: 0; }
+.btn-anotar { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--texto-3); cursor: pointer; }
+.btn-anotar:hover, .btn-anotar:focus-visible { border-color: var(--renglon-fuerte); color: var(--texto); }
+.btn-anotar svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.btn-anotar.hecha { color: var(--aprobado); }
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 .75rem; }
+.chip { border: 1px solid var(--renglon-fuerte); border-radius: 99px; background: var(--papel); color: var(--texto); font: inherit; font-size: .88rem; padding: .4rem .75rem; min-height: 38px; cursor: pointer; text-align: left; }
+.chip[aria-pressed="true"] { border-color: var(--acento); background: var(--acento-suave); font-weight: 700; }
+.reporte-wa textarea { width: 100%; font: inherit; }
+/* Los avisos «mejora tu plan» pueden partir en dos líneas en pantallas angostas */
+a.btn-texto[href="#/cuenta"] { white-space: normal; text-align: left; max-width: 100%; }

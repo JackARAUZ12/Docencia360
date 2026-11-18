@@ -1,6 +1,7 @@
 // Asistencia: pase de lista rápido (pensado para el teléfono) e historial.
 import { sb, q } from "../core/sb.js";
-import { h, tabla, hoyISO, sumarDias, fecha, diaLargo, nombreCompleto, confirmar } from "../core/ui.js";
+import { h, tabla, hoyISO, sumarDias, fecha, diaLargo, nombreCompleto, confirmar, modal } from "../core/ui.js";
+import { ICONOS } from "../core/iconos.js";
 
 const OPC = [["presente", "P", "Presente"], ["ausente", "A", "Ausente"], ["tarde", "T", "Tarde"], ["justificado", "J", "Justificado"]];
 
@@ -66,7 +67,9 @@ export async function render(el, ctx, { params }) {
             nota.classList.toggle("oculto", v === "presente");
             contar();
           } }, letra)));
-      return h("li", h("span.nombre", nombreCompleto(m.estudiantes)), grupoBtns, nota);
+      const anotar = h("button.btn-anotar", { type: "button", title: "Anotar una observación", "aria-label": `Anotar una observación de ${nombreCompleto(m.estudiantes)}`,
+        onclick: () => notaRapida(ctx, { id, ...m.estudiantes }, anotar) }, h("span", { html: ICONOS.nota_rapida }));
+      return h("li", h("span.nombre", nombreCompleto(m.estudiantes), anotar), grupoBtns, nota);
     });
 
     const contador = h("span.tenue");
@@ -100,9 +103,14 @@ export async function render(el, ctx, { params }) {
 
     cuerpo.replaceChildren(h("section.hoja",
       h("div.hoja-titulo", h("div", h("h2", diaLargo(fechaSel)), contador), estadoLista),
-      h("div", { style: "display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem" },
-        h("button.btn.btn-sec.btn-sm", { onclick: () => { miembros.forEach((m) => { if (!marcas[m.estudiante_id]) marcas[m.estudiante_id] = "presente"; }); pintarMarcas(); } }, "Marcar los demás como presentes"),
-        h("span.tenue", { style: "align-self:center" }, "P presente · A ausente · T tarde · J justificado")),
+      h("div.pase-rapido",
+        h("button.btn" + (yaTomada ? ".btn-sec" : ""), { type: "button", onclick: () => {
+          const ninguno = !Object.keys(marcas).length;
+          miembros.forEach((m) => { if (ninguno || !marcas[m.estudiante_id]) marcas[m.estudiante_id] = "presente"; });
+          pintarMarcas();
+          ctx.toast("Listo. Ahora toca solo a quien faltó o llegó tarde.");
+        } }, "✓ Todos presentes"),
+        h("span.tenue", "Marca a todos presentes y cambia solo a quien faltó (A), llegó tarde (T) o tiene excusa (J). El lápiz anota una observación.")),
       h("ul.pase", items),
       h("div.pie-fijo", siguiente, guardar)));
 
@@ -110,6 +118,7 @@ export async function render(el, ctx, { params }) {
       items.forEach((li, i) => {
         const id = miembros[i].estudiante_id;
         li.querySelectorAll(".opc button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.e === marcas[id])));
+        li.querySelector("input")?.classList.toggle("oculto", !marcas[id] || marcas[id] === "presente");
       });
       sucio = true; contar();
     }
@@ -148,4 +157,32 @@ export async function render(el, ctx, { params }) {
   }
 
   pintar();
+}
+
+// Observación rápida desde la lista: frases de un toque o texto libre.
+const FRASES = [
+  ["academica", "Excelente participación en clase."], ["academica", "No entregó la tarea."], ["academica", "Necesita reforzar el tema de hoy."],
+  ["conducta", "Llegó sin material."], ["conducta", "Se distrajo con frecuencia."], ["conducta", "Muy buena actitud y respeto."],
+];
+function notaRapida(ctx, est, boton) {
+  const texto = h("textarea", { rows: 3, maxLength: 1000, placeholder: "O escribe tu observación…" });
+  let tipo = "general";
+  const chips = h("div.chips", FRASES.map(([t, f]) => h("button.chip", { type: "button", onclick: (e) => {
+    texto.value = f; tipo = t; chips.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(c === e.currentTarget)));
+  } }, f)));
+  modal(`Observación de ${nombreCompleto(est)}`, h("div",
+    h("p.suave", "Toca una frase o escribe la tuya. Queda en su ficha y puede ir en el reporte a la familia."), chips,
+    h("label.campo", h("span", "Observación"), texto)), [
+    { texto: "Cancelar", clase: "btn-sec" },
+    { texto: "Guardar", onclick: async (cerrar) => {
+      const t = texto.value.trim();
+      if (!t) { texto.focus(); return false; }
+      try {
+        await q(sb.from("observaciones").insert({ cuenta_id: ctx.id, estudiante_id: est.id, autor: ctx.user.id, tipo, texto: t }));
+        cerrar(); ctx.toast("Observación guardada");
+        boton?.classList.add("hecha");
+      } catch (e) { ctx.toast(e.message, "mal"); }
+      return false;
+    } },
+  ]);
 }
