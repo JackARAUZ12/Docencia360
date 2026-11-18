@@ -320,7 +320,7 @@ function mostrarCreada(r, d) {
       estado.whatsapp ? [" ", h("a", { href: `https://wa.me/${estado.whatsapp}?text=${encodeURIComponent("Hola, quiero activar mi cuenta de Docencia360. Código: " + r.codigo_institucion)}`, target: "_blank", rel: "noopener" }, "Enviar comprobante por WhatsApp")] : null) : null,
     h("p", "Guarda estos dos códigos. Con ellos puedes entrar desde cualquier teléfono o computadora sin escribir tu correo."),
     h("div.hoja",
-      h("p.etiqueta", "Código de tu institución"), h("p", h("span.codigo-grande", r.codigo_institucion)),
+      h("p.etiqueta", d.modalidad === "profesor" ? "Código de tu espacio" : "Código de tu institución"), h("p", h("span.codigo-grande", r.codigo_institucion)),
       h("p.etiqueta", "Tu código personal"), h("p", h("span.codigo-grande", r.codigo_personal)),
       h("p.tenue", "Tu código personal es secreto y no se vuelve a mostrar. Si lo pierdes, genera uno nuevo desde Mi cuenta.")),
     h("div.navegar", h("span"), h("a.btn", { href: ruta(RUTA_MODALIDAD[d.modalidad]) }, "Ir a mi panel")),

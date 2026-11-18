@@ -40,7 +40,7 @@ export async function render(el, ctx) {
   const ESTADO = { pendiente: ["ojo", "Pendiente de activación"], prueba: ["info", "Prueba gratis"], activa: ["ok", "Activa"], vencida: ["ojo", "Vencida (en gracia)"], suspendida: ["mal", "Suspendida"], cancelada: ["mal", "Cancelada"] };
 
   const mostrarCodigo = (titulo, pin, nota) => modal(titulo, h("div",
-    h("p", nota), h("p.etiqueta", "Código de la institución"), h("p", h("span.codigo-grande", cuenta.codigo)),
+    h("p", nota), h("p.etiqueta", ctx.modalidad === "profesor" ? "Código de tu espacio" : "Código de la institución"), h("p", h("span.codigo-grande", cuenta.codigo)),
     h("p.etiqueta", "Código personal"), h("p", h("span.codigo-grande", pin)),
     h("p.tenue", "Por seguridad este código no se vuelve a mostrar. Entrégalo en persona o por un medio privado.")), [{ texto: "Listo" }]);
 
@@ -83,8 +83,11 @@ export async function render(el, ctx) {
       h("div",
         h("section.hoja",
           h("h2", "Tus códigos de acceso"),
-          h("p.etiqueta", "Código de la institución"), h("p", h("span.codigo-grande", cuenta.codigo)),
-          h("p.suave", `Tu código personal termina en ··${yo?.codigo_ultimos ?? "--"}.`),
+          h("p.suave", ctx.modalidad === "profesor"
+            ? "Sirven para entrar rápido desde cualquier teléfono sin escribir tu correo y contraseña. Tu asistente usa el mismo código de tu espacio con su propio código personal."
+            : "Sirven para entrar sin correo ni contraseña. Cada persona usa el código de la institución y su propio código personal."),
+          h("p.etiqueta", ctx.modalidad === "profesor" ? "Código de tu espacio (no es secreto)" : "Código de la institución (no es secreto)"), h("p", h("span.codigo-grande", cuenta.codigo)),
+          h("p.suave", `Tu código personal (secreto, solo tuyo) termina en ··${yo?.codigo_ultimos ?? "--"}. Si lo olvidaste, genera uno nuevo.`),
           h("button.btn.btn-sec", { onclick: async () => {
             if (!(await confirmar("Generar código nuevo", "Tu código actual dejará de funcionar.", { boton: "Generar" }))) return;
             try { const pin = await q(sb.rpc("d360_regenerar_codigo", { p_miembro: yo.id })); mostrarCodigo("Tu nuevo código", pin, "Guárdalo en un lugar seguro."); }

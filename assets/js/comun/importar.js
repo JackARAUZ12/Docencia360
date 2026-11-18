@@ -4,7 +4,7 @@
 // omite duplicados, respeta el límite del plan y, si se eligió, inscribe o matricula.
 import { sb, q, mensajeError } from "../core/sb.js";
 import { h, modal, tabla, descargarCSV } from "../core/ui.js";
-import { leerHoja, aFechaISO } from "../core/hoja.js";
+import { leerHoja, aFechaISO, crearXlsx } from "../core/hoja.js";
 
 const CAMPOS = [
   { k: "nombres", t: "Nombres", alias: ["nombres", "nombre", "primer nombre", "nombres del estudiante", "nombre del estudiante"] },
@@ -86,6 +86,29 @@ export function preparar(filas, mapa, { cabecera = true, orden = "nombres" } = {
   });
 }
 
+/** Plantilla de Excel lista para llenar: hoja «Estudiantes» con los títulos y hoja «Cómo llenarla». */
+export function plantillaExcel() {
+  const titulos = ["Nombres", "Apellidos", "Fecha de nacimiento", "Sexo", "Teléfono", "Correo", "Responsable", "Teléfono del responsable", "Parentesco", "Observaciones"];
+  const blob = crearXlsx([
+    { nombre: "Estudiantes", filas: [titulos], anchos: [22, 24, 20, 8, 14, 26, 26, 24, 14, 30] },
+    { nombre: "Cómo llenarla", anchos: [100], filas: [
+      ["Cómo llenar la plantilla"],
+      ["1. Escribe un estudiante por fila en la hoja «Estudiantes», empezando en la fila 2."],
+      ["2. Solo «Nombres» es obligatorio. Lo demás puedes dejarlo vacío y completarlo después."],
+      ["3. Fecha de nacimiento: día/mes/año, por ejemplo 15/03/2012."],
+      ["4. Sexo: F o M."],
+      ["5. No cambies los títulos de la fila 1 ni agregues filas de ejemplo."],
+      ["6. Guarda el archivo y súbelo en Docencia360. Los estudiantes repetidos no se duplican."],
+      [""],
+      ["Ejemplo de una fila: Ana Sofía | López Rivas | 15/03/2012 | F | 88887777 | | María Rivas | 55554444 | Madre |"],
+    ] },
+  ]);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "plantilla-estudiantes-docencia360.xlsx";
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
 export function plantillaCSV() {
   descargarCSV("plantilla-estudiantes.csv", [["Nombres", "Apellidos", "Fecha de nacimiento", "Sexo", "Cédula", "Código", "Teléfono", "Correo", "Dirección",
     "Responsable", "Teléfono del responsable", "Parentesco", "Observaciones"]]);
@@ -117,7 +140,9 @@ export async function abrirImportacion(ctx, alTerminar, { grupo = null } = {}) {
       h("li", "No se crean duplicados: se omiten estudiantes con la misma cédula, código o nombre y fecha de nacimiento."),
       h("li", "El archivo se lee en tu navegador; solo se guardan los estudiantes que importes.")),
     h("label.campo", h("span", "Archivo"), entrada),
-    h("p", h("button.btn.btn-texto.btn-sm", { type: "button", onclick: plantillaCSV }, "Descargar una plantilla vacía (CSV)")));
+    h("p", { style: "display:flex;gap:.5rem;flex-wrap:wrap" },
+      h("button.btn.btn-sec.btn-sm", { type: "button", onclick: plantillaExcel }, "Descargar plantilla de Excel"),
+      h("button.btn.btn-texto.btn-sm", { type: "button", onclick: plantillaCSV }, "o en CSV")));
 
   // ---- Paso 2: columnas, destino y revisión ----
   async function paso2(nombreArchivo, filas) {

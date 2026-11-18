@@ -196,9 +196,33 @@ export async function bienvenida(ctx, { forzar = false } = {}) {
     nom.focus();
   };
 
-  // Paso 3 · estudiantes (lista escrita o pegada, Excel, o después)
+  // Paso 3 · estudiantes: primero se elige cómo; cada camino va paso a paso
+  const enviarFilas = async (filas, err, btn) => {
+    btn.disabled = true; err.classList.add("oculto");
+    try {
+      const r = await q(sb.rpc("d360_importar_estudiantes", { p_cuenta: ctx.id, p_filas: filas, p_grupo: estado.grupo }));
+      estado.agregados = r.inscritos ?? r.creados ?? 0;
+      ctx.datos.invalidar("estudiantes");
+      paso4(r.omitidos || []);
+    } catch (ex) { mostrarError(err, ex); btn.disabled = false; }
+  };
+  const opcion = (titulo, detalle, accion, extra = "") => h("button.bv-opcion" + extra, { type: "button", onclick: accion },
+    h("strong", titulo), h("span.tenue", detalle));
+
   const paso3 = () => {
     marcar(2);
+    cuerpo.replaceChildren(
+      h("h2", { id: "bv-titulo" }, "Tus estudiantes"),
+      h("p.suave", `¿Cómo quieres agregarlos a «${estado.grupoNombre}»? Elige una opción.`),
+      h("div.bv-opciones",
+        opcion("Escribir o pegar la lista", "Lo más rápido si son pocos: un nombre por línea, desde WhatsApp o Word.", paso3Lista),
+        opcion("Con una plantilla de Excel", "Para listas largas: descargas la plantilla, la llenas y la subes.", () => paso3Excel())),
+      h("div.bv-pie",
+        h("button.btn.btn-sec", { type: "button", onclick: () => paso4([]) }, "Saltar: lo hago después")));
+  };
+
+  // 3A · escribir o pegar
+  const paso3Lista = () => {
     const area = h("textarea", { rows: 7, placeholder: "Ana Sofía López\nCarlos Pérez Ruiz\nMaría José Gutiérrez", "aria-describedby": "bv-ayuda-lista" });
     const cuenta = h("span.tenue", "0 estudiantes");
     const lineas = () => area.value.split(/\r?\n/).map((s) => s.trim()).filter((s) => s.length > 1);
@@ -206,32 +230,66 @@ export async function bienvenida(ctx, { forzar = false } = {}) {
     const err = error();
     const btn = h("button.btn", { type: "submit" }, "Agregar al grupo");
     cuerpo.replaceChildren(
-      h("h2", { id: "bv-titulo" }, "Tus estudiantes"),
-      h("p.suave", `Escribe o pega un nombre por línea. Se agregan a «${estado.grupoNombre}».`),
+      h("h2", { id: "bv-titulo" }, "Escribe o pega la lista"),
+      h("p.suave", "Un nombre por línea: nombres y luego apellidos."),
       h("form.bv-form", { onsubmit: async (e) => {
         e.preventDefault();
         const { separarNombre } = await import("../comun/importar.js");
         const filas = lineas().map((l, i) => ({ ...separarNombre(l), _fila: i + 1 }));
         if (!filas.length) return area.focus();
-        btn.disabled = true; err.classList.add("oculto");
-        try {
-          const r = await q(sb.rpc("d360_importar_estudiantes", { p_cuenta: ctx.id, p_filas: filas, p_grupo: estado.grupo }));
-          estado.agregados = r.inscritos ?? r.creados ?? 0;
-          ctx.datos.invalidar("estudiantes");
-          paso4(r.omitidos || []);
-        } catch (ex) { mostrarError(err, ex); btn.disabled = false; }
+        enviarFilas(filas, err, btn);
       } },
         h("label.campo", h("span", "Lista de estudiantes"), area),
-        h("p.tenue", { id: "bv-ayuda-lista" }, "Formato: nombres y apellidos. También sirve «Apellidos, Nombres». ", cuenta),
+        h("p.tenue", { id: "bv-ayuda-lista" }, "También sirve «Apellidos, Nombres». ", cuenta),
         err,
-        h("div.bv-pie",
-          h("button.btn.btn-texto", { type: "button", onclick: async () => {
-            dlg.close(); dlg.remove(); await ctx.guiaGuardar({ bienvenida: "hecha" });
-            (await import("../comun/importar.js")).abrirImportacion(ctx, () => { ctx.datos.invalidar(); ctx.ir(`#/grupos/${estado.grupo}`); }, { grupo: estado.grupo });
-          } }, "Prefiero subir un Excel"),
-          h("button.btn.btn-sec", { type: "button", onclick: () => paso4([]) }, "Lo hago después"),
-          btn)));
+        h("div.bv-pie", h("button.btn.btn-sec", { type: "button", onclick: paso3 }, "Atrás"), btn)));
     area.focus();
+  };
+
+  // 3B · plantilla de Excel: 1 descargar, 2 llenar, 3 subir
+  const paso3Excel = () => {
+    const err = error();
+    const btn = h("button.btn", { type: "button", disabled: true }, "Agregar al grupo");
+    const resumen = h("div.bv-archivo", { "aria-live": "polite" });
+    const marcaPaso = (li) => li.classList.add("hecho");
+    const p1 = h("li", h("span.num", "1"), h("div.crece", h("strong", "Descarga la plantilla"), h("div.tenue", "Es un archivo de Excel con las columnas listas."),
+      h("button.btn.btn-sec.btn-sm", { type: "button", style: "margin-top:.4rem", onclick: async () => {
+        (await import("../comun/importar.js")).plantillaExcel(); marcaPaso(p1); } }, "Descargar plantilla")));
+    const p2 = h("li", h("span.num", "2"), h("div.crece", h("strong", "Llénala"), h("div.tenue", "Ábrela en Excel o Google Sheets y escribe un estudiante por fila. Solo «Nombres» es obligatorio. Guarda el archivo.")));
+    const archivo = h("input", { type: "file", accept: ".xlsx,.csv,.txt", "aria-label": "Plantilla llena" });
+    let filasListas = [];
+    archivo.addEventListener("change", async () => {
+      const f = archivo.files?.[0]; if (!f) return;
+      err.classList.add("oculto"); btn.disabled = true; resumen.replaceChildren(h("p.tenue", "Leyendo el archivo…"));
+      try {
+        const [{ leerHoja }, imp] = await Promise.all([import("./hoja.js"), import("../comun/importar.js")]);
+        const filas = await leerHoja(f);
+        const mapa = imp.reconocer((filas[0] || []).map((v) => String(v ?? "")));
+        if (mapa.nombres == null && mapa.nombre_completo == null) throw new Error("No encontramos la columna «Nombres». Usa la plantilla sin cambiar los títulos de la fila 1.");
+        const revisadas = imp.preparar(filas, mapa).filter((x) => Object.values(x.reg).some((v, i) => i > 0 && v));
+        const buenas = revisadas.filter((x) => !x.errores.length);
+        const malas = revisadas.filter((x) => x.errores.length);
+        if (!buenas.length) throw new Error("La plantilla no tiene estudiantes. Escribe al menos un nombre desde la fila 2.");
+        if (buenas.length > 500) throw new Error("Sube como máximo 500 estudiantes a la vez.");
+        filasListas = buenas.map((x) => x.reg);
+        marcaPaso(p1); marcaPaso(p2); marcaPaso(p3);
+        resumen.replaceChildren(
+          h("p", h("strong", `${buenas.length} estudiante${buenas.length === 1 ? "" : "s"} listo${buenas.length === 1 ? "" : "s"} para agregar.`)),
+          malas.length ? h("p.tenue", `${malas.length} fila(s) se omitirán: ` + malas.slice(0, 3).map((x) => `fila ${x.reg._fila} (${x.errores.join(", ")})`).join("; ")) : null);
+        btn.disabled = false;
+      } catch (ex) { resumen.replaceChildren(); mostrarError(err, ex); archivo.value = ""; }
+    });
+    const p3 = h("li", h("span.num", "3"), h("div.crece", h("strong", "Súbela"), h("div.tenue", "Elige el archivo que guardaste."), archivo, resumen));
+    btn.addEventListener("click", () => filasListas.length && enviarFilas(filasListas, err, btn));
+    cuerpo.replaceChildren(
+      h("h2", { id: "bv-titulo" }, "Con una plantilla de Excel"),
+      h("p.suave", "Sigue estos tres pasos. Puedes volver cuando quieras."),
+      h("ol.pasos-guia.bv-excel", p1, p2, p3),
+      err,
+      h("div.bv-pie",
+        h("button.btn.btn-sec", { type: "button", onclick: paso3 }, "Atrás"),
+        h("button.btn.btn-texto", { type: "button", onclick: () => paso4([]) }, "Saltar por ahora"),
+        btn));
   };
 
   // Paso 4 · listo

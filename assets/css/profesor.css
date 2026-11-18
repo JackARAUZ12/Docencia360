@@ -243,3 +243,10 @@ body:has(.guia-flotante:not([hidden])) .p-main { padding-bottom: calc(150px + en
 .clase-ahora .nombre { font-size: 1.25rem; font-weight: 800; line-height: 1.25; }
 .clase-ahora .acciones { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 @media (max-width: 600px) { .clase-ahora .acciones { width: 100%; } .clase-ahora .acciones .btn { flex: 1 1 auto; justify-content: center; } }
+.bv-opciones { display: grid; gap: .6rem; margin-top: 1rem; }
+.bv-opcion { display: grid; gap: .2rem; text-align: left; padding: .9rem 1rem; border: 1px solid var(--renglon-fuerte); border-radius: var(--radio-sm); background: var(--papel); color: var(--texto); font: inherit; cursor: pointer; }
+.bv-opcion:hover, .bv-opcion:focus-visible { border-color: var(--acento); background: var(--acento-suave); }
+.bv-opcion strong { font-size: 1.02rem; }
+.bv-excel { margin-top: .75rem; }
+.bv-excel input[type=file] { margin-top: .4rem; max-width: 100%; }
+.bv-archivo p { margin: .4rem 0 0; }

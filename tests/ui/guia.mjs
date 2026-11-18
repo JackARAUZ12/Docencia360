@@ -8,6 +8,14 @@ const BASE = process.env.BASE || "http://localhost:8080";
 const OUT = process.env.OUT || "tests/ui/capturas/guia";
 fs.mkdirSync(OUT, { recursive: true });
 const errores = [], fallos = [];
+// Plantilla llena de prueba, generada con el mismo escritor de .xlsx del sistema
+const { crearXlsx } = await import("../../assets/js/core/hoja.js");
+const XLSX = `${OUT}/plantilla-llena.xlsx`;
+fs.writeFileSync(XLSX, Buffer.from(await crearXlsx([{ nombre: "Estudiantes", filas: [
+  ["Nombres", "Apellidos", "Fecha de nacimiento", "Sexo", "Teléfono", "Correo", "Responsable", "Teléfono del responsable", "Parentesco", "Observaciones"],
+  ["Ana Sofía", "López Rivas", "15/03/2012", "F", "88887777", "", "María Rivas", "55554444", "Madre", ""],
+  ["Carlos", "Pérez", "", "M", "", "", "", "", "", ""],
+  ["", "", "", "", "", "", "", "", "", ""]] }]).arrayBuffer()));
 const ok = (c, t) => (c ? console.log("OK", t) : (fallos.push(t), console.log("FALLO", t)));
 const browser = await chromium.launch();
 for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
@@ -40,6 +48,17 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   await page.waitForTimeout(600);
   ok(enviado.grupos?.nombre === "Matemática · 9no grado" && enviado.grupos?.estado === "activo", `${tag} se crea el grupo con nombre sugerido`);
   ok(Array.isArray(enviado.horarios) && enviado.horarios.length === 2 && enviado.horarios[0].hora_inicio === "16:00", `${tag} se guarda el horario de los días marcados`);
+  ok(await bv.getByRole("button", { name: /Con una plantilla de Excel/ }).isVisible() && await bv.getByRole("button", { name: /Saltar: lo hago después/ }).isVisible(), `${tag} el paso de estudiantes ofrece lista, Excel o saltar`);
+  await page.screenshot({ path: `${OUT}/${tag}-3-opciones.png` });
+  // Camino Excel: descargar la plantilla, volver atrás y usar la lista (el Excel se prueba aparte)
+  await bv.getByRole("button", { name: /Con una plantilla de Excel/ }).click(); await page.waitForTimeout(300);
+  const [descarga] = await Promise.all([page.waitForEvent("download"), bv.getByRole("button", { name: "Descargar plantilla" }).click()]);
+  ok(descarga.suggestedFilename().endsWith(".xlsx"), `${tag} la plantilla se descarga en Excel (${descarga.suggestedFilename()})`);
+  ok(await bv.locator(".bv-excel li.hecho").count() === 1, `${tag} el paso 1 queda marcado al descargar`);
+  ok(await bv.getByRole("button", { name: "Agregar al grupo" }).isDisabled(), `${tag} no deja continuar sin subir la plantilla`);
+  await page.screenshot({ path: `${OUT}/${tag}-3b-excel.png` });
+  await bv.getByRole("button", { name: "Atrás" }).click(); await page.waitForTimeout(200);
+  await bv.getByRole("button", { name: /Escribir o pegar la lista/ }).click(); await page.waitForTimeout(200);
   await bv.locator("textarea").fill("Ana Sofía López\nPérez Ruiz, Carlos\nMaría José Gutiérrez");
   await page.screenshot({ path: `${OUT}/${tag}-3-estudiantes.png` });
   let rpcImport = null;
@@ -56,6 +75,33 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   ok(guardado?.p_cambios?.bienvenida === "hecha", `${tag} la bienvenida queda marcada en el servidor`);
   ok(await page.locator(".guia-flotante").isVisible(), `${tag} el botón «Primeros pasos» se muestra`);
   await page.screenshot({ path: `${OUT}/${tag}-5-inicio-nueva.png` });
+  await page.close();
+
+  // 1b) Camino Excel completo: subir la plantilla llena
+  page = await ctxB.newPage();
+  page.on("pageerror", (e) => errores.push(`${tag}: ${e.message}`));
+  await preparar(page, true);
+  await page.route(/supabase\.co\/rest\/v1\/(asignaturas|grupos|estudiantes|horarios|asistencias|evaluaciones|estudiantes_acceso|actividades|grupo_estudiantes)/, async (route) => {
+    if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+    const fila = { id: "00000000-0000-0000-0000-0000000000a9", nombre: "Inglés" };
+    const single = (route.request().headers()["accept"] || "").includes("vnd.pgrst.object");
+    return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify(single ? fila : [fila]) });
+  });
+  await page.goto(BASE + "/app/profesor.html#/inicio"); await page.waitForTimeout(1200);
+  const bv2 = page.locator("dialog.bienvenida");
+  await bv2.locator("input[name=asig]").fill("Inglés");
+  await bv2.getByRole("button", { name: "Continuar" }).click(); await page.waitForTimeout(200);
+  await bv2.getByRole("button", { name: "Crear mi grupo" }).click(); await page.waitForTimeout(600);
+  await bv2.getByRole("button", { name: /Con una plantilla de Excel/ }).click(); await page.waitForTimeout(200);
+  await bv2.locator("input[type=file]").setInputFiles(XLSX);
+  await page.waitForTimeout(700);
+  ok((await bv2.locator(".bv-archivo").innerText()).includes("2 estudiantes listos"), `${tag} la plantilla llena se lee (2 estudiantes)`);
+  ok(await bv2.locator(".bv-excel li.hecho").count() >= 2, `${tag} los pasos 2 y 3 quedan marcados`);
+  let imp = null; page.on("request", (r) => { if (r.url().includes("rpc/d360_importar_estudiantes")) imp = JSON.parse(r.postData() || "{}"); });
+  await page.screenshot({ path: `${OUT}/${tag}-3c-excel-listo.png` });
+  await bv2.getByRole("button", { name: "Agregar al grupo" }).click(); await page.waitForTimeout(700);
+  ok(imp?.p_filas?.length === 2 && imp.p_filas[0].nombres === "Ana Sofía" && imp.p_filas[0].contacto_telefono === "55554444" && imp.p_filas[0].fecha_nacimiento === "2012-03-15", `${tag} se envían los datos de la plantilla (nombre, fecha y responsable)`);
+  ok(await bv2.getByText("¡Listo! Tu clase está creada").isVisible(), `${tag} con Excel también termina en «Listo»`);
   await page.close();
 
   // 2) Cuenta con datos (Premium): botón con avance, panel de pasos y consejo de sección
