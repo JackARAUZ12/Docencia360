@@ -8,7 +8,8 @@ const { chromium } = createRequire(import.meta.url)("playwright");
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { preparar, G1 } from "../ui/simulacion.mjs";
+import { preparar, G1, E } from "../ui/simulacion.mjs";
+import { crearXlsx } from "../../assets/js/core/hoja.js";
 
 const BASE = process.env.BASE || "http://localhost:8080";
 const SALIDA = process.env.SALIDA || "tests/video/salida";
@@ -18,6 +19,16 @@ fs.mkdirSync(CRUDO, { recursive: true });
 const W = 1280, H = 720;
 const avisos = [];
 const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
+// Archivos de ejemplo: plantilla de Excel llena y una foto de cuaderno
+const PLANTILLA = path.join(SALIDA, "plantilla-llena.xlsx");
+fs.mkdirSync(SALIDA, { recursive: true });
+fs.writeFileSync(PLANTILLA, Buffer.from(await crearXlsx([{ nombre: "Estudiantes", filas: [
+  ["Nombres", "Apellidos", "Fecha de nacimiento", "Sexo", "Teléfono", "Correo", "Responsable", "Teléfono del responsable", "Parentesco", "Observaciones"],
+  ["Ana Sofía", "López Rivas", "15/03/2012", "F", "88887777", "", "María Rivas", "55554444", "Madre", ""],
+  ["Carlos", "Pérez Ruiz", "02/07/2011", "M", "", "", "Juan Pérez", "55551111", "Padre", ""],
+  ["María José", "Gutiérrez", "21/01/2012", "F", "", "", "", "", "", ""]] }]).arrayBuffer()));
+const FOTO = path.join(SALIDA, "cuaderno.png");
+fs.writeFileSync(FOTO, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
 
 // ---------- Capa visual: subtítulos, tarjetas de título y cursor ----------
 const CAPA = () => {
@@ -59,7 +70,7 @@ const CAPA = () => {
 };
 
 let pg, paso = 0;
-const TOTAL = 16;
+const TOTAL = Number(process.env.TOTAL_PASOS || 26);
 async function capa() { await pg.evaluate(CAPA).catch(() => {}); }
 async function sub(titulo, texto, ms = 4200) {
   paso += 1; await capa();
@@ -116,6 +127,7 @@ async function nuevaPagina(conSesion) {
   pg = await ctx.newPage();
   pg.on("pageerror", (e) => avisos.push("error en página: " + e.message));
   if (!conSesion) await pg.addInitScript(() => { try { if (!sessionStorage.getItem("tut-limpio")) { localStorage.clear(); sessionStorage.setItem("tut-limpio", "1"); } } catch (_) {} });
+  await pg.addInitScript(() => { window.open = () => ({ location: "", close() {} }); });
   await preparar(pg, conSesion, "profesor", "propietario");
   // El código que genera el administrador en el video es el mismo que luego usa el cliente
   await pg.route(/rpc\/d360_admin_crear_codigo/, (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "k3", codigo: "D360-PRUE-BA01" }) }));
@@ -162,72 +174,131 @@ await escribir("input[name=email]", "marta@ejemplo.com");
 await escribir("input[name=clave]", "una-clave-segura");
 await clic("input[name=acepto]", { espera: 500 });
 await clic(pg.getByRole("button", { name: "Crear mi cuenta" }), { espera: 1800 });
-await sub("Cuenta creada y activa", "Su cuenta queda activa al instante. Recibe un código de institución y un código personal para entrar desde cualquier teléfono.", 5200);
+await sub("Cuenta creada y activa", "Su cuenta queda activa al instante. Recibe el código de su espacio y un código personal para entrar rápido desde cualquier teléfono.", 5200);
 
-// 4) El panel del profesor (con datos de ejemplo)
-await tarjeta("Parte 3", "El panel del profesor", "Para el recorrido usamos una cuenta con datos de ejemplo: grupos, estudiantes, asistencia y notas.");
+// 4) Primera vez: bienvenida guiada (cuenta nueva, sin grupos)
+await tarjeta("Parte 3", "La primera vez: Primeros pasos", "Una bienvenida guiada deja lista tu primera clase en un par de minutos, paso a paso.");
 await nuevaPagina(true);
+await pg.route(/supabase\.co\/rest\/v1\/(asignaturas|grupos|estudiantes|horarios|asistencias|evaluaciones|estudiantes_acceso|actividades|grupo_estudiantes)/, async (route) => {
+  if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+  const fila = { id: "00000000-0000-0000-0000-0000000000a9", nombre: "Matemática · 9no grado" };
+  const single = (route.request().headers()["accept"] || "").includes("vnd.pgrst.object");
+  return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify(single ? fila : [fila]) });
+});
 await ir("/app/profesor.html#/inicio");
-await sub("Inicio", "Inicio te dice qué toca hoy: tus clases, a qué grupo pasar lista, evaluaciones por calificar y próximas fechas.", 5000);
-await nota("Mientras empiezas, una guía de 5 pasos marca sola lo que ya hiciste: grupo, estudiantes, horario, lista y evaluación.", 4600);
-await bajar(500, 2200); await pg.mouse.wheel(0, -1000); await pausa(600);
-
-await hash("#/grupos");
-await sub("Grupos y horarios", "Un grupo reúne a los estudiantes de una misma clase. Al crearlo escribes la asignatura ahí mismo.", 4200);
-await clic(pg.getByRole("button", { name: /Nuevo grupo/ }), { espera: 1100 });
-await escribir("dialog input[name=nombre]", "Física 11mo · sábados");
-await nota("Pones nombre, asignatura, cupo y fechas. Al guardar, el grupo aparece en tu lista.", 3600);
-await pg.keyboard.press("Escape"); await pausa(700);
-
-await hash(`#/grupos/${G1}`);
-await sub("Dentro de un grupo", "Aquí ves a los integrantes, el horario semanal y el botón «Agregar» para sumar estudiantes.", 4200);
-await clic(pg.getByRole("button", { name: "Agregar", exact: true }), { espera: 1200 });
-await nota("Puedes elegir estudiantes que ya tienes, registrar uno nuevo o importar toda la lista desde Excel.", 4400);
-await pg.keyboard.press("Escape"); await pausa(700);
-
-await hash("#/estudiantes");
-await sub("Estudiantes", "La lista de todos tus estudiantes, con buscador y filtros por estado.", 3600);
-await clic(pg.getByRole("button", { name: /Importar Excel/ }), { espera: 1200 });
-await nota("¿Tienes la lista en Excel? Súbela: el sistema reconoce las columnas, revisa fechas y omite duplicados.", 3600);
-const csv = "Nombre completo;Fecha de nacimiento;Teléfono\r\nValeria Torres Mena;12/05/2012;8855-1020\r\nJosé Martínez;03/09/2011;8855-2233\r\nKarla Sánchez;21/01/2012;8855-4410\r\n";
-await pg.locator("dialog input[type=file]").setInputFiles({ name: "lista.csv", mimeType: "text/csv", buffer: Buffer.from(csv, "utf8") }).catch((e) => avisos.push("csv: " + e.message));
+await sub("Bienvenida", "Al entrar por primera vez, el sistema te recibe y te guía. Primero: ¿qué enseñas y a qué nivel?", 4200);
+await escribir("dialog.bienvenida input[name=asig]", "Matemática");
+await escribir("dialog.bienvenida input[name=nivel]", "9no grado");
+await clic(pg.getByRole("button", { name: "Continuar" }), { espera: 1100 });
+await sub("Tu primer grupo", "El nombre del grupo se sugiere solo. Marcas los días y la hora de clase, así Inicio te avisará cuándo pasar lista.", 4200);
+await clic(pg.locator(".bv-dia", { hasText: "Lun" }), { espera: 300 });
+await clic(pg.locator(".bv-dia", { hasText: "Mié" }), { espera: 500 });
+await clic(pg.getByRole("button", { name: "Crear mi grupo" }), { espera: 1400 });
+await sub("Tus estudiantes", "Eliges cómo agregarlos: escribiendo o pegando la lista, o con una plantilla de Excel. Si quieres, lo dejas para después.", 4600);
+await clic(pg.getByRole("button", { name: /Con una plantilla de Excel/ }), { espera: 1200 });
+await nota("Tres pasos: descargas la plantilla de Excel, la llenas (un estudiante por fila) y la subes.", 3800);
+await clic(pg.getByRole("button", { name: "Descargar plantilla" }), { espera: 900 });
+await pg.locator("dialog.bienvenida input[type=file]").setInputFiles(PLANTILLA).catch((e) => avisos.push("plantilla: " + e.message));
 await pausa(1500);
-await nota("Antes de importar ves exactamente qué se va a guardar. Un clic y quedan registrados.", 3800);
-await pg.keyboard.press("Escape"); await pausa(700);
+await nota("Al subirla, el sistema la revisa y te dice cuántos estudiantes están listos. Un toque y quedan en tu grupo.", 4200);
+await clic(pg.getByRole("button", { name: "Agregar al grupo" }), { espera: 1500 });
+await sub("¡Listo!", "Tu clase quedó creada. Desde aquí puedes pasar tu primera lista.", 3600);
+await clic(pg.getByRole("button", { name: "Ir a Inicio" }), { espera: 1500 });
+await sub("El botón «Primeros pasos»", "Abajo a la derecha te acompaña un botón con tu avance. Los pasos se marcan solos y cambian según tu plan.", 4200);
+await clic(".guia-flotante", { espera: 1500 });
+await pausa(2500);
+await pg.keyboard.press("Escape"); await pausa(600);
 
-await hash("#/asistencia");
-await sub("Pasar lista", "Eliges el grupo y la fecha. Tocas P (presente), A (ausente), T (tarde) o J (justificado) por estudiante.", 4000);
-const botones = pg.locator(".pase .opc button");
-for (const i of [0, 5, 9]) { if ((await botones.count()) > i) await clic(botones.nth(i), { espera: 500 }); }
-await nota("Al guardar, el sistema te ofrece pasar directo al siguiente grupo. Si cambias de grupo sin guardar, te avisa.", 3800);
+// 5) El día a día (cuenta con datos de ejemplo)
+await tarjeta("Parte 4", "Tu día a día", "Usamos una cuenta con datos de ejemplo: grupos, estudiantes, asistencia y notas.");
+await nuevaPagina(true);
+{
+  const d = new Date(); const dd = (n) => String(n).padStart(2, "0");
+  const ini = `${dd(Math.max(d.getHours() - 1, 0))}:00:00`, fin = `${dd(Math.min(d.getHours() + 1, 23))}:59:00`;
+  await pg.route(/rest\/v1\/horarios\?.*dia=eq/, (r) => r.fulfill({ status: 200, contentType: "application/json",
+    body: JSON.stringify([{ hora_inicio: ini, hora_fin: fin, grupo_id: G1, grupos: { nombre: "Matemática 9no", estado: "activo" } }]) }));
+  await pg.route(/rest\/v1\/asistencias\?.*fecha=eq/, (r) => r.request().method() === "GET" ? r.fulfill({ status: 200, contentType: "application/json", body: "[]" }) : r.fallback());
+}
+await ir("/app/profesor.html#/inicio");
+await sub("Inicio y «Clase de ahora»", "Si tienes clase en este momento, Inicio te la muestra arriba con un botón para pasar lista en un toque.", 4600);
+await nota("El menú está en tres bloques: «Día a día», «Mis clases» y «Más». Lo que tu plan no incluye aparece con candado.", 4400);
+await clic(pg.locator(".clase-ahora a.btn").first(), { espera: 1500 });
+await sub("Pasar lista rápido", "Tocas «Todos presentes» y luego solo cambias a quien faltó (A), llegó tarde (T) o tiene excusa (J).", 4200);
+await clic(pg.getByRole("button", { name: "✓ Todos presentes" }), { espera: 900 });
+await clic(pg.locator(".pase li").nth(1).locator('[data-e="ausente"]'), { espera: 600 });
+await escribir(pg.locator(".pase li").nth(1).locator("input"), "Avisó que estaba enfermo");
+await nota("El lápiz junto al nombre anota una observación de un toque: «No entregó la tarea», «Excelente participación»…", 4000);
+await clic(pg.locator(".btn-anotar").first(), { espera: 900 });
+await clic(pg.locator(".chip", { hasText: "Excelente participación" }), { espera: 700 });
+await clic(pg.locator("dialog").getByRole("button", { name: "Guardar", exact: true }), { espera: 900 });
 await clic(".pie-fijo .btn", { espera: 1500 });
 
 await hash("#/calificaciones");
-await sub("Calificaciones", "Creas evaluaciones (exámenes, tareas, proyectos) con su peso. El promedio de cada estudiante se calcula solo.", 4000);
+await sub("Notas y tareas", "Creas evaluaciones con su peso y escribes las notas: el promedio se calcula solo. «Tareas y entregas» muestra quién entregó.", 4600);
 await clic(pg.getByRole("button", { name: "Por evaluación" }), { espera: 1200 });
 const inp = pg.locator(".calificar input");
-if (await inp.count()) {
-  await escribir(inp.nth(0), "88"); await pg.keyboard.press("Enter"); await pausa(300);
-  await pg.keyboard.type("74", { delay: 70 }); await pausa(500);
-}
-await nota("Eliges la evaluación y pones las notas en una lista: Enter pasa al siguiente estudiante. También tienes el cuadro completo.", 4200);
-await clic(".pie-fijo .btn", { espera: 1600 });
+if (await inp.count()) { await escribir(inp.nth(0), "88"); await pg.keyboard.press("Enter"); await pausa(300); await pg.keyboard.type("74", { delay: 70 }); await pausa(500); }
+await clic(".pie-fijo .btn", { espera: 1500 });
 
-await hash("#/tareas");
-await sub("Tareas", "Asignas tareas a un grupo con fecha de entrega y marcas quién entregó.", 3800);
-await hash("#/calendario");
-await sub("Calendario", "Tu mes completo: clases según el horario, evaluaciones y fechas importantes. Toca un día para ver el detalle o agregar una fecha.", 4600);
-await hash("#/informes");
-await sub("Informes", "Informe por grupo o por estudiante: promedio, asistencia y quién está en riesgo. Desde el plan Profesional lo imprimes o guardas en PDF.", 5000);
-await bajar(400, 2000); await pg.mouse.wheel(0, -800); await pausa(500);
+await hash("#/estudiantes");
+await sub("Pegar una lista", "Para agregar varios estudiantes de una vez, pegas los nombres desde WhatsApp o Word y ves cómo quedarán antes de guardar.", 4400);
+await clic(pg.getByRole("button", { name: "Pegar una lista" }), { espera: 1000 });
+await escribir("dialog textarea", "Valeria Torres Mena\nJosé Martínez\nSánchez Ruiz, Karla");
+await pausa(1500);
+await pg.keyboard.press("Escape"); await pausa(600);
 
+await hash(`#/estudiantes/${E(1)}`);
+await sub("Reporte a la familia por WhatsApp", "Desde la ficha del estudiante armas un mensaje con su asistencia, su promedio y tu última observación. Lo revisas y se abre WhatsApp.", 4800);
+await clic(pg.getByRole("button", { name: "Enviar reporte por WhatsApp" }), { espera: 1600 });
+await pausa(2200);
+await pg.keyboard.press("Escape"); await pausa(600);
+
+// 6) Exámenes en línea y aula virtual (profesor)
+await tarjeta("Parte 5", "Exámenes en línea y aula virtual", "Planes Profesional y Premium: tus estudiantes responden y entregan desde su propia aula.");
+await hash("#/enlinea");
+await sub("Exámenes y tareas en línea", "Creas exámenes con preguntas que se califican solas, o tareas donde el estudiante sube fotos o PDF de su trabajo.", 4600);
+await clic(pg.getByRole("button", { name: /Nueva actividad/ }), { espera: 1200 });
+await bajar(500, 1500);
+await nota("Marcas «El estudiante sube fotos o PDF» y le das puntos al archivo. Lo calificas tú al revisarlo.", 4200);
+await pg.keyboard.press("Escape"); await pausa(600);
+await hash("#/enlinea/accesos");
+await sub("Códigos de los estudiantes", "Activas el acceso de tus estudiantes: cada uno recibe un código personal y una tarjeta para imprimir con las instrucciones.", 4600);
+await hash("#/aula");
+await sub("Aula virtual", "Publicas avisos y materiales por grupo: guías en PDF, fotos o enlaces de YouTube y Drive.", 4200);
+await escribir(pg.getByLabel("Nuevo aviso"), "Mañana repasamos fracciones. Traigan calculadora.");
+await clic(pg.getByRole("button", { name: "Publicar aviso" }), { espera: 1300 });
+
+// 7) El aula del estudiante
+await tarjeta("Parte 6", "El aula del estudiante", "Cada estudiante entra con el código de su profesor y su código personal. No necesita correo.");
+await nuevaPagina(false);
+await ir("/aula.html");
+await sub("Entrar al aula", "El estudiante abre «Soy estudiante», escribe los dos códigos y su teléfono lo recuerda para la próxima vez.", 4200);
+await escribir(pg.getByLabel("Código de tu profesor"), "K7M2QP");
+await escribir(pg.getByLabel("Tu código personal de 6 números"), "123456");
+await clic(pg.getByRole("button", { name: "Entrar a mi aula" }), { espera: 1600 });
+await sub("Su inicio", "Ve lo que tiene por hacer, su promedio, su asistencia, tus avisos y los materiales nuevos.", 4600);
+await bajar(500, 2000); await pg.mouse.wheel(0, -1000); await pausa(600);
+await clic(pg.locator(".item-a", { hasText: "Ejercicios en el cuaderno" }).getByRole("button", { name: "Hacer tarea" }), { espera: 1500 });
+await sub("Entregar una tarea con foto", "Abre la tarea sin volver a escribir el código, toma una foto de su cuaderno y la entrega. Las fotos se achican solas.", 4400);
+await clic(pg.getByRole("button", { name: "Empezar tarea" }), { espera: 1400 });
+await pg.locator(".zona-archivos input[type=file]").setInputFiles(FOTO).catch((e) => avisos.push("foto: " + e.message));
+await pausa(1800);
+await ir("/aula.html#/notas");
+await sub("Sus notas y asistencia", "En «Mis notas» ve cada calificación, su promedio por grupo y su asistencia. Cuando revisas una entrega, ve tu nota y tu comentario.", 4800);
+await ir("/aula.html#/materiales");
+await sub("Materiales y avisos", "Aquí descarga tus guías y abre tus enlaces, siempre con enlaces privados que vencen en minutos.", 4200);
+
+// 8) Informes y cuenta
+await tarjeta("Parte 7", "Informes y tu cuenta", "Todo queda listo para imprimir, compartir o mejorar de plan cuando lo necesites.");
+await nuevaPagina(true);
+await ir("/app/profesor.html#/informes");
+await sub("Informes", "Informe por grupo o por estudiante: promedio, asistencia y quién está en riesgo, con botón de WhatsApp por estudiante.", 4800);
+await bajar(400, 1800); await pg.mouse.wheel(0, -800); await pausa(500);
 await hash("#/cuenta");
-await sub("Mi cuenta", "Aquí ves tu plan, cuánto usas y hasta cuándo está pagado. Comparas los planes y pides un cambio por WhatsApp.", 5000);
-await bajar(450, 2600);
-await nota("También están tus códigos de acceso y, en el plan Premium, tu asistente: entra con su propio código y solo ve sus grupos.", 4800);
-await pg.mouse.wheel(0, -1200); await pausa(600);
+await sub("Mi cuenta", "Tu plan, cuánto usas y hasta cuándo está pagado. Comparas los planes, ves tus códigos y puedes volver a ver la guía de Primeros pasos.", 5000);
+await bajar(450, 2400); await pg.mouse.wheel(0, -1200); await pausa(600);
 
-await tarjeta("Listo", "Así de simple es Docencia360", "Código de acceso → cuenta activa → grupos → estudiantes → lista → notas → informes. ¿Dudas? Escríbenos por WhatsApp.", 6000);
+await tarjeta("Listo", "Así de simple es Docencia360", "Código de acceso → cuenta activa → primera clase guiada → lista y notas → aula virtual para tus estudiantes. ¿Dudas? Escríbenos por WhatsApp.", 6500);
 
 // ======================= CIERRE: unir los tramos en un MP4 =======================
 { const v = pg.video(); await pg.close(); videos.push(await v.path()); }
