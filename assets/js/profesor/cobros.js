@@ -8,6 +8,7 @@ import { sb, q } from "../core/sb.js";
 import { h, tabla, modal, formularioModal, confirmar, fecha, hoyISO, dinero, nombreCompleto } from "../core/ui.js";
 import { registrarPago, verRecibo } from "../academia/finanzas.js";
 import { numeroWhatsApp } from "../comun/reporte.js";
+import { movimiento } from "../comun/movimientos.js";
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const saldoDe = (c) => Math.round((Number(c.monto) - Number(c.descuento) - Number(c.pagado)) * 100) / 100;
@@ -29,8 +30,6 @@ export function preguntaCobro(ctx, alElegir, actual) {
       await ctx.guiaGuardar({ cobro: v }); alElegir?.(v);
     } }, h("strong", t), h("span.tenue", d)))));
 }
-const CAT_GASTO = ["Materiales", "Fotocopias e impresión", "Transporte", "Internet y teléfono", "Alquiler de local", "Plataformas y apps", "Capacitación", "Otro"];
-const CAT_INGRESO = ["Talleres", "Venta de material", "Asesorías", "Otro"];
 
 export async function render(el, ctx, { params }) {
   if (!ctx.f("finanzas")) {
@@ -203,23 +202,6 @@ export async function render(el, ctx, { params }) {
   }
 
   pintar();
-}
-
-/** Registrar un gasto o un ingreso propio. */
-function movimiento(ctx, tipo, m) {
-  const cats = tipo === "gasto" ? CAT_GASTO : CAT_INGRESO;
-  formularioModal(m ? (tipo === "gasto" ? "Editar gasto" : "Editar ingreso") : (tipo === "gasto" ? "Registrar gasto" : "Registrar otro ingreso"), [
-    { name: "concepto", label: "Concepto", required: true, maxlength: 140, full: true, placeholder: tipo === "gasto" ? "Ej.: Fotocopias de la guía 3" : "Ej.: Taller de repaso del sábado" },
-    { name: "monto", label: `Monto (${ctx.cuenta.moneda})`, type: "number", min: 0.01, step: "0.01", required: true },
-    { name: "fecha", label: "Fecha", type: "date", required: true, value: hoyISO() },
-    { name: "categoria", label: "Categoría", type: "select", required: true, options: cats.map((c) => [c, c]), value: cats[0] },
-    { name: "nota", label: "Nota", maxlength: 500, full: true },
-  ], m || null, async (d, cerrar) => {
-    const fila = { tipo, concepto: d.concepto.trim(), monto: Number(d.monto), fecha: d.fecha, categoria: d.categoria, nota: d.nota?.trim() || null };
-    if (m) await q(sb.from("movimientos").update(fila).eq("id", m.id));
-    else await q(sb.from("movimientos").insert({ ...fila, cuenta_id: ctx.id }));
-    cerrar(); ctx.toast(tipo === "gasto" ? "Gasto guardado" : "Ingreso guardado"); ctx.recargar();
-  }, { boton: "Guardar" });
 }
 
 /** Registrar una clase particular cobrada (pagada al momento o pendiente). */

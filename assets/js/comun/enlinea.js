@@ -468,7 +468,7 @@ function mostrarCodigos(lista, ctx) {
   const portal = new URL(ruta("aula.html"), location.href).href.replace(/^https?:\/\//, "");
   const tarjetas = h("div.tarjetas-codigo", lista.map((x) => h("div.tarjeta-codigo",
     h("div.tenue", ctx.cuenta.nombre), h("strong", x.nombre),
-    h("div.tenue", "Código de tu profesor"), h("div.cod", ctx.cuenta.codigo),
+    h("div.tenue", ctx.modalidad === "profesor" ? "Código de tu profesor" : "Código de tu academia"), h("div.cod", ctx.cuenta.codigo),
     h("div.tenue", "Tu código personal (secreto)"), h("div.cod", x.codigo),
     h("div.tenue", "Tu aula: ", h("strong", portal), " · ahí ves tus tareas, exámenes, materiales y notas."))));
   modal("Códigos de acceso", h("div",

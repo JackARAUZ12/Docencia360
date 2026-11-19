@@ -7,17 +7,22 @@ import { ICONOS } from "../core/iconos.js";
 import { botonTema } from "../core/tema.js";
 import { crearContexto, avisoPlan, textoPlan, iniciarEnrutador } from "../core/panel.js";
 import { accionMatricular, seccionMatriculasFicha, seccionEstadoCuenta } from "./matriculas.js";
+import { cargarGuia, botonGuia } from "../core/guia.js";
 
 const ctx = await crearContexto("academia");
+if (ctx.rol === "tutor") { location.replace(ruta("app/familias.html")); await new Promise(() => {}); }
+await cargarGuia(ctx);
 
 // Extensiones del expediente del estudiante (módulo común)
 ctx.accionesFicha = [(c, e) => (c.esGestor || c.esFinanzas) && e.estado === "activo" ? accionMatricular(c, e) : null];
-ctx.seccionesFicha = [seccionMatriculasFicha, (c, e) => (c.esFinanzas && c.f("finanzas") ? seccionEstadoCuenta(c, e) : null)];
+ctx.seccionesFicha = [seccionMatriculasFicha, (c, e) => (c.esFinanzas && c.f("finanzas") ? seccionEstadoCuenta(c, e) : null),
+  (c, e) => (c.esGestor && c.f("portal_familias") ? import("../colegio/fichas.js").then((m) => m.seccionTutores(c, e)) : null)];
 
 const G = ctx.esGestor, F = ctx.esFinanzas, D = ctx.esDocente;
 const AREAS = [
   ["General", [
     { r: "inicio", t: "Inicio", i: "inicio", m: () => import("./inicio.js"), ver: true },
+    { r: "comunicados", t: "Comunicados", i: "notas", m: () => import("../colegio/comunicados.js"), ver: G || ctx.f("comunicados") },
   ]],
   ["Académico", [
     { r: "estudiantes", t: "Estudiantes", i: "estudiantes", m: () => import("../comun/estudiantes.js"), ver: true },
@@ -28,15 +33,21 @@ const AREAS = [
     { r: "calificaciones", t: "Evaluaciones", i: "notas", m: () => import("../comun/calificaciones.js"), ver: G || D },
     { r: "tareas", t: "Actividades", i: "tareas", m: () => import("../comun/tareas.js"), ver: G || D },
     { r: "rubricas", t: "Rúbricas", i: "notas", m: () => import("../comun/rubricas.js"), ver: (G || D) && ctx.f("rubricas") },
+    { r: "enlinea", t: "Exámenes en línea", i: "enlinea", m: () => import("../comun/enlinea.js"), ver: (G || D) && ctx.f("portal_estudiantes") },
+    { r: "aula", t: "Aula virtual", i: "aula", m: () => import("../comun/aula.js"), ver: (G || D) && ctx.f("portal_estudiantes") },
+    { r: "banco", t: "Banco de preguntas", i: "enlinea", m: () => import("../comun/banco.js"), ver: (G || D) && ctx.f("portal_estudiantes"), oculto: true },
     { r: "calendario", t: "Calendario", i: "calendario", m: () => import("../comun/calendario.js"), ver: true },
   ]],
   ["Operación", [
     { r: "matriculas", t: "Matrículas", i: "matriculas", m: () => import("./matriculas.js"), ver: G || F },
     { r: "finanzas", t: "Finanzas", i: "finanzas", m: () => import("./finanzas.js"), ver: F },
+    { r: "pagos-instructores", t: "Pagos a instructores", i: "instructores", m: () => import("./pagos_instructores.js"), ver: F && ctx.f("finanzas") },
+    { r: "mis-pagos", t: "Mis pagos", i: "finanzas", m: () => import("./pagos_instructores.js"), ver: D && ctx.f("finanzas") },
     { r: "certificados", t: "Certificados", i: "certificados", m: () => import("./certificados.js"), ver: G },
   ]],
   ["Administración", [
     { r: "informes", t: "Informes", i: "informes", m: () => import("./informes.js"), ver: G || F },
+    { r: "familias", t: "Familias", i: "estudiantes", m: () => import("../colegio/familias.js"), ver: G },
     { r: "equipo", t: "Equipo y accesos", i: "equipo", m: () => import("./equipo.js"), ver: G },
     { r: "cuenta", t: ctx.esDueno ? "Plan y cuenta" : "Mi acceso", i: "cuenta", m: () => import("../comun/cuenta.js"), ver: true },
   ]],
@@ -54,7 +65,7 @@ const app = h("div.a-app",
     marca(ruta("app/academia.html")),
     h("div.a-inst", h("strong", ctx.cuenta.nombre), h("span.tenue", `${ctx.cuenta.miembro_nombre} · ${ROLES[ctx.rol] || ctx.rol}`)),
     AREAS.map(([area, rs]) => {
-      const vis = rs.filter((x) => x.ver);
+      const vis = rs.filter((x) => x.ver && !x.oculto);
       return vis.length ? h("div.a-grupo-nav", h("span", area), vis.map((x) =>
         h("a", { href: "#/" + x.r, dataset: { r: x.r }, onclick: () => app.classList.remove("abierto") }, icono(x.i), h("span", x.t)))) : null;
     }),
@@ -68,6 +79,19 @@ const app = h("div.a-app",
     main));
 document.getElementById("app").replaceChildren(app);
 
+// Primeros pasos de la dirección (botón flotante con avance real)
+const guia = botonGuia(ctx);
+guia.classList.add("en-academia");
+document.body.append(guia);
+ctx.botonGuia = guia;
+
 iniciarEnrutador(ctx, main, RUTAS, {
-  alNavegar: (r) => { tituloRuta.textContent = RUTAS.find((x) => x.r === r)?.t || ""; },
+  ayudas: {
+    finanzas: "aquí cobras con recibo, ves quién debe y, en «Resumen del mes», cuánto entró, cuánto se gastó y la ganancia real.",
+    "pagos-instructores": "define una vez si a cada instructor le pagas por hora, por clase o salario fijo; las clases salen de las listas que se pasan.",
+    enlinea: "crea exámenes y tareas en línea. Cada estudiante entra con su código y la nota se calcula sola.",
+    aula: "publica avisos y materiales por grupo. Los estudiantes los ven en su aula con sus tareas, notas y pagos.",
+    comunicados: "un comunicado para todos o para un grupo llega al aula de los estudiantes y al portal de familias.",
+  },
+  alNavegar: (r) => { tituloRuta.textContent = RUTAS.find((x) => x.r === r)?.t || ""; guia.actualizar(); },
 });

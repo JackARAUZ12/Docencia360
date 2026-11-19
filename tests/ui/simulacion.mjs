@@ -35,6 +35,7 @@ const F = {
                     { id: "bp2", cuenta_id: C, tema: "Ecuaciones", tipo: "corta", enunciado: "Si 2x = 10, ¿cuánto vale x?", opciones: [], correcta: ["5"], puntos: 2, usada: 0 }],
   movimientos: [{ id: "mv1", cuenta_id: C, tipo: "gasto", fecha: hoy, concepto: "Fotocopias del examen", categoria: "Fotocopias e impresión", monto: 250, nota: null },
                 { id: "mv2", cuenta_id: C, tipo: "ingreso", fecha: hoy, concepto: "Taller de repaso", categoria: "Talleres", monto: 400, nota: null }],
+  tutores_estudiantes: [{ parentesco: "Madre", miembro_id: "m1", estudiante_id: E(1), estudiantes: { id: E(1), nombres: "Ana", apellidos: "López", codigo: "E-001", foto_url: null, estado: "activo" } }],
   avisos_aula: [{ id: "av1", cuenta_id: C, grupo_id: G1, texto: "Mañana hay examen de fracciones.", creado: hoy + "T14:00:00Z" }],
   materiales: [{ id: "ma1", cuenta_id: C, grupo_id: G1, titulo: "Guía unidad 3", descripcion: "Resolver del 1 al 10", url: null, archivo_path: C + "/materiales/x.pdf", archivo_nombre: "guia.pdf", archivo_tamano: 120000, archivo_tipo: "application/pdf", creado: hoy + "T13:00:00Z" }],
   entrega_archivos: [{ id: "ea1", path: C + "/entregas/e/f.jpg", nombre: "cuaderno.jpg", tamano: 250000, tipo: "image/jpeg" }],
@@ -112,12 +113,18 @@ const RPC = {
   d360_aceptar_terminos: null,
   d360_guia: {}, d360_guia_guardar: {},
   d360_aula_salir: null,
+  d360_instructores_liquidacion: { periodo: hoy.slice(0, 7), puede_pagar: true, sin_instructor: [{ fecha: hoy, grupo: "Excel básico" }], instructores: [
+    { id: "m2", nombre: "Asistente Uno", telefono: "88887777", activo: true, forma: "hora", tarifa: 150, clases: 3, horas: 6, sin_horario: 1, calculado: 900, pagado: 400,
+      detalle: [{ fecha: hoy, grupo: "Matemática 9no", horas: 2 }, { fecha: hoy, grupo: "Física sabatino", horas: null }], pagos: [{ id: "mvp1", fecha: hoy, monto: 400, nota: "Adelanto", detalle: { metodo: "efectivo" } }] },
+    { id: "m3", nombre: "Instructora Fija", telefono: null, activo: true, forma: "fijo", tarifa: 8000, clases: 8, horas: 12, sin_horario: 0, calculado: 8000, pagado: 0, detalle: [], pagos: [] },
+    { id: "m4", nombre: "Nuevo Instructor", telefono: null, activo: true, forma: null, tarifa: null, clases: 0, horas: 0, sin_horario: 0, calculado: null, pagado: 0, detalle: [], pagos: [] }] },
+  d360_instructor_pagar: "mvp2",
   d360_finanzas_resumen: { cobrado: 1300, por_tipo: { mensualidad: 1000, clase: 300 }, otros_ingresos: 400, gastos: 450,
     gastos_por_categoria: [{ categoria: "Fotocopias e impresión", total: 250 }, { categoria: "Transporte", total: 200 }], ingresos_por_categoria: [{ categoria: "Talleres", total: 400 }] },
   d360_cobro_clase: { cargo_id: "cg-clase", pago_id: "pg-clase", recibo: "R-0009" },
   d360_cobros_generar: { creados: 3, ya_existian: 0 }, d360_banco_a_actividad: 2, d360_actividad_a_banco: 2,
   d360_alumno_archivos: { ok: true, archivos: [] },
-  d360_aula_inicio: { ok: true, nombre: "Ana López", institucion: "Clases de la Prof. Ana", cuenta_activa: true,
+  d360_aula_inicio: { ok: true, nombre: "Ana López", institucion: "Clases de la Prof. Ana", modalidad: "profesor", cuenta_activa: true,
     grupos: [{ id: G1, nombre: "Matemática 9no" }],
     actividades: [
       { token: "fisica2026", titulo: "Examen de cinemática", tipo: "examen", grupo: "Física sabatino", estado: "abierta", duracion_min: 30, entregada: false, en_curso: false },
@@ -205,7 +212,7 @@ export async function preparar(page, conSesion, modalidad = "profesor", rol = pr
         ...(planSim ? { plan_id: planSim.id, plan_nombre: planSim.nombre } : {}),
         ...(process.env.ESTADO ? { estado: process.env.ESTADO, operativa: !["pendiente", "vencida", "suspendida"].includes(process.env.ESTADO) } : {}), nombre: modalidad === "academia" ? "Academia Horizonte" : c.nombre,
         plan_nombre: modalidad === "academia" ? "Profesional" : (planSim?.nombre ?? c.plan_nombre),
-        funciones: modalidad === "colegio" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, portal_familias: true, boletines: true, sedes: true } : modalidad === "academia" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, tareas: true } : (planSim?.funciones ?? c.funciones) }));
+        funciones: modalidad === "colegio" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, portal_familias: true, boletines: true, sedes: true } : modalidad === "academia" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, tareas: true, rubricas: true, portal_estudiantes: true, banco_preguntas: true, portal_familias: process.env.SIN_FAMILIAS ? false : true, reporte_whatsapp: true } : (planSim?.funciones ?? c.funciones) }));
     }
     else if (u.pathname.startsWith("/rest/v1/")) {
       const t = u.pathname.split("/").pop();

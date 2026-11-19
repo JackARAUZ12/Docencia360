@@ -59,7 +59,7 @@ export async function seccionTutores(ctx, e) {
         if (!(await confirmar("Quitar vínculo", `${t.miembros?.nombre} dejará de ver a ${e.nombres} en el portal.`, { boton: "Quitar" }))) return;
         try { await q(sb.from("tutores_estudiantes").delete().eq("estudiante_id", e.id).eq("miembro_id", t.miembros.id)); ctx.recargar(); } catch (x) { ctx.toast(x.message, "mal"); }
       } }, "Quitar") : null)))
-      : h("p.suave", portal ? "Sin tutores con acceso al portal. Agrega uno para que la familia vea notas, asistencia y pagos." : "Contacto: " + ([e.contacto_nombre, e.contacto_telefono].filter(Boolean).join(" · ") || "sin registrar") + ". El portal de familias está disponible desde el plan Avanzado."));
+      : h("p.suave", portal ? "Sin tutores con acceso al portal. Agrega uno para que la familia vea notas, asistencia y pagos." : "Contacto: " + ([e.contacto_nombre, e.contacto_telefono].filter(Boolean).join(" · ") || "sin registrar") + `. El portal de familias está disponible desde el plan ${ctx.modalidad === "academia" ? "Empresarial" : "Avanzado"}.`));
 }
 
 export async function seccionDocumentos(ctx, e) {

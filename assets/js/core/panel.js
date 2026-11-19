@@ -14,7 +14,7 @@ export async function crearContexto(modalidad) {
   const rol = ctx.cuenta.rol;
   Object.assign(ctx, {
     id: ctx.cuenta.cuenta_id,
-    modalidad,
+    modalidad: ctx.cuenta.modalidad,   // la página puede aceptar varias (p. ej. el portal de familias)
     rol,
     f: (k) => ctx.cuenta.funciones?.[k] === true,
     esDueno: rol === "propietario",

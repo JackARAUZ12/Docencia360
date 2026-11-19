@@ -82,7 +82,7 @@ let datos = null;
 const MOTIVO = {
   codigo: "El código de tu profesor o tu código personal no es correcto. Revísalos o pídeselos a tu profesor.",
   formato: "El código de tu profesor tiene 6 letras o números, y el tuyo 6 números.",
-  no_disponible: "El aula de tu profesor no está disponible en este momento. Avísale.",
+  no_disponible: "El aula no está disponible en este momento. Avísale a tu profesor.",
 };
 
 // ---------- Entrar ----------
@@ -90,7 +90,7 @@ function pantallaEntrar() {
   document.title = "Entrar a mi aula · Docencia360";
   barra.classList.add("oculto"); pestanas.replaceChildren();
   const espIni = (new URLSearchParams(location.search).get("p") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
-  const esp = h("input.inst", { maxLength: 6, autocomplete: "off", autocapitalize: "characters", spellcheck: false, placeholder: "ABC123", value: espIni, "aria-label": "Código de tu profesor" });
+  const esp = h("input.inst", { maxLength: 6, autocomplete: "off", autocapitalize: "characters", spellcheck: false, placeholder: "ABC123", value: espIni, "aria-label": "Código de tu profesor o academia" });
   esp.addEventListener("input", () => { esp.value = esp.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6); });
   const pin = h("input.pin-alumno", { inputmode: "numeric", autocomplete: "off", maxLength: 6, placeholder: "••••••", "aria-label": "Tu código personal de 6 números" });
   pin.addEventListener("input", () => { pin.value = pin.value.replace(/\D/g, "").slice(0, 6); });
@@ -107,7 +107,7 @@ function pantallaEntrar() {
     } catch (err) { mostrar(err.message); }
     finally { btn.disabled = false; }
   } },
-    h("label.campo", h("span", "Código de tu profesor"), esp, h("small", "6 letras y números. Está en la tarjeta que te dio tu profesor.")),
+    h("label.campo", h("span", "Código de tu profesor o academia"), esp, h("small", "6 letras y números. Está en la tarjeta con tus códigos.")),
     h("label.campo", h("span", "Tu código personal"), pin, h("small", "6 números. Es secreto: no lo compartas.")),
     h("label.recordar", recordar, h("span", "Recordarme en este aparato (no lo marques en una computadora prestada)")),
     btn);
@@ -192,9 +192,9 @@ function inicio() {
   document.title = "Mi aula · Docencia360";
   const p = pendientes();
   cont.replaceChildren(cabecera(),
-    datos.cuenta_activa ? null : h("div.aviso.ojo", "La cuenta de tu profesor no está activa en este momento: puedes ver tu aula, pero no entregar."),
+    datos.cuenta_activa ? null : h("div.aviso.ojo", `La cuenta de tu ${datos.modalidad === "academia" ? "academia" : "profesor"} no está activa en este momento: puedes ver tu aula, pero no entregar.`),
     seccion("Por hacer", p.slice(0, 5).map(tarjeta), "No tienes nada pendiente. ¡Bien hecho!", p.length > 5 ? h("a", { href: "#/actividades" }, "Ver todas") : null),
-    h("section.hoja", h("h2", "Avisos de tu profesor"), datos.avisos.length ? datos.avisos.slice(0, 5).map(avisoItem) : h("p.suave", "Sin avisos por ahora.")),
+    h("section.hoja", h("h2", datos.modalidad === "academia" ? "Avisos de tu academia" : "Avisos de tu profesor"), datos.avisos.length ? datos.avisos.slice(0, 5).map(avisoItem) : h("p.suave", "Sin avisos por ahora.")),
     datos.materiales.length ? seccion("Materiales nuevos", datos.materiales.slice(0, 3).map(material), "", h("a", { href: "#/materiales" }, "Ver todos")) : null);
 }
 

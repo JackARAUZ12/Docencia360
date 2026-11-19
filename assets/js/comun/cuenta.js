@@ -26,14 +26,18 @@ export async function render(el, ctx) {
   const incluye = (p) => {
     const f = p.funciones || {};
     const filas = [[lim(p.max_estudiantes, "Estudiantes activos"), true], [lim(p.max_grupos, "Grupos"), true],
-      ["Asistencia, notas, tareas y calendario", true], ["Informes en PDF", !!f.reportes_pdf], ["Exportar listas a Excel (CSV)", !!f.exportar], ["Reporte a padres por WhatsApp", !!f.reporte_whatsapp], ["Control de pagos de tus estudiantes, con recibos", !!f.finanzas], ["Rúbricas para calificar", !!f.rubricas], ["Banco de preguntas", !!f.banco_preguntas]];
+      ["Asistencia, notas, tareas y calendario", true], ["Informes en PDF", !!f.reportes_pdf], ["Exportar listas a Excel (CSV)", !!f.exportar], ["Reporte a padres por WhatsApp", !!f.reporte_whatsapp], ["Rúbricas para calificar", !!f.rubricas], ["Banco de preguntas", !!f.banco_preguntas]];
+    if (ctx.modalidad === "profesor") filas.splice(6, 0, ["Finanzas: cobros con recibo, gastos y ganancia del mes", !!f.finanzas]);
     if (ctx.modalidad === "profesor") {
       filas.push([p.max_estudiantes_portal ? `Exámenes y tareas en línea · ${p.max_estudiantes_portal} estudiantes con acceso` : "Exámenes y tareas en línea con calificación automática", !!(f.portal_estudiantes && p.max_estudiantes_portal)]);
       filas.push([p.max_docentes ? `${p.max_docentes} asistente con su propio acceso` : "Asistente con su propio acceso", !!(f.asistentes && p.max_docentes)]);
     }
     else {
       filas.push([lim(p.max_docentes, ctx.modalidad === "academia" ? "Instructores" : "Docentes"), p.max_docentes !== 0]);
-      filas.push(["Matrículas, cobros y recibos", !!f.finanzas], ["Certificados con folio", !!f.certificados], ["Portal de familias", !!f.portal_familias]);
+      if (ctx.modalidad === "academia") filas.push([p.max_estudiantes_portal ? `Aula virtual y exámenes en línea · ${p.max_estudiantes_portal} estudiantes con acceso` : "Aula virtual y exámenes en línea", !!(f.portal_estudiantes && p.max_estudiantes_portal)]);
+      filas.push(["Matrículas, cobros y recibos", !!f.finanzas]);
+      if (ctx.modalidad === "academia") filas.push(["Pago a instructores, gastos y ganancia del mes", !!f.finanzas]);
+      filas.push(["Comunicados", !!f.comunicados], ["Certificados con folio", !!f.certificados], ["Portal de familias", !!f.portal_familias]);
     }
     return filas;
   };
@@ -123,12 +127,12 @@ export async function render(el, ctx) {
                   catch (e) { ctx.toast(e.message, "mal"); } } }, a.activo ? "Desactivar" : "Activar"))))
               : h("p.suave", "Un asistente puede pasar lista y calificar en los grupos que le asignes."))
             : h("p.suave", "Con el plan Premium puedes dar acceso a un asistente con su propio código.")) : null,
-        ctx.esDueno && ctx.modalidad === "profesor" && ctx.guiaGuardar ? h("section.hoja",
+        ctx.esDueno && ctx.modalidad !== "colegio" && ctx.guiaGuardar ? h("section.hoja",
           h("h2", "Primeros pasos"),
           h("p.suave", "La guía te acompaña hasta dejar lista tu cuenta. Si la ocultaste, puedes volver a mostrarla."),
           h("div", { style: "display:flex;gap:.5rem;flex-wrap:wrap" },
             h("button.btn.btn-sec", { onclick: async () => { await ctx.guiaGuardar({ oculta: false }); await ctx.botonGuia?.actualizar(); ctx.toast("Guía visible: usa el botón «Primeros pasos»."); } }, "Mostrar la guía"),
-            h("button.btn.btn-texto", { onclick: async () => (await import("../core/guia.js")).bienvenida(ctx, { forzar: true }) }, "Ver la bienvenida otra vez"))) : null,
+            ctx.modalidad === "profesor" ? h("button.btn.btn-texto", { onclick: async () => (await import("../core/guia.js")).bienvenida(ctx, { forzar: true }) }, "Ver la bienvenida otra vez") : null)) : null,
         h("section.hoja", h("h2", "Seguridad"),
           h("p.suave", "Por seguridad, la sesión se cierra sola tras un tiempo sin uso."),
           ctx.esDueno ? h("button.btn.btn-sec", { onclick: () => formularioModal("Cambiar contraseña", [

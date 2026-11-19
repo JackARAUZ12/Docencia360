@@ -3,6 +3,7 @@
 import { sb, q } from "../core/sb.js";
 import { h, tabla, modal, formularioModal, confirmar, fecha, hoyISO, sumarDias, dinero, nombreCompleto, descargarCSV, imprimir } from "../core/ui.js";
 import { ICONOS } from "../core/iconos.js";
+import { movimiento, resumenAcademia, listaMovimientos, mesISO } from "../comun/movimientos.js";
 
 const METODOS = [["efectivo", "Efectivo"], ["transferencia", "Transferencia"], ["deposito", "Depósito"], ["tarjeta", "Tarjeta"], ["otro", "Otro"]];
 const saldoDe = (c) => Math.round((Number(c.monto) - Number(c.descuento) - Number(c.pagado)) * 100) / 100;
@@ -53,7 +54,8 @@ export async function render(el, ctx, { params }) {
     el.append(ctx.titulo("Finanzas"), h("div.aviso.ojo", "Tu plan no incluye el módulo de finanzas."));
     return;
   }
-  let vista = params.get("vista") || "cobrar";
+  let vista = ["cobrar", "pagos", "resumen", "gastos"].includes(params.get("vista")) ? params.get("vista") : "cobrar";
+  let mes = mesISO();
   let filtro = params.get("estudiante") ? "todos" : "vencidos";
   let estSel = params.get("estudiante") || "";
   let texto = "";
@@ -74,11 +76,16 @@ export async function render(el, ctx, { params }) {
   const M = (n) => dinero(n, ctx.cuenta.moneda);
 
   const cont = h("div");
+  const buscar = h("input", { type: "search", placeholder: "Buscar estudiante, concepto o recibo", style: "max-width:300px", "aria-label": "Buscar", oninput: (e) => { texto = e.target.value; pintar(); } });
   function pintar() {
+    buscar.classList.toggle("oculto", vista === "resumen" || vista === "gastos");
+    const cambiarMes = (m) => { mes = m; pintar(); };
+    if (vista === "resumen") return resumenAcademia(ctx, cont, { mes, alCambiarMes: cambiarMes, pendiente: totalPend });
+    if (vista === "gastos") return listaMovimientos(ctx, cont, { mes, alCambiarMes: cambiarMes });
     if (vista === "pagos") {
       const t = texto.toLowerCase();
       const fs = pagos.filter((p) => !t || nombreCompleto(E[p.estudiante_id] || {}).toLowerCase().includes(t) || String(p.recibo).includes(t));
-      cont.replaceChildren(tabla([
+      cont.replaceChildren(h("section.hoja", tabla([
         { t: "Recibo", v: (p) => h("strong.num", String(p.recibo).padStart(6, "0")) },
         { t: "Fecha", v: (p) => fecha(p.fecha) },
         { t: "Estudiante", v: (p) => nombreCompleto(E[p.estudiante_id] || {}) },
@@ -91,14 +98,14 @@ export async function render(el, ctx, { params }) {
             if (!(await confirmar("Anular pago", `¿Anular el recibo N.º ${p.recibo} por ${M(p.monto)}? El cobro volverá a quedar pendiente. Queda registrado en la auditoría.`, { boton: "Anular", peligro: true }))) return;
             try { await q(sb.from("pagos").update({ anulado: true }).eq("id", p.id)); ctx.toast("Pago anulado"); ctx.recargar(); } catch (e) { ctx.toast(e.message, "mal"); }
           } }, "Anular")] },
-      ], fs, { vacio: "No hay pagos en los últimos 120 días." }));
+      ], fs, { vacio: "No hay pagos en los últimos 120 días." })));
       return;
     }
     const t = texto.toLowerCase();
     const fs = cargos.filter((c) => (filtro === "todos" || (filtro === "vencidos" ? c.vence < hoy : c.vence >= hoy)) &&
       (!estSel || c.estudiante_id === estSel) &&
       (!t || nombreCompleto(E[c.estudiante_id] || {}).toLowerCase().includes(t) || c.concepto.toLowerCase().includes(t)));
-    cont.replaceChildren(tabla([
+    cont.replaceChildren(h("section.hoja", tabla([
       { t: "Vence", v: (c) => h("span", { className: c.vence < hoy ? "nota-baja" : "" }, fecha(c.vence)) },
       { t: "Estudiante", v: (c) => [h("a.fila-enlace", { href: `#/estudiantes/${c.estudiante_id}` }, nombreCompleto(E[c.estudiante_id] || {})), h("div.tenue", E[c.estudiante_id]?.contacto_telefono || E[c.estudiante_id]?.telefono || "")] },
       { t: "Concepto", v: (c) => c.concepto },
@@ -109,7 +116,7 @@ export async function render(el, ctx, { params }) {
           if (!(await confirmar("Anular cobro", `¿Anular «${c.concepto}» de ${nombreCompleto(E[c.estudiante_id] || {})}?`, { boton: "Anular", peligro: true }))) return;
           try { await q(sb.from("cargos").update({ estado: "anulado" }).eq("id", c.id)); ctx.toast("Cobro anulado"); ctx.recargar(); } catch (e) { ctx.toast(e.message, "mal"); }
         } }, "Anular") : null] },
-    ], fs, { vacio: filtro === "vencidos" ? "No hay cobros vencidos. ¡Todo al día!" : "No hay cobros con ese filtro." }));
+    ], fs, { vacio: filtro === "vencidos" ? "No hay cobros vencidos. ¡Todo al día!" : "No hay cobros con ese filtro." })));
   }
 
   const cobroManual = () => formularioModal("Nuevo cobro", [
@@ -125,7 +132,7 @@ export async function render(el, ctx, { params }) {
     cerrar(); ctx.toast("Cobro creado"); ctx.recargar();
   }, { boton: "Crear cobro" });
 
-  const segVista = h("div.segmentos", { role: "group" }, [["cobrar", "Por cobrar"], ["pagos", "Pagos recibidos"]].map(([v, t]) =>
+  const segVista = h("div.segmentos", { role: "group" }, [["cobrar", "Por cobrar"], ["pagos", "Pagos recibidos"], ["resumen", "Resumen del mes"], ["gastos", "Gastos e ingresos"]].map(([v, t]) =>
     h("button", { type: "button", "aria-pressed": String(v === vista), onclick: (e) => { vista = v; segVista.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget))); filtros.classList.toggle("oculto", v !== "cobrar"); pintar(); } }, t)));
   const filtros = h("div.segmentos", { role: "group" }, [["vencidos", `Vencidos (${vencidos.length})`], ["proximos", "Próximos"], ["todos", "Todos"]].map(([v, t]) =>
     h("button", { type: "button", "aria-pressed": String(v === filtro), onclick: (e) => { filtro = v; filtros.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget))); pintar(); } }, t)));
@@ -135,6 +142,7 @@ export async function render(el, ctx, { params }) {
     ctx.titulo("Finanzas",
       ctx.f("exportar") ? h("button.btn.btn-sec", { onclick: () => descargarCSV(`pagos-${hoy}.csv`, [["Recibo", "Fecha", "Estudiante", "Concepto", "Forma", "Referencia", "Monto", "Anulado"],
         ...pagos.map((p) => [p.recibo, p.fecha, nombreCompleto(E[p.estudiante_id] || {}), p.cargos?.concepto || "Abono", p.metodo, p.referencia, p.monto, p.anulado ? "sí" : "no"])]) }, h("span", { html: ICONOS.descargar }), "Exportar pagos") : null,
+      h("button.btn.btn-sec", { onclick: () => movimiento(ctx, "gasto") }, "Registrar gasto"),
       h("button.btn", { onclick: cobroManual }, h("span", { html: ICONOS.mas_add }), "Nuevo cobro")),
     h("section.cifras",
       h("div.cifra", h("b", M(ingresosMes)), h("span", "cobrado este mes")),
@@ -143,8 +151,7 @@ export async function render(el, ctx, { params }) {
       h("div.cifra", h("b", M(porVencer)), h("span", "vence en 15 días"))),
     estSel ? h("div.aviso", `Mostrando cobros de ${nombreCompleto(E[estSel] || {})}. `, h("a", { href: "#/finanzas" }, "Ver todos")) : null,
     h("div", { style: "display:flex;gap:.75rem;flex-wrap:wrap;margin:1.25rem 0 1rem;align-items:center" },
-      segVista, filtros,
-      h("input", { type: "search", placeholder: "Buscar estudiante, concepto o recibo", style: "max-width:300px", oninput: (e) => { texto = e.target.value; pintar(); } })),
-    h("section.hoja", cont));
+      segVista, filtros, buscar),
+    cont);
   pintar();
 }

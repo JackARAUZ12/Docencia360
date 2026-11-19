@@ -8,13 +8,15 @@ import { botonTema } from "../core/tema.js";
 import { crearContexto } from "../core/panel.js";
 import { cualitativa, CUALI_TEXTO, urlArchivo } from "../colegio/util.js";
 
-const ctx = await crearContexto("colegio");
-if (ctx.rol !== "tutor") { location.replace(ruta("app/colegio.html")); await new Promise(() => {}); }
+const ctx = await crearContexto(["colegio", "academia"]);
+const ACA = ctx.modalidad === "academia";
+if (ctx.rol !== "tutor") { location.replace(ruta(ACA ? "app/academia.html" : "app/colegio.html")); await new Promise(() => {}); }
+const INST = ACA ? "la academia" : "el colegio";
 
 const [cuenta, hijosRel, periodos, asignaturas] = await Promise.all([
   q(sb.from("cuentas").select("nombre,config,telefono,moneda").eq("id", ctx.id).single()),
   q(sb.from("tutores_estudiantes").select("parentesco, estudiantes(id,nombres,apellidos,codigo,foto_url,estado)").eq("miembro_id", ctx.cuenta.miembro_id)),
-  q(sb.from("periodos").select("*").eq("cuenta_id", ctx.id).order("orden")),
+  ACA ? [] : q(sb.from("periodos").select("*").eq("cuenta_id", ctx.id).order("orden")),
   q(sb.from("asignaturas").select("id,nombre").eq("cuenta_id", ctx.id)),
 ]);
 const cfg = cuenta.config || {};
@@ -47,24 +49,56 @@ async function pintarHijos() {
 }
 
 async function seccionDe(id) {
-  const r = await q(sb.from("grupo_estudiantes").select("grupo_id, grupos(id,nombre)").eq("estudiante_id", id).eq("estado", "activo").limit(1));
+  const r = await q(sb.from("grupo_estudiantes").select("grupo_id, grupos(id,nombre)").eq("estudiante_id", id).eq("estado", "activo"));
+  if (ACA) return r.length ? { id: r[0].grupos?.id, nombre: r.map((x) => x.grupos?.nombre).filter(Boolean).join(", "), ids: r.map((x) => x.grupo_id) } : null;
   return r[0]?.grupos || null;
+}
+// Academia: notas por grupo (sin cortes); promedio ponderado igual que en el panel
+async function notasAcademia(e, sec) {
+  if (!sec?.ids?.length) return [];
+  const [evs, cals, gs] = await Promise.all([
+    q(sb.from("evaluaciones").select("id,grupo_id,titulo,tipo,fecha,peso,puntaje_max").in("grupo_id", sec.ids).order("fecha", { ascending: false })),
+    q(sb.from("calificaciones").select("evaluacion_id,puntaje,rubrica_detalle").eq("estudiante_id", e.id)),
+    q(sb.from("grupos").select("id,nombre").in("id", sec.ids)),
+  ]);
+  const C = Object.fromEntries(cals.map((c) => [c.evaluacion_id, c]));
+  return gs.map((g) => {
+    const ev = evs.filter((x) => x.grupo_id === g.id && (x.fecha <= hoy || C[x.id]?.puntaje != null)).map((x) => ({ ...x, puntaje: C[x.id]?.puntaje ?? null, rubrica: C[x.id]?.rubrica_detalle }));
+    const con = ev.filter((x) => x.puntaje != null);
+    const pesos = con.reduce((s, x) => s + Number(x.peso || 0), 0);
+    const promedio = !con.length ? null : pesos > 0 ? con.reduce((s, x) => s + (Number(x.puntaje) / Number(x.puntaje_max)) * 100 * Number(x.peso || 0), 0) / pesos
+      : con.reduce((s, x) => s + (Number(x.puntaje) / Number(x.puntaje_max)) * 100, 0) / con.length;
+    return { grupo: g.nombre, promedio, evaluaciones: ev };
+  });
 }
 const celdaNota = (v) => v == null ? h("span.tenue", "—") : h("span", { style: "white-space:nowrap" }, h("span", { className: Number(v) < MIN ? "nota-baja num" : "num" }, Number(v).toFixed(0)), " ", h("span.cuali." + cualitativa(v), cualitativa(v)));
 
 async function pintar() {
   document.querySelectorAll("[data-r]").forEach((a) => (a.dataset.r === vista ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
-  if (!hijos.length) { main.replaceChildren(h("section.hoja", h("h2", "Sin estudiantes vinculados"), h("p", "Pide al colegio que vincule a tu hijo o hija con tu acceso."))); return; }
+  if (!hijos.length) { main.replaceChildren(h("section.hoja", h("h2", "Sin estudiantes vinculados"), h("p", `Pide a ${INST} que vincule a tu hijo o hija con tu acceso.`))); return; }
   const e = hijos.find((x) => x.id === hijo);
   const sec = await seccionDe(e.id);
   const cont = h("div", h("p.tenue", "Cargando…"));
   main.replaceChildren(sel, cont);
-  const titulo = h("p.tenue", { style: "margin:0 0 .75rem" }, `${e.nombres} ${e.apellidos} · ${sec?.nombre || "sin sección"}`);
+  const titulo = h("p.tenue", { style: "margin:0 0 .75rem" }, `${e.nombres} ${e.apellidos} · ${sec?.nombre || (ACA ? "sin grupo" : "sin sección")}`);
 
+  if (ACA && vista === "notas") {
+    const ng = await notasAcademia(e, sec);
+    cont.replaceChildren(titulo, ng.length ? ng.map((g) => h("section.hoja",
+      h("div.hoja-titulo", h("h2", g.grupo), h("span", "Promedio: ", celdaNota(g.promedio))),
+      tabla([{ t: "Evaluación", v: (x) => [h("strong", x.titulo), h("div.tenue", `${x.tipo} · ${fecha(x.fecha)}`), x.rubrica ? h("div.tenue", "Rúbrica: " + x.rubrica.map((r) => `${r.criterio}: ${r.nivel}`).join(" · ")) : null] },
+             { t: "Nota", clase: "derecha", v: (x) => x.puntaje == null ? h("span.tenue", "sin nota") : h("strong.num", `${Number(x.puntaje)} de ${Number(x.puntaje_max)}`) }],
+        g.evaluaciones, { vacio: "Aún no hay evaluaciones." })))
+      : h("div.vacio", h("p", "Aún no hay notas.")),
+      h("p.tenue", `Se aprueba con ${MIN} de 100.`));
+    return;
+  }
   if (vista === "inicio" || vista === "notas") {
-    const notas = sec && perActual ? await q(sb.rpc("d360_notas_seccion", { p_grupo: sec.id, p_periodo: perActual.id })) : [];
+    const ng = ACA ? await notasAcademia(e, sec) : [];
+    const notas = !ACA && sec && perActual ? await q(sb.rpc("d360_notas_seccion", { p_grupo: sec.id, p_periodo: perActual.id })) : [];
     const mias = notas.filter((n) => n.estudiante_id === e.id);
-    const prom = mias.filter((n) => n.final != null); const promedio = prom.length ? prom.reduce((s, n) => s + Number(n.final), 0) / prom.length : null;
+    const prom = ACA ? ng.filter((g) => g.promedio != null).map((g) => ({ final: g.promedio })) : mias.filter((n) => n.final != null);
+    const promedio = prom.length ? prom.reduce((s, n) => s + Number(n.final), 0) / prom.length : null;
     if (vista === "notas") {
       const pers = periodos.filter((p) => p.inicio <= hoy);
       const todas = sec ? await Promise.all(pers.map((p) => q(sb.rpc("d360_notas_seccion", { p_grupo: sec.id, p_periodo: p.id })))) : [];
@@ -91,16 +125,16 @@ async function pintar() {
     const vencido = cargos.filter((c) => c.vence < hoy).reduce((s, c) => s + Number(c.monto) - Number(c.descuento) - Number(c.pagado), 0);
     const proximo = cargos.find((c) => c.vence >= hoy);
     const hoyAsis = asis.find((a) => a.fecha === hoy);
-    const bajas = mias.filter((n) => n.final != null && Number(n.final) < MIN);
+    const bajas = ACA ? ng.filter((g) => g.promedio != null && g.promedio < MIN).map((g) => ({ nombre: g.grupo })) : mias.filter((n) => n.final != null && Number(n.final) < MIN).map((b) => ({ nombre: A[b.asignatura_id] }));
     cont.replaceChildren(titulo,
       h("section.hoja", h("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem" },
-        h("div", h("div.nota-grande", promedio == null ? "—" : promedio.toFixed(0)), h("div.tenue", `promedio del ${perActual?.nombre || "corte"}`)),
+        h("div", h("div.nota-grande", promedio == null ? "—" : promedio.toFixed(0)), h("div.tenue", ACA ? "promedio general" : `promedio del ${perActual?.nombre || "corte"}`)),
         h("div", h("div.nota-grande", pct == null ? "—" : `${pct}%`), h("div.tenue", "asistencia en 30 días")),
         h("div", h("div.nota-grande", { style: vencido > 0 ? "color:var(--correccion)" : "" }, vencido > 0 ? M(vencido).replace(/\.00$/, "") : "Al día"), h("div.tenue", vencido > 0 ? "pagos vencidos" : "en pagos")))),
       hoyAsis ? h("div.aviso" + (hoyAsis.estado === "ausente" ? ".mal" : ".ok"), `Hoy (${diaLargo(hoy)}): ${hoyAsis.estado}.`) : null,
-      bajas.length ? h("div.aviso.ojo", `${e.nombres.split(" ")[0]} va por debajo de ${MIN} en: ${bajas.map((b) => A[b.asignatura_id]).join(", ")}. `, h("a", { href: "#/notas" }, "Ver notas")) : null,
+      bajas.length ? h("div.aviso.ojo", `${e.nombres.split(" ")[0]} va por debajo de ${MIN} en: ${bajas.map((b) => b.nombre).join(", ")}. `, h("a", { href: "#/notas" }, "Ver notas")) : null,
       proximo ? h("section.hoja", h("h2", "Próximo pago"), h("p", h("strong", proximo.concepto), h("br"), `${M(Number(proximo.monto) - Number(proximo.descuento) - Number(proximo.pagado))} · vence el ${fecha(proximo.vence)}`)) : null,
-      h("section.hoja", h("div.hoja-titulo", h("h2", "Avisos del colegio"), h("a", { href: "#/avisos" }, "Ver todos")),
+      h("section.hoja", h("div.hoja-titulo", h("h2", ACA ? "Avisos de la academia" : "Avisos del colegio"), h("a", { href: "#/avisos" }, "Ver todos")),
         coms.length ? h("ul.lista", coms.map((c) => h("li", h("div.crece", h("div.titulo", c.titulo), h("div.tenue", fechaCorta(c.publicado)))))) : h("p.suave", "Sin avisos.")));
     return;
   }
@@ -142,7 +176,7 @@ async function pintar() {
     h("section.hoja", { style: "margin-top:1rem" }, h("h2", "Por pagar"),
       tabla([{ t: "Concepto", v: (c) => c.concepto }, { t: "Vence", v: (c) => h("span", { className: c.vence < hoy ? "nota-baja" : "" }, fecha(c.vence)) }, { t: "Saldo", v: (c) => h("strong", M(saldo(c))), clase: "derecha" }],
         pendientes, { vacio: "No hay pagos pendientes. ¡Gracias!" }),
-      h("p.tenue", { style: "margin-top:.75rem" }, `Para pagar, acércate a caja o comunícate con el colegio${cuenta.telefono ? ` al ${cuenta.telefono}` : ""}.`)),
+      h("p.tenue", { style: "margin-top:.75rem" }, `Para pagar, acércate a caja o comunícate con ${INST}${cuenta.telefono ? ` al ${cuenta.telefono}` : ""}.`)),
     h("section.hoja", h("h2", "Pagos realizados"),
       tabla([{ t: "Recibo", v: (p) => `N.º ${String(p.recibo).padStart(6, "0")}` }, { t: "Fecha", v: (p) => fecha(p.fecha) }, { t: "Monto", v: (p) => M(p.monto), clase: "derecha" }], pagos, { vacio: "Sin pagos registrados." })));
 }

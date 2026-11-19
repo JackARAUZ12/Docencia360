@@ -266,3 +266,10 @@ body:has(.guia-flotante:not([hidden])) .p-main { padding-bottom: calc(150px + en
 .segmentos.envolver { flex-wrap: wrap; overflow: visible; }
 .celda-doble { display: block; min-width: 0; }
 @media (max-width: 760px) { table.registro:not(.cuaderno) td .celda-doble { text-align: right; } }
+.guia-flotante.en-academia { bottom: calc(16px + env(safe-area-inset-bottom)); }
+.lista-pagos-inst .montos { text-align: right; }
+@media (max-width: 560px) {
+  .lista-pagos-inst li { flex-wrap: wrap; }
+  .lista-pagos-inst li > .crece { flex-basis: 100%; }
+  .lista-pagos-inst li > .montos { text-align: left; flex: 1 1 auto; }
+}

@@ -13,7 +13,7 @@ export function h(sel, attrs, ...hijos) {
   const [tag, ...clases] = sel.split(".");
   const el = document.createElement(tag || "div");
   if (clases.length) el.className = clases.join(" ");
-  if (attrs && (typeof attrs !== "object" || attrs instanceof Node || Array.isArray(attrs))) {
+  if (attrs != null && (typeof attrs !== "object" || attrs instanceof Node || Array.isArray(attrs))) {
     hijos.unshift(attrs); attrs = null;
   }
   for (const [k, v] of Object.entries(attrs || {})) {

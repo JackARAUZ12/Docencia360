@@ -6,7 +6,8 @@ import { mostrarCodigo } from "../academia/instructores.js";
 
 export async function render(el, ctx) {
   if (!ctx.f("portal_familias")) {
-    el.append(ctx.titulo("Padres y tutores"), h("div.aviso.ojo", "El portal de familias está disponible desde el plan Avanzado. Con él, cada familia ve notas, asistencia, comunicados y pagos desde su teléfono."));
+    el.append(ctx.titulo("Padres y tutores"), h("section.hoja", h("p", "Con el portal de familias, cada padre, madre o tutor ve desde su teléfono las notas, la asistencia, los comunicados y los pagos de su hijo o hija."),
+      h("p.suave", `Disponible en el plan ${ctx.modalidad === "academia" ? "Empresarial" : "Avanzado"}.`), ctx.mejora("Portal de familias")));
     return;
   }
   const [tutores, vinc, est, cuenta] = await Promise.all([
@@ -31,7 +32,7 @@ export async function render(el, ctx) {
       h("div.cifra", h("b", tutores.filter((t) => t.activo).length), h("span", "familias con acceso")),
       h("div.cifra", h("b", accedieron), h("span", "ya entraron al portal")),
       h("div.cifra" + (sinFamilia.length ? ".alerta" : ""), h("b", sinFamilia.length), h("span", "estudiantes sin familia vinculada"))),
-    h("div.aviso", { style: "margin-top:1rem" }, `Cada familia entra con el código del colegio (${cuenta.codigo}) y su código personal. Para dar acceso, abre el expediente del estudiante y usa «Padres y tutores» → «Agregar».`),
+    h("div.aviso", { style: "margin-top:1rem" }, `Cada familia entra con el código ${ctx.modalidad === "academia" ? "de la academia" : "del colegio"} (${cuenta.codigo}) y su código personal. Para dar acceso, abre el expediente del estudiante y usa «Padres y tutores» → «Agregar».`),
     h("section.hoja", h("h2", "Familias con acceso"), tabla([
       { t: "Tutor", v: (t) => [h("strong", t.nombre), h("div.tenue", t.telefono || "")] },
       { t: "Estudiantes", v: (t) => vinc.filter((v) => v.miembro_id === t.id).map((v) => h("div", h("a", { href: `#/estudiantes/${v.estudiante_id}` }, nombreCompleto(v.estudiantes)), v.parentesco ? h("span.tenue", ` · ${v.parentesco}`) : null)) },

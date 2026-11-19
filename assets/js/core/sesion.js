@@ -52,7 +52,7 @@ export async function protegerModalidad(modalidad) {
   const id = leer(CLAVE_CUENTA);
   const cuenta = cuentas.find((c) => c.cuenta_id === id) || cuentas[0];
   if (!cuenta) { location.replace(ruta("registro.html?paso=cuenta")); return new Promise(() => {}); }
-  if (cuenta.modalidad !== modalidad) { elegirCuenta(cuenta.cuenta_id); location.replace(ruta(RUTA_MODALIDAD[cuenta.modalidad])); return new Promise(() => {}); }
+  if (![].concat(modalidad).includes(cuenta.modalidad)) { elegirCuenta(cuenta.cuenta_id); location.replace(ruta(RUTA_MODALIDAD[cuenta.modalidad])); return new Promise(() => {}); }
   elegirCuenta(cuenta.cuenta_id);
   sb.rpc("d360_marcar_acceso", { p_cuenta: cuenta.cuenta_id }).then(() => {});
   vigilarInactividad();

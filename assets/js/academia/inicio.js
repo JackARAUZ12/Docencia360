@@ -76,16 +76,13 @@ export async function render(el, ctx) {
           h("a.btn.btn-sec.btn-sm", { href: `#/calificaciones?grupo=${g.id}` }, "Notas")))))),
   );
 
-  // Cuenta recién creada: guía de puesta en marcha
-  if (ctx.esGestor && !resumen.matriculas_activas && !resumen.grupos_activos) {
-    const cursos = await ctx.datos.cursos();
-    el.prepend(h("section.hoja", { style: "margin-bottom:1.25rem" },
-      h("h2", "Pon en marcha tu academia"),
-      h("ol.lista", [
-        [cursos.length > 0, "Registra tus cursos con precio y duración", "#/cursos"],
-        [resumen.docentes > 0, "Registra a tus instructores (cada uno recibe su código)", "#/instructores"],
-        [false, "Abre un grupo, asígnale instructor y horario", "#/grupos"],
-        [false, "Matricula a tus estudiantes: los cobros se generan solos", "#/matriculas"],
-      ].map(([ok, t, href], i) => h("li", h("span.estado" + (ok ? ".ok" : ""), ok ? "Listo" : `Paso ${i + 1}`), h("div.crece", h("div.titulo", t)), ok ? null : h("a.btn.btn-sm", { href }, "Ir"))))));
+  // Cuenta en marcha: los primeros pasos con avance real, arriba, hasta completarlos
+  if (ctx.esDueno && !ctx.guia?.oculta && !ctx.guia?.completa) {
+    const { pasosAcademia, listaPasos } = await import("../core/guia.js");
+    const g = await pasosAcademia(ctx).catch(() => null);
+    if (g && !g.completa) el.querySelector(".p-titulo")?.after(h("section.hoja.guia-inicio", { style: "margin-bottom:1.25rem" },
+      h("div.hoja-titulo", h("h2", `Pon en marcha tu academia · ${g.hechos} de ${g.pasos.length}`),
+        h("button.btn.btn-texto.btn-sm", { type: "button", onclick: async (e) => { await ctx.guiaGuardar({ oculta: true }); e.target.closest("section").remove(); ctx.botonGuia?.actualizar(); ctx.toast("Guía oculta. Puedes volver a verla en «Plan y cuenta»."); } }, "Ocultar")),
+      listaPasos(g)));
   }
 }

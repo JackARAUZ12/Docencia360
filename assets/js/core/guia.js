@@ -91,6 +91,47 @@ export async function pasosProfesor(ctx) {
   return { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: g1, completa: obligatorios.every((p) => p.hecho) };
 }
 
+/** Pasos de la guía de la academia (dirección): de cero a la primera clase con lista y cobros. */
+export async function pasosAcademia(ctx) {
+  const c = ctx.id;
+  const uno = (t, col = "id") => sb.from(t).select(col).eq("cuenta_id", c).limit(1);
+  const fin = ctx.f("finanzas") && ctx.esFinanzas;
+  const [cursos, inst, grupos, hor, asig, est, mat, lista, tarifa, gasto, acceso, comunicado, familia] = await Promise.all([
+    existe(uno("cursos")),
+    existe(uno("miembros").eq("rol", "docente")),
+    q(sb.from("grupos").select("id").eq("cuenta_id", c).eq("estado", "activo").order("creado").limit(1)),
+    existe(uno("horarios")),
+    existe(uno("grupo_docentes")),
+    existe(uno("estudiantes").eq("estado", "activo")),
+    existe(uno("matriculas")),
+    existe(uno("asistencias")),
+    fin ? existe(uno("tarifas_instructor")) : false,
+    fin ? existe(uno("movimientos").is("miembro_id", null)) : false,
+    ctx.f("portal_estudiantes") ? existe(uno("estudiantes_acceso", "estudiante_id").eq("activo", true)) : false,
+    ctx.f("comunicados") ? existe(uno("comunicados")) : false,
+    ctx.f("portal_familias") ? existe(uno("miembros").eq("rol", "tutor")) : false,
+  ]);
+  const g1 = grupos[0]?.id;
+  const pasos = [
+    { k: "curso", hecho: cursos, t: "Registra tus cursos", d: "Con su precio de matrícula, mensualidad y duración.", href: "#/cursos", b: "Ir a cursos" },
+    { k: "instructor", hecho: inst, t: "Registra a tus instructores", d: "Cada uno recibe su código y ve solo sus grupos.", href: "#/instructores", b: "Registrar" },
+    { k: "grupo", hecho: !!g1, t: "Abre tu primer grupo", d: "Un grupo es un curso en un horario: «Inglés A1 · sábado».", href: "#/grupos?nuevo=1", b: "Abrir grupo" },
+    { k: "horario", hecho: hor && asig, t: "Ponle horario e instructor al grupo", d: "Así se sabe quién da cada clase y se calculan sus horas.", href: g1 ? `#/grupos/${g1}` : "#/grupos", b: "Completar" },
+    { k: "estudiantes", hecho: est, t: "Registra a tus estudiantes", d: "Uno por uno, pegando una lista o con la plantilla de Excel.", href: "#/estudiantes", b: "Agregar" },
+    { k: "matricula", hecho: mat, t: "Matricula a un estudiante", d: "La matrícula y las mensualidades se generan solas, con recibo al cobrar.", href: "#/matriculas", b: "Matricular" },
+    { k: "lista", hecho: lista, t: "Pasa la primera lista", d: "Tú o el instructor. Con la lista se cuentan las clases dadas.", href: g1 ? `#/asistencia?grupo=${g1}` : "#/asistencia", b: "Pasar lista" },
+  ];
+  if (fin) pasos.push(
+    { k: "tarifa", hecho: tarifa, t: "Define cómo le pagas a cada instructor", d: "Por hora, por clase o salario fijo: el pago del mes se calcula solo.", href: "#/pagos-instructores", b: "Definir", opcional: true },
+    { k: "gasto", hecho: gasto, t: "Anota tus gastos fijos", d: "Alquiler, luz, internet, publicidad… y verás la ganancia real del mes.", href: "#/finanzas?vista=gastos", b: "Anotar", opcional: true });
+  if (ctx.f("portal_estudiantes")) pasos.push({ k: "aula", hecho: acceso, t: "Abre el aula virtual a tus estudiantes", d: "Cada uno recibe su código para ver tareas, exámenes, notas y pagos.", href: "#/enlinea/accesos", b: "Dar acceso", opcional: true });
+  if (ctx.f("comunicados")) pasos.push({ k: "comunicado", hecho: comunicado, t: "Publica tu primer comunicado", d: "Llega al aula de los estudiantes, a las familias o solo a instructores.", href: "#/comunicados", b: "Publicar", opcional: true });
+  if (ctx.f("portal_familias")) pasos.push({ k: "familia", hecho: familia, t: "Da acceso a una familia", d: "Desde la ficha del estudiante: «Padres y tutores» → «Agregar».", href: "#/estudiantes", b: "Ir", opcional: true });
+  const obligatorios = pasos.filter((p) => !p.opcional);
+  return { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: g1, completa: obligatorios.every((p) => p.hecho) };
+}
+const pasosDe = (ctx) => (ctx.modalidad === "academia" ? pasosAcademia(ctx) : pasosProfesor(ctx));
+
 /** Lista de pasos (se usa en Inicio y en el panel del botón flotante). */
 export function listaPasos({ pasos, hechos }, alElegir) {
   const siguiente = pasos.findIndex((p) => !p.hecho);
@@ -114,14 +155,14 @@ export function botonGuia(ctx) {
       h("p.suave", "Sigue estos pasos para dejar lista tu cuenta. Se marcan solos cuando los haces."),
       listaPasos(ultimo, cerrarDialogo),
       h("div", { style: "display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem" },
-        h("button.btn.btn-texto.btn-sm", { type: "button", onclick: () => { cerrarDialogo(); bienvenida(ctx, { forzar: true }); } }, "Ver la bienvenida otra vez"),
+        ctx.modalidad === "profesor" ? h("button.btn.btn-texto.btn-sm", { type: "button", onclick: () => { cerrarDialogo(); bienvenida(ctx, { forzar: true }); } }, "Ver la bienvenida otra vez") : null,
         h("button.btn.btn-texto.btn-sm", { type: "button", onclick: async () => { await ctx.guiaGuardar({ oculta: true }); cerrarDialogo(); btn.hidden = true; ctx.toast("Guía oculta. Puedes volver a verla en Mi cuenta."); } }, "Ocultar la guía"))),
       [{ texto: "Cerrar", clase: "btn-sec" }]);
   };
   btn.addEventListener("click", abrir);
   btn.actualizar = async () => {
     if (!ctx.esDueno || ctx.guia?.oculta) { btn.hidden = true; return; }
-    try { ultimo = await pasosProfesor(ctx); } catch (_) { return; }
+    try { ultimo = await pasosDe(ctx); } catch (_) { return; }
     const { hechos, pasos } = ultimo;
     if (hechos >= pasos.length || ultimo.completa) {
       btn.hidden = true;
