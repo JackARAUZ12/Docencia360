@@ -280,3 +280,28 @@ body:has(.guia-flotante:not([hidden])) .p-main { padding-bottom: calc(150px + en
 .lista-interesados li { flex-wrap: wrap; }
 .lista-interesados li > .crece { flex: 1 1 260px; }
 @media (max-width: 560px) { .lista-interesados li > .crece { flex-basis: 100%; } }
+
+/* Comprobantes y caja */
+.ticket-vista { background: var(--papel-2); border: 1px solid var(--renglon); border-radius: 12px; padding: 1rem .5rem; margin-top: .75rem; max-height: 55vh; overflow: auto; }
+.ticket-hoja { background: #fff; color: #111; margin: 0 auto; padding: 10px 8px 16px; box-shadow: 0 1px 4px rgba(0,0,0,.15); max-width: 100%; }
+.ticket-hoja.hoja-58 { width: 220px; font-size: 11px; } .ticket-hoja.hoja-76 { width: 270px; font-size: 12px; } .ticket-hoja.hoja-80 { width: 290px; font-size: 12px; }
+.ticket-hoja.hoja-carta { width: 100%; max-width: 520px; font-size: 14px; padding: 20px; }
+.ticket-hoja:not(.hoja-carta) .ticket { font-family: "Courier New", ui-monospace, monospace; }
+.ticket { line-height: 1.35; }
+.ticket .t-centro { text-align: center; } .ticket .t-nombre { font-weight: 700; font-size: 1.2em; } .ticket .t-titulo { font-weight: 700; margin: 2px 0; }
+.ticket .t-raya { border-top: 1px dashed #333; margin: 5px 0; }
+.ticket .t-fila, .cierre-resumen .t-fila { display: flex; justify-content: space-between; gap: 8px; }
+.ticket .t-fila > :first-child, .cierre-resumen .t-fila > :first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ticket .t-fila > :last-child { text-align: right; white-space: nowrap; }
+.ticket .t-est { display: flex; flex-direction: column; } .ticket .t-est b { overflow-wrap: anywhere; }
+.ticket .t-total, .cierre-resumen .t-total { font-weight: 700; font-size: 1.15em; }
+.ticket .t-firmas { display: flex; justify-content: space-between; margin-top: 36px; } .ticket .t-firmas span { border-top: 1px solid #333; padding-top: 4px; width: 42%; text-align: center; }
+.cierre-resumen { display: grid; gap: .35rem; padding: .75rem 0; }
+.cierre-dif { font-weight: 700; margin: .25rem 0 .75rem; } .cierre-dif.ok { color: var(--aprobado); } .cierre-dif.mal { color: var(--correccion); }
+.cierre-hecho { border-color: var(--aprobado); }
+.lista-cobro-varios .cobro-item { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+.lista-cobro-varios .cobro-chk { display: flex; gap: .6rem; align-items: flex-start; flex: 1 1 240px; min-width: 0; cursor: pointer; }
+.lista-cobro-varios .cobro-chk input { width: 20px; height: 20px; flex: none; margin-top: .15rem; }
+.lista-cobro-varios .cobro-item > input { width: 8.5rem; flex: none; }
+.cobro-total { font-size: 1.15rem; margin: .75rem 0; }
+@media (max-width: 520px) { .lista-cobro-varios .cobro-item > input { width: 100%; } }

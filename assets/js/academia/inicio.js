@@ -11,7 +11,7 @@ export async function render(el, ctx) {
 
   const [resumen, horarios, asisHoy, ultimas, ocup, docentes, notifs] = await Promise.all([
     q(sb.rpc("d360_resumen_panel", { p_cuenta: ctx.id })),
-    q(sb.from("horarios").select("hora_inicio,hora_fin,grupo_id,miembros(nombre),grupos(nombre,estado)").eq("cuenta_id", ctx.id).eq("dia", dia).order("hora_inicio")),
+    q(sb.from("horarios").select("hora_inicio,hora_fin,grupo_id,miembro_id,miembros(nombre),grupos(nombre,estado)").eq("cuenta_id", ctx.id).eq("dia", dia).order("hora_inicio")),
     q(sb.from("asistencias").select("grupo_id").eq("cuenta_id", ctx.id).eq("fecha", hoy)),
     ctx.esGestor || ctx.esFinanzas ? q(sb.from("matriculas").select("fecha,estado,estudiantes(id,nombres,apellidos),cursos(nombre)").eq("cuenta_id", ctx.id).order("creado", { ascending: false }).limit(6)) : [],
     q(sb.from("grupo_estudiantes").select("grupo_id").eq("cuenta_id", ctx.id).eq("estado", "activo")),
@@ -39,8 +39,31 @@ export async function render(el, ctx) {
   const sinLista = clases.filter((c) => !conLista.has(c.grupo_id) && c.hora_inicio.slice(0, 5) <= new Date().toTimeString().slice(0, 5));
   if (sinLista.length && !ctx.esFinanzas) alertas.push(["ojo", `${new Set(sinLista.map((c) => c.grupo_id)).size} clase(s) de hoy ya empezaron y no tienen lista.`, "#/asistencia", "Pasar lista"]);
 
+  // Clase de ahora (o la próxima de hoy) del instructor: un toque para pasar lista
+  let claseAhora = null;
+  if (ctx.esDocente) {
+    const ahora = (() => { const x = new Date(); return x.getHours() * 60 + x.getMinutes(); })();
+    const aMin = (t) => { const [hh, mm] = String(t).split(":").map(Number); return hh * 60 + mm; };
+    const mias = clases.filter((c) => !c.miembro_id || c.miembro_id === ctx.cuenta.miembro_id).sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
+    const enCurso = mias.find((c) => aMin(c.hora_inicio) - 15 <= ahora && ahora <= aMin(c.hora_fin));
+    const c = enCurso || mias.find((x) => aMin(x.hora_inicio) > ahora);
+    if (c) {
+      const tomada = conLista.has(c.grupo_id);
+      claseAhora = h("section.clase-ahora" + (enCurso ? ".en-curso" : ""), { "aria-label": enCurso ? "Clase de ahora" : "Próxima clase" },
+        h("div.crece",
+          h("p.etiqueta", enCurso ? "Clase de ahora" : "Tu próxima clase de hoy"),
+          h("p.nombre", c.grupos?.nombre || "Grupo"),
+          h("p.tenue", `${hora(c.hora_inicio)} – ${hora(c.hora_fin)} · ${n[c.grupo_id] || 0} estudiantes`)),
+        h("div.acciones",
+          tomada ? h("span.estado.ok", "✓ Lista tomada") : null,
+          h("a.btn" + (tomada ? ".btn-sec" : ""), { href: `#/asistencia?grupo=${c.grupo_id}` }, tomada ? "Ver o corregir la lista" : "Pasar lista"),
+          h("a.btn.btn-sec", { href: `#/calificaciones?grupo=${c.grupo_id}` }, "Poner notas")));
+    }
+  }
+
   el.append(
     h("div.p-titulo", h("div", h("p.tenue", { style: "margin:0" }, diaLargo(hoy)), h("h1", `Hola, ${ctx.cuenta.miembro_nombre.split(" ")[0]}`))),
+    claseAhora,
     notifs.map((x) => h("div.aviso.ojo", h("strong", x.titulo + ". "), x.cuerpo || "", x.enlace ? [" ", h("a", { href: x.enlace }, "Ver")] : null, " ",
       h("button.btn.btn-texto.btn-sm", { onclick: async (e) => { await sb.from("notificaciones").update({ leida: true }).eq("id", x.id); e.target.closest(".aviso").remove(); } }, "Entendido"))),
     ctx.esDocente

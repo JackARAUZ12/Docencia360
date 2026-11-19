@@ -126,6 +126,18 @@ const RPC = {
     { id: "m3", nombre: "Instructora Fija", telefono: null, activo: true, forma: "fijo", tarifa: 8000, clases: 8, horas: 12, sin_horario: 0, calculado: 8000, pagado: 0, detalle: [], pagos: [] },
     { id: "m4", nombre: "Nuevo Instructor", telefono: null, activo: true, forma: null, tarifa: null, clases: 0, horas: 0, sin_horario: 0, calculado: null, pagado: 0, detalle: [], pagos: [] }] },
   d360_instructor_pagar: "mvp2",
+  d360_cobrar_varios: { pagos: [{ id: "pv1", recibo: 41, monto: 300, cargo_id: "cg1", concepto: "Matrícula · Álgebra", saldo: 0 }, { id: "pv2", recibo: 42, monto: 720, cargo_id: "cg2", concepto: "Mensualidad octubre 2026 · Álgebra", saldo: 0 }],
+    total: 1020, fecha: hoy, metodo: "efectivo", referencia: null },
+  d360_caja_dia: { fecha: hoy, cajero: null, total: 2000, recibos: 3, anulados: 100, por_metodo: { efectivo: 1700, transferencia: 300 },
+    cajeros: [{ id: U, nombre: "Ana Martínez" }, { id: "u-cajera", nombre: "Cajera Rosa" }],
+    pagos: [{ id: "p1", recibo: 41, hora: hoy + "T14:05:00Z", estudiante: "Ana López", estudiante_id: E(1), concepto: "Matrícula · Álgebra", metodo: "efectivo", monto: 500, anulado: false, cajero: U, cajero_nombre: "Ana Martínez" },
+            { id: "p2", recibo: 42, hora: hoy + "T14:05:00Z", estudiante: "Ana López", estudiante_id: E(1), concepto: "Mensualidad noviembre · Álgebra", metodo: "efectivo", monto: 1200, anulado: false, cajero: U, cajero_nombre: "Ana Martínez" },
+            { id: "p3", recibo: 43, hora: hoy + "T15:30:00Z", estudiante: "Luis Pérez", estudiante_id: E(2), concepto: "Mensualidad noviembre · Álgebra", metodo: "transferencia", referencia: "BAC-77", monto: 300, anulado: false, cajero: "u-cajera", cajero_nombre: "Cajera Rosa" },
+            { id: "p4", recibo: 44, hora: hoy + "T16:00:00Z", estudiante: "Luis Pérez", estudiante_id: E(2), concepto: "Material", metodo: "efectivo", monto: 100, anulado: true, cajero: "u-cajera", cajero_nombre: "Cajera Rosa" }],
+    cierres: [] },
+  d360_caja_cerrar: { id: "k1", fecha: hoy, cajero: null, cajero_nombre: "Toda la caja", por_metodo: { efectivo: 1700, transferencia: 300 }, total: 2000, recibos: 3, anulados: 100,
+    efectivo_contado: 1650, diferencia: -50, nota: null, cerrado_por_nombre: "Ana Martínez", creado: new Date().toISOString() },
+  d360_ticket_guardar: { ruc: "J0310000000000", pie: "¡Gracias!" },
   d360_inscripcion_enlace: "abc1234567",
   d360_interesado_matricular: { matricula_id: "mtx", cargos: 4, estudiante_id: E(1) },
   d360_promover: { promovidos: 2, certificados: 2 },
@@ -224,7 +236,7 @@ export async function preparar(page, conSesion, modalidad = "profesor", rol = pr
       }
       // PLAN=prof_basico|prof_profesional|prof_premium y ESTADO=activa|pendiente|vencida simulan el plan del profesor
       const planSim = modalidad === "profesor" && process.env.PLAN ? planes.find((p) => p.id === process.env.PLAN) : null;
-      if (fn === "d360_mis_cuentas") body = body.map((c) => ({ ...c, modalidad, rol,
+      if (fn === "d360_mis_cuentas") body = body.map((c) => ({ ...c, modalidad, rol, miembro_id: process.env.MIEMBRO || c.miembro_id,
         ...(planSim ? { plan_id: planSim.id, plan_nombre: planSim.nombre } : {}),
         ...(process.env.ESTADO ? { estado: process.env.ESTADO, operativa: !["pendiente", "vencida", "suspendida"].includes(process.env.ESTADO) } : {}), nombre: modalidad === "academia" ? "Academia Horizonte" : c.nombre,
         plan_nombre: modalidad === "academia" ? "Profesional" : (planSim?.nombre ?? c.plan_nombre),
@@ -233,6 +245,11 @@ export async function preparar(page, conSesion, modalidad = "profesor", rol = pr
     else if (u.pathname.startsWith("/rest/v1/")) {
       const t = u.pathname.split("/").pop();
       body = route.request().method() === "GET" ? ((modalidad === "colegio" && FC[t]) || F[t] || []) : [];
+      // Un pago nuevo vuelve con su número de recibo (como lo hace el servidor)
+      if (t === "pagos" && route.request().method() === "POST") {
+        const d = JSON.parse(route.request().postData() || "{}");
+        body = [{ ...(Array.isArray(d) ? d[0] : d), id: "pnuevo", recibo: 45, anulado: false, creado: new Date().toISOString() }];
+      }
       // Aplica filtros simples col=eq.valor (como PostgREST)
       for (const [k, v] of u.searchParams) if (v.startsWith("eq.") && Array.isArray(body) && body.some((x) => k in x)) body = body.filter((x) => String(x[k]) === v.slice(3));
       if (single) body = body[0] ?? null;

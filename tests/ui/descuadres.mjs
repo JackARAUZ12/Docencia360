@@ -6,7 +6,7 @@ const { chromium } = createRequire(import.meta.url)("playwright");
 const { preparar, E, G1 } = await import("./simulacion.mjs");
 const B = process.env.BASE || "http://localhost:8080";
 const PROF = ["inicio", "asistencia", "calificaciones", "tareas", "enlinea", "enlinea/accesos", "aula", "cobros", "cobros?vista=deben", "cobros?vista=clases", "cobros?vista=movimientos", "cobros?vista=mensualidades", "rubricas", "banco", "grupos", `grupos/${G1}`, "estudiantes", `estudiantes/${E(1)}`, "calendario", "informes", "cursos", "cuenta", "mas"];
-const ACA = ["inicio", "interesados", "recuperaciones", "comunicados", "enlinea", "aula", "banco", "pagos-instructores", "finanzas?vista=resumen", "finanzas?vista=gastos", "familias", "estudiantes", `estudiantes/${E(1)}`, "cursos", "grupos", `grupos/${G1}`, "instructores", "asistencia", "calificaciones", "tareas", "rubricas", "calendario", "matriculas", "finanzas", "certificados", "informes", "equipo", "cuenta", "mas"];
+const ACA = ["inicio", "caja", "interesados", "recuperaciones", "comunicados", "enlinea", "aula", "banco", "pagos-instructores", "finanzas?vista=resumen", "finanzas?vista=gastos", "familias", "estudiantes", `estudiantes/${E(1)}`, "cursos", "grupos", `grupos/${G1}`, "instructores", "asistencia", "calificaciones", "tareas", "rubricas", "calendario", "matriculas", "finanzas", "certificados", "informes", "equipo", "cuenta", "mas"];
 const COL = ["inicio", "comunicados", "calendario", "estudiantes", `estudiantes/${E(1)}`, "asistencia", "calificaciones", "boletines", "horarios", "estructura", "docentes", "familias", "institucion", "matriculas", "finanzas", "certificados", "informes", "equipo", "cuenta", "grupos", "mas"];
 const FAM = ["inicio", "notas", "asistencia", "avisos", "pagos"];
 const CASOS = [

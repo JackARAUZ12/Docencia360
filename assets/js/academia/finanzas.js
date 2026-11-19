@@ -23,12 +23,70 @@ export function recibo(ctx, p, cargo, est) {
       h("span", "_____________________", h("br"), "Recibido por"), h("span", "_____________________", h("br"), "Firma")));
 }
 
-export function verRecibo(ctx, p, cargo, est) {
-  const doc = recibo(ctx, p, cargo, est);
-  modal(`Recibo N.º ${p.recibo}`, doc, [
-    { texto: "Cerrar", clase: "btn-sec" },
-    { texto: "Imprimir / PDF", onclick: () => { imprimir(doc); return false; } },
+/** Comprobante de un pago: vista previa e impresión en 58, 76 u 80 mm, Carta, Bluetooth o WhatsApp. */
+export async function verRecibo(ctx, p, cargo, est) {
+  const { mostrarComprobante } = await import("../comun/ticket.js");
+  return mostrarComprobante(ctx, {
+    recibos: [p.recibo], fecha: p.fecha, hora: p.creado || (cargo ? new Date().toISOString() : null),
+    estudiante: nombreCompleto(est || {}), estudiante_id: est?.id || p.estudiante_id, telefono: est?.contacto_telefono || est?.telefono,
+    items: [{ concepto: cargo?.concepto || p.cargos?.concepto || "Abono a cuenta", monto: p.monto }], total: p.monto,
+    metodo: p.metodo, referencia: p.referencia, anulado: p.anulado,
+    cajero: cargo ? ctx.cuenta.miembro_nombre : null,
+  });
+}
+
+/**
+ * Cobrar uno o varios conceptos de un estudiante en un solo paso (p. ej.
+ * matrícula + primera mensualidad). Un comprobante con todos los recibos.
+ */
+export async function cobrarVarios(ctx, est, preseleccion = [], alGuardar) {
+  const cargos = await q(sb.from("cargos").select("*").eq("estudiante_id", est.id).in("estado", ["pendiente", "parcial"]).order("vence"));
+  if (!cargos.length) { ctx.toast(`${nombreCompleto(est)} no tiene cobros pendientes.`); return; }
+  const hoy = hoyISO();
+  const sel = new Map(cargos.filter((c) => preseleccion.includes(c.id)).map((c) => [c.id, saldoDe(c)]));
+  if (!sel.size) sel.set(cargos[0].id, saldoDe(cargos[0]));
+  const M = (n) => dinero(n, ctx.cuenta.moneda);
+  const total = h("strong.num");
+  const err = h("div.aviso.mal.oculto", { role: "alert" });
+  const sumar = () => { total.textContent = M([...sel.values()].reduce((a, b) => a + (Number(b) || 0), 0)); };
+  const filas = cargos.map((c) => {
+    const saldo = saldoDe(c);
+    const monto = h("input", { type: "number", min: 0.01, max: saldo, step: "0.01", value: sel.has(c.id) ? sel.get(c.id) : saldo, disabled: !sel.has(c.id), "aria-label": `Monto de ${c.concepto}`,
+      oninput: (e) => { sel.set(c.id, Number(e.target.value)); sumar(); } });
+    const chk = h("input", { type: "checkbox", checked: sel.has(c.id), "aria-label": c.concepto, onchange: (e) => {
+      if (e.target.checked) { sel.set(c.id, Number(monto.value) || saldo); monto.disabled = false; } else { sel.delete(c.id); monto.disabled = true; } sumar(); } });
+    return h("li.cobro-item", h("label.cobro-chk", chk, h("span", h("strong", c.concepto), h("span.tenue", ` · ${c.vence < hoy ? "vencido" : "vence"} ${fecha(c.vence)} · saldo ${M(saldo)}`))), monto);
+  });
+  sumar();
+  const metodo = h("select", { "aria-label": "Forma de pago" }, METODOS.map(([v, t]) => h("option", { value: v }, t)));
+  const fechaI = h("input", { type: "date", value: hoy, max: hoy, "aria-label": "Fecha del pago" });
+  const ref = h("input", { maxLength: 80, placeholder: "N.º de transferencia o voucher (opcional)", "aria-label": "Referencia" });
+  const m = modal(`Cobrar · ${nombreCompleto(est)}`, h("div",
+    h("p.suave", "Marca lo que paga ahora. Puedes cobrar varios conceptos juntos (por ejemplo matrícula y mensualidad) en un solo comprobante, o un abono parcial."),
+    err, h("ul.lista.lista-cobro-varios", filas),
+    h("p.cobro-total", "Total a cobrar: ", total),
+    h("div.fila", h("label.campo", h("span", "Forma de pago"), metodo), h("label.campo", h("span", "Fecha"), fechaI)),
+    h("label.campo", h("span", "Referencia (opcional)"), ref)), [
+    { texto: "Cancelar", clase: "btn-sec" },
+    { texto: "Cobrar e imprimir", onclick: async (cerrar) => {
+      err.classList.add("oculto");
+      const items = [...sel.entries()].map(([cargo_id, monto]) => ({ cargo_id, monto: Math.round(Number(monto) * 100) / 100 }));
+      const malo = items.find((it) => !(it.monto > 0) || it.monto > saldoDe(cargos.find((c) => c.id === it.cargo_id)) + 0.001);
+      if (!items.length) { err.textContent = "Marca al menos un concepto."; err.classList.remove("oculto"); return false; }
+      if (malo) { err.textContent = "Revisa los montos: deben ser mayores que cero y no pasar del saldo."; err.classList.remove("oculto"); return false; }
+      try {
+        const r = await q(sb.rpc("d360_cobrar_varios", { p_cuenta: ctx.id, p_estudiante: est.id, p_items: items, p_metodo: metodo.value, p_fecha: fechaI.value || hoy, p_referencia: ref.value.trim() || null }));
+        cerrar(); ctx.toast(r.pagos.length > 1 ? `${r.pagos.length} pagos registrados · recibos ${r.pagos.map((x) => x.recibo).join(", ")}` : `Pago registrado · recibo N.º ${r.pagos[0].recibo}`);
+        const { mostrarComprobante } = await import("../comun/ticket.js");
+        await mostrarComprobante(ctx, { recibos: r.pagos.map((x) => x.recibo), fecha: r.fecha, hora: new Date().toISOString(),
+          estudiante: nombreCompleto(est), estudiante_id: est.id, telefono: est.contacto_telefono || est.telefono,
+          items: r.pagos.map((x) => ({ concepto: x.concepto, monto: x.monto })), total: r.total, metodo: r.metodo, referencia: r.referencia, cajero: ctx.cuenta.miembro_nombre });
+        alGuardar?.();
+      } catch (e) { err.textContent = e.message; err.classList.remove("oculto"); }
+      return false;
+    } },
   ]);
+  m.el?.classList.add("ancho");
 }
 
 export function registrarPago(ctx, cargo, est, alGuardar) {
@@ -111,7 +169,7 @@ export async function render(el, ctx, { params }) {
       { t: "Concepto", v: (c) => c.concepto },
       { t: "Saldo", v: (c) => [h("strong", M(saldoDe(c))), Number(c.pagado) ? h("div.tenue", `abonado ${M(c.pagado)}`) : null], clase: "derecha" },
       { t: "", clase: "acciones", v: (c) => [
-        h("button.btn.btn-sm", { onclick: () => registrarPago(ctx, c, E[c.estudiante_id], ctx.recargar) }, "Cobrar"),
+        h("button.btn.btn-sm", { onclick: () => cobrarVarios(ctx, E[c.estudiante_id] || { id: c.estudiante_id }, [c.id], ctx.recargar) }, "Cobrar"),
         Number(c.pagado) === 0 ? h("button.btn.btn-texto.btn-sm", { onclick: async () => {
           if (!(await confirmar("Anular cobro", `¿Anular «${c.concepto}» de ${nombreCompleto(E[c.estudiante_id] || {})}?`, { boton: "Anular", peligro: true }))) return;
           try { await q(sb.from("cargos").update({ estado: "anulado" }).eq("id", c.id)); ctx.toast("Cobro anulado"); ctx.recargar(); } catch (e) { ctx.toast(e.message, "mal"); }
@@ -142,6 +200,8 @@ export async function render(el, ctx, { params }) {
     ctx.titulo("Finanzas",
       ctx.f("exportar") ? h("button.btn.btn-sec", { onclick: () => descargarCSV(`pagos-${hoy}.csv`, [["Recibo", "Fecha", "Estudiante", "Concepto", "Forma", "Referencia", "Monto", "Anulado"],
         ...pagos.map((p) => [p.recibo, p.fecha, nombreCompleto(E[p.estudiante_id] || {}), p.cargos?.concepto || "Abono", p.metodo, p.referencia, p.monto, p.anulado ? "sí" : "no"])]) }, h("span", { html: ICONOS.descargar }), "Exportar pagos") : null,
+      h("button.btn.btn-sec", { onclick: async () => (await import("../comun/ticket.js")).configurarTicket(ctx) }, "Datos del comprobante"),
+      h("a.btn.btn-sec", { href: "#/caja" }, "Cierre de caja"),
       h("button.btn.btn-sec", { onclick: () => movimiento(ctx, "gasto") }, "Registrar gasto"),
       h("button.btn", { onclick: cobroManual }, h("span", { html: ICONOS.mas_add }), "Nuevo cobro")),
     h("section.cifras",

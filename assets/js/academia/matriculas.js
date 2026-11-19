@@ -46,6 +46,15 @@ export async function abrirMatricula(ctx, { estudianteId, grupoId } = {}) {
     }));
     ctx.datos.invalidar("grupos");
     cerrar(); ctx.toast(r.cargos ? `Matrícula registrada con ${r.cargos} cobro(s)` : "Matrícula registrada");
+    // Cobrar en el momento: matrícula y primera mensualidad ya marcadas, un solo comprobante
+    if (r.cargos && ctx.esFinanzas && ctx.f("finanzas")) {
+      const cs = await q(sb.from("cargos").select("id,tipo,vence").eq("matricula_id", r.matricula_id).neq("estado", "anulado").order("vence")).catch(() => []);
+      const pre = [cs.find((c) => c.tipo === "matricula")?.id, cs.find((c) => c.tipo === "mensualidad")?.id].filter(Boolean);
+      const est = (await ctx.datos.estudiantes()).find((x) => x.id === d.estudiante) || { id: d.estudiante };
+      if (pre.length && await confirmar("¿Cobrar ahora?", `${pre.length > 1 ? "La matrícula y la primera mensualidad quedan" : "El primer cobro queda"} listo${pre.length > 1 ? "s" : ""} para cobrar con un solo comprobante.`, { boton: "Cobrar ahora" })) {
+        return (await import("./finanzas.js")).cobrarVarios(ctx, est, pre, ctx.recargar);
+      }
+    }
     ctx.recargar();
   }, { boton: "Matricular" });
 
@@ -77,7 +86,8 @@ export async function seccionEstadoCuenta(ctx, e) {
   const saldo = cargos.reduce((s, c) => s + Number(c.monto) - Number(c.descuento) - Number(c.pagado), 0);
   const vencido = cargos.filter((c) => c.vence < hoyISO()).reduce((s, c) => s + Number(c.monto) - Number(c.descuento) - Number(c.pagado), 0);
   return h("section.hoja",
-    h("div.hoja-titulo", h("h2", "Estado de cuenta"), h("a.btn.btn-sec.btn-sm", { href: `#/finanzas?estudiante=${e.id}` }, "Cobrar")),
+    h("div.hoja-titulo", h("h2", "Estado de cuenta"),
+      saldo > 0 ? h("button.btn.btn-sm", { type: "button", onclick: async () => (await import("./finanzas.js")).cobrarVarios(ctx, e, [], ctx.recargar) }, "Cobrar") : null),
     h("p", "Saldo pendiente: ", h("strong.num", dinero(saldo, ctx.cuenta.moneda)),
       vencido > 0 ? [" · ", h("span.nota-baja", `vencido ${dinero(vencido, ctx.cuenta.moneda)}`)] : null),
     tabla([
