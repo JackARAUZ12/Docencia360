@@ -49,3 +49,20 @@ do $$ declare c uuid := (select id from cuentas where codigo = 'DEMOPR'); en uui
   begin perform d360_srv_limpieza('clave-falsa'); raise exception 'FALLO aceptó clave falsa';
   exception when insufficient_privilege then raise notice 'OK la limpieza exige la clave secreta del servidor'; end;
 end $$;
+-- Demo de academia: aula con código fijo (también se puede repetir)
+reset role;
+select d360_sembrar_demo_academia(); select d360_sembrar_demo_crecimiento(); select d360_sembrar_demo_aula_academia(); select d360_sembrar_demo_aula_academia();
+set role anon; set request.headers = '{"x-forwarded-for": "3.3.3.4"}';
+do $$ declare i jsonb; s text; txt text; begin
+  i := d360_aula_entrar('DEMOAC', '246810');
+  if not (i->>'ok')::boolean then raise exception 'FALLO entrar al aula de la demo de academia %', i; end if;
+  s := i->>'sesion';
+  i := d360_aula_inicio(s);
+  txt := (select string_agg(v->>'texto', ' | ') from jsonb_array_elements(i->'avisos') v);
+  if i->>'modalidad' <> 'academia' or jsonb_array_length(i->'actividades') <> 3 or jsonb_array_length(i->'materiales') <> 2
+     or not exists(select 1 from jsonb_array_elements(i->'actividades') x where x->>'titulo' = 'Quiz: los números del 1 al 20' and (x->>'puntaje')::numeric = 1 and x->>'comentario' is not null)
+     or txt not like '%conversación en parejas%' or txt not like '%Inscripciones abiertas%' then raise exception 'FALLO aula demo academia %', i; end if;
+  if jsonb_typeof(i->'cobros') <> 'array' or jsonb_array_length(i->'cobros') = 0 then raise exception 'FALLO pagos en aula demo academia'; end if;
+  raise notice 'OK con DEMOAC y 246810 se entra al aula de la academia: tareas, quiz calificado, avisos, comunicados y pagos';
+end $$;
+reset role;
