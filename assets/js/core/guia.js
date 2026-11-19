@@ -96,7 +96,7 @@ export async function pasosAcademia(ctx) {
   const c = ctx.id;
   const uno = (t, col = "id") => sb.from(t).select(col).eq("cuenta_id", c).limit(1);
   const fin = ctx.f("finanzas") && ctx.esFinanzas;
-  const [cursos, inst, grupos, hor, asig, est, mat, lista, tarifa, gasto, acceso, comunicado, familia] = await Promise.all([
+  const [cursos, inst, grupos, hor, asig, est, mat, lista, tarifa, gasto, acceso, comunicado, familia, insc] = await Promise.all([
     existe(uno("cursos")),
     existe(uno("miembros").eq("rol", "docente")),
     q(sb.from("grupos").select("id").eq("cuenta_id", c).eq("estado", "activo").order("creado").limit(1)),
@@ -110,6 +110,7 @@ export async function pasosAcademia(ctx) {
     ctx.f("portal_estudiantes") ? existe(uno("estudiantes_acceso", "estudiante_id").eq("activo", true)) : false,
     ctx.f("comunicados") ? existe(uno("comunicados")) : false,
     ctx.f("portal_familias") ? existe(uno("miembros").eq("rol", "tutor")) : false,
+    existe(sb.from("inscripcion_publica").select("cuenta_id").eq("cuenta_id", c).eq("activo", true).limit(1)),
   ]);
   const g1 = grupos[0]?.id;
   const pasos = [
@@ -124,6 +125,7 @@ export async function pasosAcademia(ctx) {
   if (fin) pasos.push(
     { k: "tarifa", hecho: tarifa, t: "Define cómo le pagas a cada instructor", d: "Por hora, por clase o salario fijo: el pago del mes se calcula solo.", href: "#/pagos-instructores", b: "Definir", opcional: true },
     { k: "gasto", hecho: gasto, t: "Anota tus gastos fijos", d: "Alquiler, luz, internet, publicidad… y verás la ganancia real del mes.", href: "#/finanzas?vista=gastos", b: "Anotar", opcional: true });
+  pasos.push({ k: "inscripcion", hecho: insc, t: "Comparte tu enlace de inscripción", d: "Quien lo llene aparece en «Interesados» y te llega un aviso.", href: "#/interesados", b: "Ver enlace", opcional: true });
   if (ctx.f("portal_estudiantes")) pasos.push({ k: "aula", hecho: acceso, t: "Abre el aula virtual a tus estudiantes", d: "Cada uno recibe su código para ver tareas, exámenes, notas y pagos.", href: "#/enlinea/accesos", b: "Dar acceso", opcional: true });
   if (ctx.f("comunicados")) pasos.push({ k: "comunicado", hecho: comunicado, t: "Publica tu primer comunicado", d: "Llega al aula de los estudiantes, a las familias o solo a instructores.", href: "#/comunicados", b: "Publicar", opcional: true });
   if (ctx.f("portal_familias")) pasos.push({ k: "familia", hecho: familia, t: "Da acceso a una familia", d: "Desde la ficha del estudiante: «Padres y tutores» → «Agregar».", href: "#/estudiantes", b: "Ir", opcional: true });

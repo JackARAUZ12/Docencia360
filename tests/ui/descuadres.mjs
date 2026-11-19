@@ -6,18 +6,18 @@ const { chromium } = createRequire(import.meta.url)("playwright");
 const { preparar, E, G1 } = await import("./simulacion.mjs");
 const B = process.env.BASE || "http://localhost:8080";
 const PROF = ["inicio", "asistencia", "calificaciones", "tareas", "enlinea", "enlinea/accesos", "aula", "cobros", "cobros?vista=deben", "cobros?vista=clases", "cobros?vista=movimientos", "cobros?vista=mensualidades", "rubricas", "banco", "grupos", `grupos/${G1}`, "estudiantes", `estudiantes/${E(1)}`, "calendario", "informes", "cursos", "cuenta", "mas"];
-const ACA = ["inicio", "comunicados", "enlinea", "aula", "banco", "pagos-instructores", "finanzas?vista=resumen", "finanzas?vista=gastos", "familias", "estudiantes", `estudiantes/${E(1)}`, "cursos", "grupos", `grupos/${G1}`, "instructores", "asistencia", "calificaciones", "tareas", "rubricas", "calendario", "matriculas", "finanzas", "certificados", "informes", "equipo", "cuenta", "mas"];
+const ACA = ["inicio", "interesados", "recuperaciones", "comunicados", "enlinea", "aula", "banco", "pagos-instructores", "finanzas?vista=resumen", "finanzas?vista=gastos", "familias", "estudiantes", `estudiantes/${E(1)}`, "cursos", "grupos", `grupos/${G1}`, "instructores", "asistencia", "calificaciones", "tareas", "rubricas", "calendario", "matriculas", "finanzas", "certificados", "informes", "equipo", "cuenta", "mas"];
 const COL = ["inicio", "comunicados", "calendario", "estudiantes", `estudiantes/${E(1)}`, "asistencia", "calificaciones", "boletines", "horarios", "estructura", "docentes", "familias", "institucion", "matriculas", "finanzas", "certificados", "informes", "equipo", "cuenta", "grupos", "mas"];
 const FAM = ["inicio", "notas", "asistencia", "avisos", "pagos"];
 const CASOS = [
   ...["prof_basico", "prof_profesional", "prof_premium"].map((pl) => ({ n: `profesor ${pl}`, url: "/app/profesor.html#/", rutas: PROF, mod: "profesor", rol: "propietario", plan: pl })),
   { n: "profesor asistente", url: "/app/profesor.html#/", rutas: PROF, mod: "profesor", rol: "docente", plan: "prof_premium" },
   { n: "academia", url: "/app/academia.html#/", rutas: ACA, mod: "academia", rol: "propietario" },
-  { n: "academia instructor", url: "/app/academia.html#/", rutas: ["inicio", "mis-pagos", "enlinea", "aula", "comunicados", "asistencia"], mod: "academia", rol: "docente" },
+  { n: "academia instructor", url: "/app/academia.html#/", rutas: ["inicio", "mis-pagos", "recuperaciones", "enlinea", "aula", "comunicados", "asistencia"], mod: "academia", rol: "docente" },
   { n: "academia familias", url: "/app/familias.html#/", rutas: FAM, mod: "academia", rol: "tutor" },
   { n: "colegio", url: "/app/colegio.html#/", rutas: COL, mod: "colegio", rol: "director" },
   { n: "familias", url: "/app/familias.html#/", rutas: FAM, mod: "colegio", rol: "tutor" },
-  { n: "público", publico: ["/index.html", "/entrar.html", "/registro.html", "/recuperar.html", "/verificar.html", "/privacidad.html", "/terminos.html", "/cuentas.html", "/aula.html"] },
+  { n: "público", publico: ["/index.html", "/entrar.html", "/registro.html", "/recuperar.html", "/verificar.html", "/privacidad.html", "/terminos.html", "/cuentas.html", "/aula.html", "/inscripcion.html?a=abc1234567"] },
 ];
 const SOLO = process.env.SOLO;
 
@@ -56,7 +56,7 @@ const revisar = () => {
   // botones con el texto en 3+ líneas (se ve apretado)
   for (const el of ctrl.filter((e) => e.tagName === "BUTTON" || e.matches("a.btn"))) {
     const lh = parseFloat(getComputedStyle(el).lineHeight) || 20;
-    if (el.innerText.trim() && el.getBoundingClientRect().height > lh * 3 + 24 && !el.matches(".bv-opcion, .chip, .tarjeta, .opcion, .modo-btn")) out.push(`botón apretado: ${nombre(el)}`);
+    if (el.innerText.trim() && el.getBoundingClientRect().height > lh * 3 + 24 && !el.matches(".bv-opcion, .chip, .tarjeta, .opcion, .modo-btn, .curso-insc")) out.push(`botón apretado: ${nombre(el)}`);
   }
   const texto = (raiz === document.body ? (document.querySelector("main") || document.body) : raiz).innerText;
   for (const mal of ["undefined", "[object Object]", "NaN", "Invalid Date", "(opcional) (opcional)", "null"]) {

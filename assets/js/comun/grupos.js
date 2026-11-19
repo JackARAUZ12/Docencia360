@@ -128,6 +128,7 @@ async function detalle(el, ctx, id) {
       h("a.btn.btn-sec", { href: `#/asistencia?grupo=${id}` }, "Pasar lista"),
       h("a.btn.btn-sec", { href: `#/calificaciones?grupo=${id}` }, "Calificaciones"),
       ctx.esGestor ? h("button.btn.btn-sec", { onclick: () => editarGrupo(ctx, g) }, "Editar") : null,
+      ctx.modalidad === "academia" && ctx.esGestor && activos.length ? h("button.btn.btn-sec", { onclick: async () => (await import("../academia/niveles.js")).pasarNivel(ctx, g, activos) }, "Pasar al siguiente nivel") : null,
       !ctx.esGestor ? null : h("button.btn.btn-texto", { onclick: async () => {
         if (!(await confirmar("Eliminar grupo", `Se borrarán también su asistencia, evaluaciones y notas. Si el grupo terminó, mejor márcalo como «Finalizado».`, { boton: "Eliminar", peligro: true }))) return;
         try { await q(sb.from("grupos").delete().eq("id", id)); ctx.datos.invalidar("grupos"); ctx.toast("Grupo eliminado"); ctx.ir("#/grupos"); } catch (e) { ctx.toast(e.message, "mal"); }

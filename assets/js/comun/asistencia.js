@@ -113,6 +113,23 @@ export async function render(el, ctx, { params }) {
         h("span.tenue", "Marca a todos presentes y cambia solo a quien faltó (A), llegó tarde (T) o tiene excusa (J). El lápiz anota una observación.")),
       h("ul.pase", items),
       h("div.pie-fijo", siguiente, guardar)));
+    // Academias: quienes vienen a este grupo a recuperar una clase que perdieron en otro
+    if (ctx.modalidad === "academia") {
+      const recs = await q(sb.from("recuperaciones").select("id,estado,fecha_falta,grupo_origen,estudiantes(nombres,apellidos)").eq("grupo_destino", grupoId).eq("fecha", fechaSel).neq("estado", "cancelada")).catch(() => []);
+      if (recs.length) {
+        const caja = h("section.hoja.recuperan", h("h2", `Vienen a recuperar (${recs.length})`),
+          h("ul.lista", recs.map((r) => {
+            const est = h("span");
+            const pintarR = () => est.replaceChildren(r.estado === "asistio" ? h("span.estado.ok", "Vino") : r.estado === "no_vino" ? h("span.estado.mal", "No vino") : h("span.estado.ojo", "Pendiente"));
+            pintarR();
+            const marcar = (v) => async () => { try { await q(sb.rpc("d360_recuperacion_marcar", { p_id: r.id, p_estado: v })); r.estado = v; pintarR(); ctx.toast("Anotado"); } catch (e) { ctx.toast(e.message, "mal"); } };
+            return h("li", h("div.crece", h("strong", nombreCompleto(r.estudiantes || {})), h("div.tenue", r.fecha_falta ? `Faltó el ${fecha(r.fecha_falta)}` : "Recuperación")), est,
+              fechaSel <= hoyISO() ? h("div.acciones-cobro", h("button.btn.btn-sm", { type: "button", onclick: marcar("asistio") }, "Vino"), h("button.btn.btn-sec.btn-sm", { type: "button", onclick: marcar("no_vino") }, "No vino")) : null);
+          })),
+          h("p.tenue", "No se cuentan en la lista del grupo: solo se anota si vinieron a recuperar."));
+        cuerpo.prepend(caja);
+      }
+    }
 
     function pintarMarcas() {
       items.forEach((li, i) => {

@@ -33,7 +33,7 @@ const cargarQR = () => (qrListo ??= new Promise((ok, mal) => {
   s.onload = ok; s.onerror = () => mal(new Error("No se pudo cargar el generador de QR."));
   document.head.append(s);
 }));
-async function svgQR(texto) {
+export async function svgQR(texto) {
   await cargarQR();
   const c = window.qrcode(0, "M"); c.addData(texto); c.make();
   return c.createSvgTag({ cellSize: 6, margin: 2, scalable: true });

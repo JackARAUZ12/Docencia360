@@ -26,10 +26,12 @@ export async function render(el, ctx) {
     { name: "mensualidad", label: `Mensualidad (${ctx.cuenta.moneda})`, type: "number", min: 0, step: "0.01", value: 0 },
     { name: "descripcion", label: "Descripción y contenido", type: "textarea", full: true },
     { name: "requisitos", label: "Requisitos", type: "textarea", full: true, placeholder: "Ej.: Edad mínima 12 años; prueba de ubicación" },
+    { name: "siguiente_curso_id", label: "Siguiente nivel", type: "select", placeholder: "Ninguno", full: true, options: cursos.filter((x) => !c || x.id !== c.id).map((x) => [x.id, x.nombre]),
+      help: "Ej.: Inglés A1 → Inglés A2. Al terminar, en el grupo usa «Pasar al siguiente nivel» y los estudiantes pasan con un toque." },
     { name: "certifica", label: "Entrega certificado al completarlo", type: "checkbox" },
     { name: "activo", label: "Disponible para matrícula", type: "checkbox", value: true },
   ], c, async (d, cerrar) => {
-    d.precio_matricula = d.precio_matricula ?? 0; d.mensualidad = d.mensualidad ?? 0;
+    d.precio_matricula = d.precio_matricula ?? 0; d.mensualidad = d.mensualidad ?? 0; d.siguiente_curso_id = d.siguiente_curso_id || null;
     if (c) await q(sb.from("cursos").update(d).eq("id", c.id));
     else await q(sb.from("cursos").insert({ ...d, cuenta_id: ctx.id }));
     ctx.datos.invalidar("cursos", "grupos"); cerrar(); ctx.toast("Curso guardado"); ctx.recargar();
@@ -54,7 +56,7 @@ export async function render(el, ctx) {
     porArea.map(([area, cs]) => h("section.hoja",
       h("div.hoja-titulo", h("h2", area ? area.nombre : "Sin área"), area ? h("button.btn.btn-texto.btn-sm", { onclick: () => editarArea(area) }, "Editar área") : null),
       tabla([
-        { t: "Curso", v: (c) => [h("strong", c.nombre), h("div.tenue", [MOD[c.modalidad_clase], c.duracion_semanas ? `${c.duracion_semanas} semanas` : null, c.horas_totales ? `${c.horas_totales} h` : null, c.certifica ? "con certificado" : null].filter(Boolean).join(" · "))] },
+        { t: "Curso", v: (c) => [h("strong", c.nombre), h("div.tenue", [MOD[c.modalidad_clase], c.duracion_semanas ? `${c.duracion_semanas} semanas` : null, c.horas_totales ? `${c.horas_totales} h` : null, c.certifica ? "con certificado" : null, c.siguiente_curso_id ? `sigue: ${cursos.find((x) => x.id === c.siguiente_curso_id)?.nombre || "—"}` : null].filter(Boolean).join(" · "))] },
         { t: "Matrícula", v: (c) => Number(c.precio_matricula) ? M(c.precio_matricula) : "—", clase: "derecha" },
         { t: "Mensualidad", v: (c) => Number(c.mensualidad) ? M(c.mensualidad) : "—", clase: "derecha" },
         { t: "Grupos abiertos", v: (c) => gruposDe(c.id).length, clase: "derecha" },

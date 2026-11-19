@@ -30,6 +30,7 @@ const AREAS = [
     { r: "grupos", t: D ? "Mis grupos" : "Grupos", i: "grupos", m: () => import("../comun/grupos.js"), ver: G || D },
     { r: "instructores", t: "Instructores", i: "instructores", m: () => import("./instructores.js"), ver: G },
     { r: "asistencia", t: "Asistencia", i: "asistencia", m: () => import("../comun/asistencia.js"), ver: G || D },
+    { r: "recuperaciones", t: "Recuperaciones", i: "calendario", m: () => import("./recuperaciones.js"), ver: G || D },
     { r: "calificaciones", t: "Evaluaciones", i: "notas", m: () => import("../comun/calificaciones.js"), ver: G || D },
     { r: "tareas", t: "Actividades", i: "tareas", m: () => import("../comun/tareas.js"), ver: G || D },
     { r: "rubricas", t: "Rúbricas", i: "notas", m: () => import("../comun/rubricas.js"), ver: (G || D) && ctx.f("rubricas") },
@@ -39,6 +40,7 @@ const AREAS = [
     { r: "calendario", t: "Calendario", i: "calendario", m: () => import("../comun/calendario.js"), ver: true },
   ]],
   ["Operación", [
+    { r: "interesados", t: "Interesados", i: "estudiantes", m: () => import("./interesados.js"), ver: G || F },
     { r: "matriculas", t: "Matrículas", i: "matriculas", m: () => import("./matriculas.js"), ver: G || F },
     { r: "finanzas", t: "Finanzas", i: "finanzas", m: () => import("./finanzas.js"), ver: F },
     { r: "pagos-instructores", t: "Pagos a instructores", i: "instructores", m: () => import("./pagos_instructores.js"), ver: F && ctx.f("finanzas") },
@@ -92,6 +94,8 @@ iniciarEnrutador(ctx, main, RUTAS, {
     enlinea: "crea exámenes y tareas en línea. Cada estudiante entra con su código y la nota se calcula sola.",
     aula: "publica avisos y materiales por grupo. Los estudiantes los ven en su aula con sus tareas, notas y pagos.",
     comunicados: "un comunicado para todos o para un grupo llega al aula de los estudiantes y al portal de familias.",
+    interesados: "anota a quien pregunta, agéndale una clase de prueba y matricúlalo en un paso. Comparte tu enlace de inscripción en línea en redes y WhatsApp.",
+    recuperaciones: "si alguien faltó, agenda que recupere la clase en otro grupo; el instructor de ese grupo lo verá al pasar lista.",
   },
   alNavegar: (r) => { tituloRuta.textContent = RUTAS.find((x) => x.r === r)?.t || ""; guia.actualizar(); },
 });

@@ -283,6 +283,7 @@ function lineas(p) {
     f.portal_estudiantes && p.max_estudiantes_portal ? `Aula virtual: exámenes y tareas en línea con nota automática · ${p.max_estudiantes_portal.toLocaleString("es-NI")} estudiantes con acceso` : null,
     f.finanzas ? (p.modalidad === "profesor" ? "Cobros con recibo, gastos y ganancia del mes" : "Matrículas, cobros y recibos") : null,
     f.finanzas && p.modalidad === "academia" ? "Pago a instructores (por hora, por clase o salario fijo) y ganancia real del mes" : null,
+    p.modalidad === "academia" ? "Interesados con clase de prueba, inscripción en línea con QR, recuperación de clases y cambio de nivel" : null,
     f.rubricas ? "Rúbricas para calificar" : null,
     f.banco_preguntas ? "Banco de preguntas" : null,
     f.reportes_pdf ? "Informes en PDF" : null,

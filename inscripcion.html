@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<script>try{if(localStorage.getItem("d360-tema")==="oscuro")document.documentElement.dataset.theme="dark"}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Inscripción · Docencia360</title>
+<meta name="description" content="Inscríbete en línea: elige tu curso y horario.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="assets/img/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/d360.css">
+<style>
+  .insc { max-width: 720px; margin: 0 auto; padding: 1rem 16px 3rem; }
+  .insc > header { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+  .bienv { background: var(--pizarra, #1E3A32); color: #F4F6F2; border-radius: 16px; padding: 1.2rem 1.25rem; margin-bottom: 1rem; }
+  .bienv h1 { color: #F4F6F2; font-size: clamp(1.4rem, 1.1rem + 1.2vw, 1.9rem); margin: .15rem 0 .35rem; overflow-wrap: anywhere; }
+  .bienv p { margin: 0; color: rgba(244,246,242,.85); white-space: pre-line; }
+  .cursos-insc { display: grid; gap: .6rem; }
+  .curso-insc { display: grid; gap: .25rem; text-align: left; width: 100%; padding: .9rem 1rem; border: 1px solid var(--renglon-fuerte); border-radius: 12px; background: var(--papel); color: var(--texto); font: inherit; cursor: pointer; }
+  .curso-insc[aria-pressed="true"] { border-color: var(--acento); box-shadow: inset 0 0 0 1px var(--acento); background: var(--acento-suave); }
+  .curso-insc strong { font-size: 1.05rem; }
+  .curso-insc .precio { font-weight: 700; }
+  .grupos-insc { display: grid; gap: .5rem; margin-top: .5rem; }
+  .grupo-insc { display: flex; gap: .6rem; align-items: flex-start; padding: .7rem .8rem; border: 1px solid var(--renglon); border-radius: 10px; cursor: pointer; }
+  .grupo-insc input { width: 20px; height: 20px; flex: none; margin-top: .15rem; }
+  .grupo-insc.lleno { opacity: .6; }
+  .trampa { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+  .listo { text-align: center; padding: 2rem 1rem; }
+  .listo .ok { font-size: 3rem; line-height: 1; color: var(--aprobado); }
+</style>
+</head>
+<body>
+<div class="insc">
+  <header><span id="marca"></span><span id="tema"></span></header>
+  <div id="aviso"></div>
+  <main id="contenido" tabindex="-1"><p class="suave">Cargando…</p></main>
+</div>
+<script src="assets/vendor/supabase.js"></script>
+<script type="module">
+import { botonTema } from "./assets/js/core/tema.js";
+import { sb, mensajeError } from "./assets/js/core/sb.js";
+import { h, marca } from "./assets/js/core/ui.js";
+
+document.getElementById("marca").append(marca("index.html"));
+document.getElementById("tema").append(botonTema());
+const cont = document.getElementById("contenido");
+const aviso = document.getElementById("aviso");
+const mostrar = (m, t = "mal") => aviso.replaceChildren(h(`div.aviso.${t}`, { role: "alert" }, m));
+const token = new URLSearchParams(location.search).get("a") || "";
+const MOTIVOS = {
+  nombre: "Escribe tu nombre completo.",
+  telefono: "Escribe un teléfono o WhatsApp válido (al menos 7 números).",
+  email: "Revisa el correo electrónico.",
+  curso: "Elige el curso que te interesa.",
+  muchas: "Recibimos varias solicitudes desde esta conexión. Intenta más tarde o escríbenos por WhatsApp.",
+  no_disponible: "La inscripción en línea no está disponible en este momento.",
+};
+const MOD = { presencial: "Presencial", virtual: "Virtual", mixta: "Presencial y virtual" };
+const dinero = (n, mon) => (n == null ? null : `${mon === "USD" ? "US$" : "C$"}${new Intl.NumberFormat("es-NI", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n))}`);
+
+async function iniciar() {
+  if (!/^[a-z0-9]{6,20}$/.test(token)) { cont.replaceChildren(h("section.hoja", h("h1", "Enlace no válido"), h("p", "Pide a la academia el enlace de inscripción correcto."))); return; }
+  const { data: d, error } = await sb.rpc("d360_inscripcion_ver", { p_token: token });
+  if (error) { cont.replaceChildren(h("section.hoja", h("h1", "No pudimos cargar la inscripción"), h("p", mensajeError(error)))); return; }
+  if (!d?.ok) { cont.replaceChildren(h("section.hoja", h("h1", d?.motivo === "no_disponible" ? "Inscripción no disponible" : "Enlace no válido"), h("p", d?.motivo === "no_disponible" ? "La academia no está recibiendo inscripciones en línea en este momento." : "Este enlace ya no funciona. Pide a la academia el enlace actualizado."))); return; }
+  document.title = `Inscripción · ${d.institucion}`;
+  if (!d.cursos.length) { cont.replaceChildren(h("div.bienv", h("h1", d.institucion)), h("section.hoja", h("p", "Por ahora no hay cursos abiertos a inscripción."), d.telefono ? h("p", `Escríbenos al ${d.telefono}.`) : null)); return; }
+  formulario(d);
+}
+
+function formulario(d) {
+  const estado = { curso: null, grupo: "" };
+  const zonaGrupos = h("div");
+  const cursos = h("div.cursos-insc", { role: "group", "aria-label": "Cursos" }, d.cursos.map((c) => h("button.curso-insc", { type: "button", "aria-pressed": "false", dataset: { id: c.id },
+    onclick: (e) => { estado.curso = c; estado.grupo = ""; cursos.querySelectorAll(".curso-insc").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget))); pintarGrupos(); } },
+    h("strong", c.nombre),
+    h("span.tenue", [MOD[c.modalidad], c.duracion_semanas ? `${c.duracion_semanas} semanas` : null].filter(Boolean).join(" · ")),
+    c.descripcion ? h("span", { style: "white-space:pre-line" }, c.descripcion) : null,
+    c.mensualidad != null && (Number(c.mensualidad) || Number(c.matricula)) ? h("span.precio", [Number(c.mensualidad) ? `${dinero(c.mensualidad, d.moneda)} al mes` : null, Number(c.matricula) ? `matrícula ${dinero(c.matricula, d.moneda)}` : null].filter(Boolean).join(" · ")) : null)));
+  function pintarGrupos() {
+    const c = estado.curso;
+    if (!c) { zonaGrupos.replaceChildren(); return; }
+    cursos.querySelector(`[data-id="${c.id}"]`)?.after(zonaGrupos);   // los horarios, justo debajo del curso elegido
+    zonaGrupos.replaceChildren(c.grupos.length ? h("fieldset.campo", h("legend", "¿Qué horario prefieres? (opcional)"),
+      h("div.grupos-insc", [...c.grupos.map((g) => h("label.grupo-insc" + (g.lleno ? ".lleno" : ""),
+        h("input", { type: "radio", name: "grupo", value: g.id, disabled: g.lleno, onchange: () => { estado.grupo = g.id; } }),
+        h("span", h("strong", g.nombre), h("br"), h("span.tenue", [g.horario, g.inicio ? `inicia ${new Date(g.inicio + "T12:00:00").toLocaleDateString("es-NI", { day: "numeric", month: "long" })}` : null, g.lleno ? "cupo lleno" : null].filter(Boolean).join(" · "))))),
+        h("label.grupo-insc", h("input", { type: "radio", name: "grupo", value: "", checked: true, onchange: () => { estado.grupo = ""; } }), h("span", "Todavía no sé / ninguno me sirve"))]))
+      : h("p.tenue", "Te contactamos para confirmar el horario."));
+  }
+  const nombre = h("input", { name: "nombre", required: true, maxLength: 120, autocomplete: "name", placeholder: "Nombres y apellidos" });
+  const tel = h("input", { name: "telefono", type: "tel", required: true, maxLength: 30, autocomplete: "tel", inputMode: "tel", placeholder: "Ej.: 8888 1234" });
+  const email = h("input", { name: "email", type: "email", maxLength: 120, autocomplete: "email" });
+  const nac = h("input", { name: "fecha_nacimiento", type: "date", max: new Date().toISOString().slice(0, 10) });
+  const resp = h("input", { name: "responsable", maxLength: 120, placeholder: "Solo si el estudiante es menor de edad" });
+  const msj = h("textarea", { name: "mensaje", rows: 3, maxLength: 1000, placeholder: "¿Alguna pregunta o comentario?" });
+  const prueba = h("input", { type: "checkbox", name: "quiere_prueba" });
+  const web = h("input", { name: "web", tabIndex: -1, autocomplete: "off" });
+  const btn = h("button.btn", { type: "submit", style: "width:100%;justify-content:center" }, "Enviar mi inscripción");
+  cont.replaceChildren(
+    h("div.bienv", h("p", "Inscripción en línea"), h("h1", d.institucion), d.mensaje ? h("p", d.mensaje) : null),
+    h("form.hoja", { noValidate: true, onsubmit: async (e) => {
+      e.preventDefault(); aviso.replaceChildren();
+      if (!estado.curso) { mostrar(MOTIVOS.curso); cursos.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+      if (nombre.value.trim().length < 3) { mostrar(MOTIVOS.nombre); nombre.focus(); return; }
+      if (tel.value.replace(/\D/g, "").length < 7) { mostrar(MOTIVOS.telefono); tel.focus(); return; }
+      btn.disabled = true; btn.textContent = "Enviando…";
+      const { data: r, error } = await sb.rpc("d360_inscripcion_enviar", { p_token: token, p_datos: {
+        nombre: nombre.value, telefono: tel.value, email: email.value, fecha_nacimiento: nac.value || null, responsable: resp.value, mensaje: msj.value,
+        curso_id: estado.curso.id, grupo_id: estado.grupo || null, quiere_prueba: prueba.checked, web: web.value } });
+      btn.disabled = false; btn.textContent = "Enviar mi inscripción";
+      if (error) { mostrar(mensajeError(error)); return; }
+      if (!r?.ok) { mostrar(MOTIVOS[r?.motivo] || "No pudimos enviar tu inscripción. Intenta de nuevo."); return; }
+      scrollTo(0, 0);
+      cont.replaceChildren(h("section.hoja.listo", h("div.ok", "✓"), h("h1", "¡Recibimos tu inscripción!"),
+        h("p", `${d.institucion} te contactará al ${tel.value} para confirmar tu cupo${prueba.checked ? " y tu clase de prueba" : ""}.`),
+        d.telefono ? h("p.tenue", `Si tienes prisa, escríbenos al ${d.telefono}.`) : null));
+    } },
+      h("h2", "1. Elige tu curso"), cursos,
+      h("h2", { style: "margin-top:1.5rem" }, "2. Tus datos"),
+      h("label.campo", h("span", "Nombre completo"), nombre),
+      h("label.campo", h("span", "Teléfono o WhatsApp"), tel),
+      h("label.campo", h("span", "Correo (opcional)"), email),
+      h("div.fila", h("label.campo", h("span", "Fecha de nacimiento (opcional)"), nac), h("label.campo", h("span", "Padre, madre o responsable (opcional)"), resp)),
+      h("label.campo", h("span", "Comentario (opcional)"), msj),
+      h("label.check", prueba, " Quiero una clase de prueba"),
+      h("label.trampa", { "aria-hidden": "true" }, "No llenar", web),
+      h("p.tenue", "Tus datos solo los ve la academia para contactarte sobre tu inscripción."),
+      btn));
+}
+iniciar();
+</script>
+</body>
+</html>

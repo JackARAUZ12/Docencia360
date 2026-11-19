@@ -37,6 +37,7 @@ export async function render(el, ctx) {
       if (ctx.modalidad === "academia") filas.push([p.max_estudiantes_portal ? `Aula virtual y exámenes en línea · ${p.max_estudiantes_portal} estudiantes con acceso` : "Aula virtual y exámenes en línea", !!(f.portal_estudiantes && p.max_estudiantes_portal)]);
       filas.push(["Matrículas, cobros y recibos", !!f.finanzas]);
       if (ctx.modalidad === "academia") filas.push(["Pago a instructores, gastos y ganancia del mes", !!f.finanzas]);
+      if (ctx.modalidad === "academia") filas.push(["Interesados, inscripción en línea, recuperaciones y cambio de nivel", true]);
       filas.push(["Comunicados", !!f.comunicados], ["Certificados con folio", !!f.certificados], ["Portal de familias", !!f.portal_familias]);
     }
     return filas;

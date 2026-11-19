@@ -16,8 +16,8 @@ const planes = [
   { id: "col_avanzado", modalidad: "colegio", nombre: "Avanzado", orden: 2, resumen: "Colegios", precio_usd: 99, precio_nio: 3625, max_estudiantes: 1200, max_docentes: 80, max_grupos: null, max_admins: 10, almacenamiento_mb: 51200, funciones: {}, activo: true },
 ];
 const grupos = [
-  { id: G1, cuenta_id: C, nombre: "Matemática 9no", estado: "activo", cupo: 10, asignatura_id: "a1", asignaturas: { nombre: "Matemática" }, cursos: null, fecha_inicio: "2026-02-01" },
-  { id: G2, cuenta_id: C, nombre: "Física sabatino", estado: "activo", asignatura_id: null, asignaturas: null, cursos: null },
+  { id: G1, cuenta_id: C, nombre: "Matemática 9no", estado: "activo", cupo: 10, curso_id: "c1", asignatura_id: "a1", asignaturas: { nombre: "Matemática" }, cursos: null, fecha_inicio: "2026-02-01" },
+  { id: G2, cuenta_id: C, nombre: "Física sabatino", estado: "activo", curso_id: "c2", asignatura_id: null, asignaturas: null, cursos: null },
 ];
 const dia = ((new Date().getDay() + 6) % 7) + 1;
 const A1 = "99999999-9999-9999-9999-999999999991", A2 = "99999999-9999-9999-9999-999999999992";
@@ -33,6 +33,12 @@ const F = {
   rubricas: [{ id: "rb1", cuenta_id: C, nombre: "Exposición oral", criterios: [{ nombre: "Dominio del tema", niveles: [{ nombre: "Excelente", puntos: 4 }, { nombre: "Bueno", puntos: 3 }, { nombre: "Regular", puntos: 2 }] }, { nombre: "Claridad", niveles: [{ nombre: "Excelente", puntos: 4 }, { nombre: "Regular", puntos: 2 }] }] }],
   banco_preguntas: [{ id: "bp1", cuenta_id: C, tema: "Fracciones", tipo: "vf", enunciado: "1/2 es mayor que 1/3.", opciones: [], correcta: true, puntos: 1, usada: 2 },
                     { id: "bp2", cuenta_id: C, tema: "Ecuaciones", tipo: "corta", enunciado: "Si 2x = 10, ¿cuánto vale x?", opciones: [], correcta: ["5"], puntos: 2, usada: 0 }],
+  interesados: [
+    { id: "in1", cuenta_id: C, nombre: "Valeria Sánchez López", telefono: "84561122", curso_id: "c1", grupo_id: G1, origen: "en_linea", estado: "nuevo", datos: { quiere_prueba: true, responsable: "Marta López" }, nota: "Pregunta por descuento", creado: hoy + "T10:00:00Z", actualizado: hoy + "T10:00:00Z" },
+    { id: "in2", cuenta_id: C, nombre: "Andrés Molina", telefono: "83334545", curso_id: "c1", origen: "whatsapp", estado: "prueba", prueba_fecha: hoy, prueba_grupo_id: G1, prueba_resultado: null, datos: {}, creado: hoy + "T09:00:00Z", actualizado: hoy + "T09:00:00Z" },
+    { id: "in3", cuenta_id: C, nombre: "Sofía Herrera", telefono: "89991212", curso_id: "c2", origen: "visita", estado: "matriculado", estudiante_id: E(3), datos: {}, creado: hoy + "T08:00:00Z", actualizado: hoy + "T08:00:00Z" }],
+  inscripcion_publica: [{ cuenta_id: C, activo: true, token: "abc1234567", mensaje: "¡La primera clase es gratis!", precios: true }],
+  recuperaciones: [{ id: "rc1", cuenta_id: C, estudiante_id: E(2), grupo_origen: G2, fecha_falta: hoy, grupo_destino: G1, fecha: hoy, estado: "agendada", nota: null, estudiantes: { id: E(2), nombres: "Luis", apellidos: "Pérez", telefono: "88887777" } }],
   movimientos: [{ id: "mv1", cuenta_id: C, tipo: "gasto", fecha: hoy, concepto: "Fotocopias del examen", categoria: "Fotocopias e impresión", monto: 250, nota: null },
                 { id: "mv2", cuenta_id: C, tipo: "ingreso", fecha: hoy, concepto: "Taller de repaso", categoria: "Talleres", monto: 400, nota: null }],
   tutores_estudiantes: [{ parentesco: "Madre", miembro_id: "m1", estudiante_id: E(1), estudiantes: { id: E(1), nombres: "Ana", apellidos: "López", codigo: "E-001", foto_url: null, estado: "activo" } }],
@@ -40,7 +46,8 @@ const F = {
   materiales: [{ id: "ma1", cuenta_id: C, grupo_id: G1, titulo: "Guía unidad 3", descripcion: "Resolver del 1 al 10", url: null, archivo_path: C + "/materiales/x.pdf", archivo_nombre: "guia.pdf", archivo_tamano: 120000, archivo_tipo: "application/pdf", creado: hoy + "T13:00:00Z" }],
   entrega_archivos: [{ id: "ea1", path: C + "/entregas/e/f.jpg", nombre: "cuaderno.jpg", tamano: 250000, tipo: "image/jpeg" }],
   planes, config_global: [{ clave: "publico.dias_prueba", valor: 14 }, { clave: "publico.inactividad_minutos", valor: 60 }, { clave: "publico.tipo_cambio", valor: 36.62, descripcion: "Tipo de cambio", actualizado: hoy }, { clave: "publico.terminos_version", valor: "2026-11-05" }, { clave: "publico.registro_con_codigo", valor: true }],
-  grupos, asignaturas: [{ id: "a1", cuenta_id: C, nombre: "Matemática", activo: true }], cursos: [{ id: "c1", cuenta_id: C, nombre: "Álgebra intensiva", mensualidad: 800, duracion_semanas: 8, modalidad_clase: "presencial", activo: true }],
+  grupos, asignaturas: [{ id: "a1", cuenta_id: C, nombre: "Matemática", activo: true }], cursos: [{ id: "c1", cuenta_id: C, nombre: "Álgebra intensiva", mensualidad: 800, precio_matricula: 300, duracion_semanas: 8, modalidad_clase: "presencial", activo: true, certifica: true, siguiente_curso_id: "c2" },
+           { id: "c2", cuenta_id: C, nombre: "Álgebra avanzada", mensualidad: 900, precio_matricula: 0, duracion_semanas: 8, modalidad_clase: "presencial", activo: true, certifica: true }],
   estudiantes: est,
   grupo_estudiantes: est.slice(0, 3).map((e) => ({ grupo_id: G1, estudiante_id: e.id, cuenta_id: C, estado: "activo", desde: "2026-02-01", estudiantes: e, grupos: { id: G1, nombre: "Matemática 9no", estado: "activo" } })),
   horarios: [{ id: "h1", dia, hora_inicio: "08:00:00", hora_fin: "09:30:00", grupo_id: G1, grupos: { nombre: "Matemática 9no", estado: "activo" } }],
@@ -59,7 +66,7 @@ const F = {
     { id: EV1, cuenta_id: C, grupo_id: G1, titulo: "Examen parcial", tipo: "examen", fecha: hoy, peso: 60, puntaje_max: 100, grupos: { nombre: "Matemática 9no" } },
     { id: EV2, cuenta_id: C, grupo_id: G1, titulo: "Tarea de ecuaciones", tipo: "tarea", fecha: hoy, peso: 40, puntaje_max: 20, rubrica_id: "rb1", grupos: { nombre: "Matemática 9no" } }],
   calificaciones: [{ id: "k1", evaluacion_id: EV1, estudiante_id: E(1), puntaje: 85, entregado: true, evaluaciones: { titulo: "Examen parcial", tipo: "examen", fecha: hoy, peso: 60, puntaje_max: 100, grupo_id: G1, grupos: { nombre: "Matemática 9no" } } }],
-  asistencias: [{ fecha: hoy, estado: "ausente", estudiante_id: E(2), grupo_id: G1, nota: "Enfermo", grupos: { nombre: "Matemática 9no" } }],
+  asistencias: [{ fecha: hoy, estado: "ausente", estudiante_id: E(2), grupo_id: G1, nota: "Enfermo", grupos: { nombre: "Matemática 9no" }, estudiantes: { id: E(2), nombres: "Luis", apellidos: "Pérez", telefono: "88887777" } }],
   eventos: [{ id: "ev1", cuenta_id: C, titulo: "Reunión de padres", fecha: hoy, tipo: "reunion", hora_inicio: "17:00:00" }],
   notificaciones: [], observaciones: [{ id: "o1", texto: "Muy participativa", tipo: "academica", creado: hoy + "T10:00:00Z" }],
   cuentas: [{ id: C, nombre: "Clases de la Prof. Ana", codigo: "K7M2QP", moneda: "NIO", telefono: "8888-1111", email: "ana@ejemplo.com", terminos_version: "2026-11-05" }],
@@ -119,6 +126,15 @@ const RPC = {
     { id: "m3", nombre: "Instructora Fija", telefono: null, activo: true, forma: "fijo", tarifa: 8000, clases: 8, horas: 12, sin_horario: 0, calculado: 8000, pagado: 0, detalle: [], pagos: [] },
     { id: "m4", nombre: "Nuevo Instructor", telefono: null, activo: true, forma: null, tarifa: null, clases: 0, horas: 0, sin_horario: 0, calculado: null, pagado: 0, detalle: [], pagos: [] }] },
   d360_instructor_pagar: "mvp2",
+  d360_inscripcion_enlace: "abc1234567",
+  d360_interesado_matricular: { matricula_id: "mtx", cargos: 4, estudiante_id: E(1) },
+  d360_promover: { promovidos: 2, certificados: 2 },
+  d360_recuperacion_marcar: null,
+  d360_inscripcion_ver: { ok: true, institucion: "Academia Horizonte", mensaje: "¡La primera clase es gratis!", moneda: "NIO", telefono: "2222 3333", cursos: [
+    { id: "c1", nombre: "Inglés A1", descripcion: "Conversación básica.", modalidad: "presencial", duracion_semanas: 12, mensualidad: 1200, matricula: 500,
+      grupos: [{ id: "gx1", nombre: "A1 noche", horario: "Lun 18:00–19:30, Mié 18:00–19:30", inicio: "2027-01-10", lleno: false }, { id: "gx2", nombre: "A1 sábado", horario: "Sáb 08:00–11:00", lleno: true }] },
+    { id: "c2", nombre: "Guitarra", descripcion: null, modalidad: "presencial", duracion_semanas: null, mensualidad: 900, matricula: 0, grupos: [] }] },
+  d360_inscripcion_enviar: { ok: true },
   d360_finanzas_resumen: { cobrado: 1300, por_tipo: { mensualidad: 1000, clase: 300 }, otros_ingresos: 400, gastos: 450,
     gastos_por_categoria: [{ categoria: "Fotocopias e impresión", total: 250 }, { categoria: "Transporte", total: 200 }], ingresos_por_categoria: [{ categoria: "Talleres", total: 400 }] },
   d360_cobro_clase: { cargo_id: "cg-clase", pago_id: "pg-clase", recibo: "R-0009" },
