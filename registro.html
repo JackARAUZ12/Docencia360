@@ -67,7 +67,7 @@ import { botonTema } from "./assets/js/core/tema.js";
 import { CONFIG } from "./assets/js/config.js";
 import { sb, q, mensajeError } from "./assets/js/core/sb.js";
 import { h, marca, dinero } from "./assets/js/core/ui.js";
-import { sesionActual, misCuentas, elegirCuenta, ruta, RUTA_MODALIDAD } from "./assets/js/core/sesion.js";
+import { sesionActual, misCuentas, elegirCuenta, ruta, rutaCorreo, RUTA_MODALIDAD } from "./assets/js/core/sesion.js";
 
 document.getElementById("marca").append(marca("index.html"));
 const cont = document.getElementById("contenido");
@@ -283,7 +283,7 @@ function paso3() {
       }
       if (!soloCuenta) {
         const { data, error } = await sb.auth.signUp({ email: d.email, password: d.clave,
-          options: { emailRedirectTo: ruta("registro.html?paso=cuenta"), data: { nombre: d.tu_nombre } } });
+          options: { emailRedirectTo: rutaCorreo("registro.html?paso=cuenta"), data: { nombre: d.tu_nombre } } });
         if (error) throw error;
         if (!data.session) {   // el proyecto pide confirmar el correo
           try { localStorage.setItem(PEND, JSON.stringify(datosCuenta)); } catch (_) {}

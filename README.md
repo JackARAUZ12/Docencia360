@@ -78,6 +78,47 @@ node herramientas/generar-sw.mjs
 
 Código: `assets/js/core/offline.js` (copia, bandeja y subida), `assets/js/core/conexion.js` (aviso y bandeja), migración `41_sin_conexion`.
 
+## Programa de escritorio (Windows)
+
+Docencia360 también se instala como programa de Windows (`escritorio/`, hecho con Electron).
+
+- **Funciona sin internet:** abre desde sus propios archivos, no desde la página web, e incluye el modo sin internet completo (copia local, bandeja de cambios, cobros con comprobante provisional).
+- **Con internet:** guarda y protege todo en Supabase, igual que la web.
+- **Ventana y enlaces:** una sola ventana a la vez. Los enlaces externos (WhatsApp, correo, página web) se abren en el navegador.
+- **Impresión:** se imprime con la impresora instalada en Windows (térmica USB o Bluetooth ya agregada).
+- **Actualizaciones:** se actualiza solo desde «Releases» de GitHub (menú Ayuda → Buscar actualizaciones). La versión nueva se instala al cerrar el programa.
+- **Enlaces de los correos:** al confirmar la cuenta o recuperar la contraseña, el enlace abre la página web. Configura la dirección en `assets/js/config.js` (`sitioWeb`). Si queda vacía, se usa la «Site URL» de Supabase.
+
+**Publicar una versión** (GitHub la construye en Windows y la publica en Releases con instalador, versión portable y actualización automática):
+
+```bash
+git tag escritorio-v1.0.1
+```
+
+```bash
+git push origin escritorio-v1.0.1
+```
+
+**Probar o construir en Linux:**
+
+```bash
+cd escritorio
+```
+
+```bash
+npm install
+```
+
+```bash
+npm run portable
+```
+
+Eso genera `dist/Docencia360-Portable-x.y.z.exe`. El instalador completo (`npm run instalador`) necesita Windows o el flujo de GitHub.
+
+La prueba automática del programa se corre con `xvfb-run -a node tests/ui/escritorio.mjs`.
+
+Sin certificado de firma de código, Windows muestra «Windows protegió su PC» la primera vez. El usuario toca «Más información» y luego «Ejecutar de todas formas». Con un certificado (de 100 a 400 USD al año) el aviso desaparece.
+
 ## Pruebas
 
 ```bash

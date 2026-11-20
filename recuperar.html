@@ -37,7 +37,7 @@ import { botonTema } from "./assets/js/core/tema.js";
 { const b = botonTema(); b.style.cssText = "position:fixed;top:12px;right:12px;z-index:50"; document.body.append(b); }
 import { sb, mensajeError } from "./assets/js/core/sb.js";
 import { h, marca } from "./assets/js/core/ui.js";
-import { ruta, destinoTrasLogin } from "./assets/js/core/sesion.js";
+import { ruta, rutaCorreo, destinoTrasLogin } from "./assets/js/core/sesion.js";
 document.getElementById("marca").append(marca("index.html"));
 const aviso = document.getElementById("aviso");
 const mostrar = (m, t = "mal") => aviso.replaceChildren(h(`div.aviso.${t}`, { role: "alert" }, m));
@@ -54,7 +54,7 @@ document.getElementById("f1").addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.getElementById("email").value.trim();
   if (!email) return mostrar("Escribe tu correo.");
-  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: ruta("recuperar.html") });
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: rutaCorreo("recuperar.html") });
   // Mismo mensaje exista o no el correo (no revelar qué correos están registrados)
   if (error && !/rate/i.test(error.message)) return mostrar(mensajeError(error));
   mostrar("Si ese correo tiene una cuenta, te llegará un enlace en unos minutos.", "ok");

@@ -151,7 +151,8 @@ export function escpos(lineas, { corte = true } = {}) {
   return new Uint8Array(b);
 }
 let impresoraBT = null;   // se recuerda mientras la página esté abierta
-export const hayBluetooth = () => !!(navigator.bluetooth && window.isSecureContext);
+// En el programa de escritorio se imprime con la impresora instalada en Windows («Imprimir»)
+export const hayBluetooth = () => !!(navigator.bluetooth && window.isSecureContext && !window.d360Escritorio);
 export async function enviarBluetooth(datos) {
   if (!hayBluetooth()) throw new Error("Este navegador no permite Bluetooth directo. Usa «Imprimir».");
   let car = impresoraBT?.car;
@@ -200,7 +201,8 @@ export async function mostrarComprobante(ctx, t, { titulo } = {}) {
   pintar();
   const tel = numeroWhatsApp(t.telefono);
   const nota = h("p.tenue", { style: "font-size:.85rem;margin:.6rem 0 0" },
-    hayBluetooth() ? "«Bluetooth directo» funciona con impresoras térmicas Bluetooth en Chrome o Edge. Si tu impresora no aparece, usa «Imprimir»."
+    window.d360Escritorio ? "Toca «Imprimir» y elige tu impresora térmica (USB o Bluetooth ya agregada en Windows). Elige el tamaño de papel igual al de tu rollo."
+    : hayBluetooth() ? "«Bluetooth directo» funciona con impresoras térmicas Bluetooth en Chrome o Edge. Si tu impresora no aparece, usa «Imprimir»."
       : "Para impresoras Bluetooth en Android usa «Imprimir» con la app de la impresora (p. ej. RawBT). En iPhone, con AirPrint o la app de la impresora.");
   const m = modal(titulo || (t.provisional ? `Comprobante provisional ${t.provisional}` : t.recibos.length > 1 ? `Recibos N.º ${recibosTxt(t)}` : `Recibo N.º ${t.recibos[0]}`), h("div",
     h("p.etiqueta", "Tamaño del papel"), chips, vista, nota), [

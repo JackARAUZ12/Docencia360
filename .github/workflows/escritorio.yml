@@ -1,0 +1,32 @@
+# Construye el programa de escritorio de Docencia360 para Windows y lo publica en
+# «Releases» de GitHub (de ahí se descarga y se actualiza solo).
+# Para publicar una versión nueva:  git tag escritorio-v1.0.1 && git push origin escritorio-v1.0.1
+name: Programa de escritorio (Windows)
+on:
+  push:
+    tags: ["escritorio-v*"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: escritorio
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: escritorio/package-lock.json
+      - name: Versión según la etiqueta
+        if: startsWith(github.ref, 'refs/tags/escritorio-v')
+        shell: bash
+        run: npm version "${GITHUB_REF_NAME#escritorio-v}" --no-git-tag-version --allow-same-version
+      - run: npm ci
+      - name: Instalador y versión portable
+        run: npm run publicar
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

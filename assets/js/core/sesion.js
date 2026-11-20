@@ -1,10 +1,18 @@
 // Sesión, cuenta activa y protección de páginas.
 import { sb, q } from "./sb.js";
+import { CONFIG } from "../config.js";
 import { usuarioLocal, estado as estadoConexion, borrarCopias } from "./offline.js";
 
 /** Raíz del sitio (funciona en dominio propio o en subcarpeta de GitHub Pages). */
 export const RAIZ = new URL("../../../", import.meta.url).href;
 export const ruta = (p) => RAIZ + p.replace(/^\//, "");
+/** ¿Se está usando el programa de escritorio (Windows)? */
+export const enEscritorio = () => !!window.d360Escritorio;
+/**
+ * Enlace para los correos (confirmar cuenta, recuperar contraseña). En el programa de
+ * escritorio apunta a la página web (un correo no puede abrir el programa).
+ */
+export const rutaCorreo = (p) => (enEscritorio() ? (CONFIG.sitioWeb ? CONFIG.sitioWeb.replace(/\/?$/, "/") + p.replace(/^\//, "") : undefined) : ruta(p));
 
 export const RUTA_MODALIDAD = {
   profesor: "app/profesor.html",

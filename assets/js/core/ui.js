@@ -62,7 +62,7 @@ export const DIAS = ["", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "
 // ---------- Toast ----------
 export function toast(msg, tipo = "") {
   let c = document.getElementById("toasts");
-  if (!c) { c = h("div#toasts", { "aria-live": "polite" }); c.id = "toasts"; document.body.append(c); }
+  if (!c) { c = h("div", { id: "toasts", "aria-live": "polite" }); document.body.append(c); }
   const t = h("div.toast" + (tipo ? "." + tipo : ""), { role: tipo === "mal" ? "alert" : "status" }, msg);
   c.append(t);
   // Mensajes largos (p. ej. varios pasos completados) quedan más tiempo en pantalla

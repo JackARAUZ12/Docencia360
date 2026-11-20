@@ -1,0 +1,85 @@
+{
+  "name": "docencia360-escritorio",
+  "productName": "Docencia360",
+  "version": "1.0.0",
+  "description": "Docencia360 para computadora: funciona con y sin internet.",
+  "author": "Docencia360",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "preparar": "node preparar.mjs",
+    "iniciar": "npm run preparar && electron .",
+    "instalador": "npm run preparar && electron-builder --win --x64 --publish never",
+    "publicar": "npm run preparar && electron-builder --win --x64 --publish always",
+    "portable": "npm run preparar && electron-builder --win portable --x64 --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "6.3.9"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8",
+    "resedit": "^2.0.3"
+  },
+  "build": {
+    "appId": "com.docencia360.escritorio",
+    "productName": "Docencia360",
+    "copyright": "Docencia360",
+    "directories": {
+      "output": "dist",
+      "buildResources": "recursos"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "web/**/*",
+      "recursos/icono.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "recursos/icono.png",
+      "artifactName": "Docencia360-Instalador-${version}.${ext}",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Docencia360",
+      "installerLanguages": [
+        "es_ES"
+      ],
+      "language": "3082",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "JackARAUZ12",
+        "repo": "Docencia360",
+        "releaseType": "release"
+      }
+    ],
+    "afterPack": "./despues-empaquetar.cjs",
+    "portable": {
+      "artifactName": "Docencia360-Portable-${version}.${ext}"
+    }
+  }
+}
