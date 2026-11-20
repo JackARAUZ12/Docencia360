@@ -16,6 +16,9 @@ p.on("pageerror", (e) => errores.push(e.message));
 await p.waitForLoadState("domcontentloaded");
 ok(p.url().startsWith("app://docencia360/entrar.html"), `abre la pantalla de entrada desde los archivos del programa (${p.url()})`);
 ok(await p.evaluate(() => !!window.d360Escritorio && /^\d+\.\d+\.\d+$/.test(window.d360Escritorio.version)), "la página sabe que está en el programa de escritorio (y su versión)");
+// Cada archivo se sirve con su tipo fijo (en Windows el registro puede decir que .js es texto y la app no correría)
+const tipos = await p.evaluate(async () => Promise.all(["/assets/js/core/sb.js", "/assets/css/d360.css", "/entrar.html", "/manifest.webmanifest"].map(async (f) => (await fetch(f)).headers.get("content-type"))));
+ok(/^text\/javascript/.test(tipos[0]) && /^text\/css/.test(tipos[1]) && /^text\/html/.test(tipos[2]) && /manifest\+json/.test(tipos[3]), `los archivos se sirven con su tipo correcto (${tipos.join(" · ")})`);
 // Sesión y datos simulados (Supabase)
 const estado = { sinRed: false };
 await preparar(p, true, "profesor", "propietario");

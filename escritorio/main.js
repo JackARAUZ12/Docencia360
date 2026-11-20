@@ -16,6 +16,21 @@ protocol.registerSchemesAsPrivileged([{ scheme: ESQUEMA, privileges: { standard:
 // Una sola ventana del programa a la vez
 if (!app.requestSingleInstanceLock()) app.quit();
 
+// Tipo de cada archivo, fijo: en Windows el registro a veces dice que .js es «texto plano»
+// y entonces la app no corre (ningún botón funciona). Por eso no se le pregunta a Windows.
+const TIPOS = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".webmanifest": "application/manifest+json",
+  ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp",
+  ".ico": "image/x-icon", ".woff": "font/woff", ".woff2": "font/woff2", ".ttf": "font/ttf", ".txt": "text/plain; charset=utf-8", ".pdf": "application/pdf" };
+async function servir(archivo) {
+  try {
+    const r = await net.fetch(pathToFileURL(archivo).toString());
+    if (!r.ok) return new Response("No encontrado", { status: 404 });
+    const tipo = TIPOS[path.extname(archivo).toLowerCase()] || "application/octet-stream";
+    return new Response(await r.arrayBuffer(), { status: 200, headers: { "content-type": tipo, "cache-control": "no-cache" } });
+  } catch (_) { return new Response("No encontrado", { status: 404 }); }
+}
+
 let ventana = null;
 function crearVentana() {
   ventana = new BrowserWindow({
@@ -47,7 +62,7 @@ app.whenReady().then(() => {
     if (rel.endsWith("/")) rel += "index.html";
     const archivo = path.normalize(path.join(WEB, rel));
     if (u.host !== HOST || !archivo.startsWith(WEB + path.sep)) return new Response("No permitido", { status: 403 });
-    return net.fetch(pathToFileURL(archivo).toString());
+    return servir(archivo);
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: "Docencia360", submenu: [{ role: "reload", label: "Recargar" }, { role: "togglefullscreen", label: "Pantalla completa" }, { type: "separator" }, { role: "quit", label: "Salir" }] },
@@ -58,6 +73,7 @@ app.whenReady().then(() => {
         dialog.showMessageBox(ventana, { type: "info", title: "Docencia360", message: r.ok ? (r.version && r.version !== app.getVersion() ? `Se está descargando la versión ${r.version}. Se instalará al cerrar el programa.` : `Tienes la versión más reciente (${app.getVersion()}).`)
           : "No se pudo buscar actualizaciones. Revisa tu conexión a internet e inténtalo de nuevo." });
       } },
+      { label: "Herramientas de diagnóstico", accelerator: "Ctrl+Shift+I", click: () => ventana?.webContents.toggleDevTools() },
       { label: `Versión ${app.getVersion()}`, enabled: false },
     ] },
   ]));
