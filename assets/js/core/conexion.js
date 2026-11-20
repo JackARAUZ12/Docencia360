@@ -2,16 +2,21 @@
 // lo guardado en este equipo (con lo que el servidor no aceptó, para decidir qué hacer).
 import { h, modal, toast, fecha } from "./ui.js";
 import { mostrarComprobante } from "../comun/ticket.js";
-import { estado, bandeja, sincronizar, descartar, reintentar, probarConexion, cobrosSubidos, fechaUltimaCopia } from "./offline.js";
+import { estado, bandeja, sincronizar, descartar, reintentar, probarConexion, cobrosSubidos, fechaUltimaCopia, horasSinConexion, PRECARGA } from "./offline.js";
+import { precargaInfo, prepararEquipo } from "./precarga.js";
 
 const hora = (t) => new Date(t).toLocaleString("es-NI", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 export const codigoProvisional = (clave) => "P-" + String(clave || "").replace(/-/g, "").slice(0, 6).toUpperCase();
 
 export function barraConexion(ctx) {
   const barra = h("div.conexion.no-imprimir", { role: "status", "aria-live": "polite", hidden: true });
+  let prep = null;   // avance de «preparar el equipo» (solo se muestra la primera vez)
   const pintar = (e = estado()) => {
     let clase = "", texto = "", accion = "Ver";
-    if (!e.enLinea) {
+    if (e.enLinea && prep && !e.pendientes && !e.errores && !e.sincronizando) {
+      clase = "preparando"; accion = null;
+      texto = `Preparando este equipo para trabajar sin internet… ${prep.total ? Math.round((prep.hechas / prep.total) * 100) : 0} %. Puedes seguir usándolo.`;
+    } else if (!e.enLinea) {
       clase = "sin-red";
       const copia = fechaUltimaCopia();
       texto = `Sin internet · ves lo último guardado en este equipo${copia ? ` (${hora(copia)})` : ""}` + (e.pendientes ? ` · ${e.pendientes} cambio(s) por subir` : " · lo que guardes se sube solo al volver la conexión");
@@ -25,6 +30,16 @@ export function barraConexion(ctx) {
     barra.hidden = false;
   };
   addEventListener("d360:conexion", (ev) => pintar(ev.detail));
+  const primeraVez = !precargaInfo(ctx)?.completa;
+  addEventListener("d360:precarga", (ev) => {
+    const d = ev.detail;
+    if (d.fin) {
+      prep = null; pintar();
+      if (primeraVez && d.completa) toast("✓ Listo: este equipo ya puede trabajar sin internet.");
+      return;
+    }
+    if (primeraVez) { prep = d; pintar(); }
+  });
   pintar();
   return barra;
 }
@@ -54,6 +69,7 @@ export async function verBandeja(ctx) {
     const e = estado();
     cuerpo.replaceChildren(
       h("p.suave", e.enLinea ? "Hay internet. Los cambios se suben solos, en el orden en que se hicieron." : "No hay internet. Todo lo que guardes queda en este equipo y se sube solo cuando vuelva la conexión. No cierres sesión hasta entonces."),
+      textoPreparacion(ctx),
       items.length ? h("ul.lista.lista-bandeja", items.map((it) => h("li", { class: it.estado === "error" ? "mal" : "" },
         h("div.crece", h("strong", it.resumen), h("div.tenue", `${hora(it.t)} · ${it.estado === "error" ? "No se pudo subir" : "Por subir"}`),
           it.estado === "error" ? h("div.aviso.mal", { style: "margin-top:.4rem" }, explicar(it)) : null),
@@ -77,6 +93,52 @@ export async function verBandeja(ctx) {
   const al = () => { if (!m.el.isConnected) return removeEventListener("d360:conexion", al); pintar(); };
   addEventListener("d360:conexion", al);
   return m;
+}
+
+function textoPreparacion(ctx) {
+  const p = ctx?.id ? precargaInfo(ctx) : null;
+  const horas = horasSinConexion();
+  return h("p.tenue", { style: "margin:.25rem 0 .75rem" },
+    p?.t ? `Equipo preparado para trabajar sin internet: ${hora(p.t)} (${p.pantallas} pantallas guardadas). Se actualiza solo cada 6 horas con internet.` : "Este equipo aún no se ha preparado por completo para trabajar sin internet (se hace solo, con internet).",
+    horas != null ? ` Última conexión con el servidor: hace ${horas < 1 ? "menos de 1 hora" : horas < 48 ? Math.floor(horas) + " h" : Math.floor(horas / 24) + " días"}. Sin conexión por más de 3 días, se bloquea hasta conectarse.` : "");
+}
+
+// ---------- Bloqueo por más de 3 días sin conexión ----------
+export const LIMITE_HORAS = 72;
+let velo = null;
+/** Si el equipo lleva más de 3 días sin hablar con el servidor, se bloquea hasta que se conecte. */
+export function vigilarBloqueo(ctx) {
+  if (PRECARGA) return;
+  const revisar = () => {
+    const horas = horasSinConexion();
+    const bloquear = horas != null && horas > LIMITE_HORAS && !estado().enLinea;
+    if (bloquear && !velo) mostrarBloqueo(horas);
+    if (!bloquear && velo) { velo.remove(); velo = null; toast("✓ Conectado. Puedes seguir trabajando."); }
+  };
+  revisar();
+  addEventListener("d360:conexion", revisar);
+  setInterval(revisar, 60000);
+  // Si el equipo dice tener red pero aún no hubo contacto, se prueba una vez al abrir
+  if (navigator.onLine !== false) probarConexion().then(revisar).catch(() => {});
+}
+async function mostrarBloqueo(horas) {
+  const pend = (await bandeja().catch(() => [])).filter((x) => x.estado === "pendiente").length;
+  const estadoTxt = h("p.tenue", { role: "status" });
+  const btn = h("button.btn", { type: "button", onclick: async () => {
+    btn.disabled = true; estadoTxt.textContent = "Probando la conexión…";
+    const e = await probarConexion().catch(() => estado());
+    btn.disabled = false;
+    estadoTxt.textContent = e.enLinea ? "" : "Todavía no hay internet. Revisa el wifi o el cable e inténtalo de nuevo.";
+  } }, "Ya me conecté: probar de nuevo");
+  velo = h("div.bloqueo-conexion", { role: "alertdialog", "aria-modal": "true", "aria-labelledby": "bloqueo-titulo" },
+    h("div.bloqueo-caja",
+      h("h1", { id: "bloqueo-titulo" }, "Conéctate a internet para seguir"),
+      h("p", `Este equipo lleva ${Math.floor(horas / 24)} días sin conectarse con el servidor. Para proteger la información, Docencia360 funciona sin internet hasta 3 días seguidos.`),
+      pend ? h("p", h("strong", `Tus ${pend} cambio(s) guardados en este equipo están a salvo`), " y se subirán solos apenas haya conexión.") : h("p", "Tu información está a salvo en este equipo."),
+      h("p.tenue", "Conéctate a internet (wifi, cable o datos del celular) y toca el botón. Se desbloquea solo al conectarse."),
+      btn, estadoTxt));
+  document.body.append(velo);
+  btn.focus();
 }
 
 function explicar(it) {

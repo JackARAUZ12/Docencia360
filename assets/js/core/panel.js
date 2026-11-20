@@ -5,7 +5,9 @@ import { sb, q, mensajeError } from "./sb.js";
 import { h, toast, errorEn, cargando, fecha, modal, activarBuscadores } from "./ui.js";
 import { protegerModalidad, salir, ruta } from "./sesion.js";
 import { ayuda } from "./guia.js";
-import { barraConexion, avisosSincronizacion } from "./conexion.js";
+import { barraConexion, avisosSincronizacion, vigilarBloqueo } from "./conexion.js";
+import { PRECARGA } from "./offline.js";
+import { programarPrecarga } from "./precarga.js";
 
 const GESTORES = ["propietario", "director", "subdirector", "coordinador", "administrativo"];
 const FINANZAS = ["propietario", "director", "administrativo", "finanzas"];
@@ -56,11 +58,11 @@ export async function crearContexto(modalidad) {
     const mios = new Set((await ctx.datos.misGrupos(forzar)).map((x) => x.grupo_id));
     return todos.filter((g) => mios.has(g.id));
   };
-  if (ctx.esDueno && !ctx.cuenta.es_demo) revisarTerminos(ctx);
+  if (ctx.esDueno && !ctx.cuenta.es_demo && !PRECARGA) revisarTerminos(ctx);
   // Con internet, se dejan guardados en el equipo los datos básicos (grupos, estudiantes,
   // asignaturas, cursos…) para que los formularios funcionen aunque luego se vaya la conexión
   setTimeout(() => {
-    if (navigator.onLine === false) return;
+    if (navigator.onLine === false || PRECARGA) return;
     const base = [ctx.datos.grupos, ctx.datos.asignaturas, ctx.datos.cursos, ctx.datos.estudiantes];
     if (ctx.modalidad !== "profesor" || ctx.f("asistentes")) base.push(ctx.datos.instructores);
     if (ctx.esDocente) base.push(ctx.datos.misGrupos);
@@ -137,6 +139,9 @@ export function iniciarEnrutador(ctx, main, rutas, { inicio = "inicio", especial
   // Aviso de conexión arriba de cada pantalla (sin internet / cambios por subir)
   const barra = barraConexion(ctx);
   avisosSincronizacion(ctx);
+  // Bloqueo si pasan más de 3 días sin conectarse, y preparar el equipo para trabajar sin internet
+  vigilarBloqueo(ctx);
+  programarPrecarga(ctx);
   // Cambios sin guardar: un módulo registra ctx.pendiente = { hay: () => bool, confirmar: async () => bool }
   // y el enrutador pregunta antes de salir de la pantalla (menú, botones o cerrar la pestaña).
   addEventListener("beforeunload", (e) => { if (ctx.pendiente?.hay()) { e.preventDefault(); e.returnValue = ""; } });

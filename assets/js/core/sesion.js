@@ -1,7 +1,7 @@
 // Sesión, cuenta activa y protección de páginas.
 import { sb, q } from "./sb.js";
 import { CONFIG } from "../config.js";
-import { usuarioLocal, estado as estadoConexion, borrarCopias } from "./offline.js";
+import { usuarioLocal, estado as estadoConexion, borrarCopias, PRECARGA } from "./offline.js";
 
 /** Raíz del sitio (funciona en dominio propio o en subcarpeta de GitHub Pages). */
 export const RAIZ = new URL("../../../", import.meta.url).href;
@@ -74,6 +74,7 @@ export async function protegerModalidad(modalidad) {
 }
 
 export async function salir(motivo, destino = "entrar.html") {
+  if (PRECARGA) return;
   const est = estadoConexion();
   if (!motivo && est.pendientes > 0 && !confirm(`Tienes ${est.pendientes} cambio(s) guardados en este equipo que todavía no se subieron a internet.\n\nSi sales ahora se subirán la próxima vez que entres con tu cuenta en este mismo equipo. ¿Salir de todos modos?`)) return;
   await borrarCopias();   // la copia de consulta no queda en el equipo (privacidad)
@@ -87,6 +88,7 @@ export async function salir(motivo, destino = "entrar.html") {
 /** Cierra la sesión tras N minutos sin actividad (computadoras compartidas). */
 let temporizador;
 export async function vigilarInactividad() {
+  if (PRECARGA) return;   // la copia oculta que prepara el equipo nunca cierra la sesión
   let minutos = 60;
   try {
     const { data } = await sb.from("config_global").select("valor").eq("clave", "publico.inactividad_minutos").maybeSingle();
@@ -102,6 +104,7 @@ export async function vigilarInactividad() {
 
 // Si otra pestaña cierra la sesión, esta también
 sb.auth.onAuthStateChange((evento) => {
+  if (PRECARGA) return;
   if (evento === "SIGNED_OUT" && !/entrar|registro|recuperar|index|nueva-clave/.test(location.pathname) && location.pathname !== "/") {
     location.replace(ruta("entrar.html"));
   }

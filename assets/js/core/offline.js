@@ -13,6 +13,29 @@ import { CONFIG } from "../config.js";
 
 const fetchRed = (...a) => fetch(...a);   // fetch real del navegador
 
+// Modo «preparar el equipo»: una copia oculta de la app recorre las pantallas para dejar
+// todo guardado. En ese modo solo se LEE: nada se guarda, sube ni cambia en el servidor.
+export const PRECARGA = (() => { try { return new URLSearchParams(location.search).has("precarga"); } catch (_) { return false; } })();
+
+// Última vez que este equipo habló con el servidor (para el bloqueo de 3 días sin internet).
+// El reloj guardado nunca retrocede: si alguien atrasa la hora de la computadora, no sirve.
+const CLAVE_CONEXION = () => `d360-ultima-conexion-${uid()}`, CLAVE_RELOJ = "d360-reloj";
+export function ahoraSeguro() {
+  let maximo = 0; try { maximo = Number(localStorage.getItem(CLAVE_RELOJ)) || 0; } catch (_) {}
+  const t = Math.max(Date.now(), maximo);
+  try { if (t > maximo + 60000 || !maximo) localStorage.setItem(CLAVE_RELOJ, String(t)); } catch (_) {}
+  return t;
+}
+function anotarConexion() {
+  const t = ahoraSeguro();
+  try { localStorage.setItem(CLAVE_CONEXION(), String(t)); } catch (_) {}
+}
+/** Horas desde la última conexión con el servidor (null si nunca se registró en este equipo). */
+export function horasSinConexion() {
+  let u = null; try { u = Number(localStorage.getItem(CLAVE_CONEXION())) || null; } catch (_) {}
+  return u ? (ahoraSeguro() - u) / 3600000 : null;
+}
+
 // ---------- Qué funciona sin internet ----------
 // Tablas que se pueden modificar sin conexión (se suben al volver el internet)
 const TABLAS_OFFLINE = new Set(["asistencias", "calificaciones", "evaluaciones", "observaciones", "boletin_comentarios", "asistencia_docentes",
@@ -88,7 +111,7 @@ function sondear() {
   tSondeo = setTimeout(async () => {
     if (enLinea) return;
     if (navigator.onLine === false) return sondear();
-    try { const r = await fetchRed(CONFIG.supabaseUrl + "/auth/v1/health", { headers: { apikey: CONFIG.supabaseKey }, cache: "no-store" }); if (r.status < 500) return marcarRed(true); } catch (_) {}
+    try { const r = await fetchRed(CONFIG.supabaseUrl + "/auth/v1/health", { headers: { apikey: CONFIG.supabaseKey }, cache: "no-store" }); if (r.status < 500) { anotarConexion(); return marcarRed(true); } } catch (_) {}
     sondear();
   }, 20000);
 }
@@ -96,7 +119,7 @@ addEventListener("online", () => marcarRed(true));
 addEventListener("offline", () => marcarRed(false));
 /** Prueba la conexión ahora (botón «Reintentar»). */
 export async function probarConexion() {
-  try { const r = await fetchRed(CONFIG.supabaseUrl + "/auth/v1/health", { headers: { apikey: CONFIG.supabaseKey }, cache: "no-store" }); marcarRed(r.status < 500); }
+  try { const r = await fetchRed(CONFIG.supabaseUrl + "/auth/v1/health", { headers: { apikey: CONFIG.supabaseKey }, cache: "no-store" }); if (r.status < 500) anotarConexion(); marcarRed(r.status < 500); }
   catch (_) { marcarRed(false); }
   if (enLinea) await sincronizar().catch(() => {});
   return estadoActual;
@@ -223,12 +246,54 @@ async function guardarCopia(k, resp, url, metodo) {
     await tx("copias", "readwrite", (s) => {
       s.put({ s: resp.status, h: { "content-type": resp.headers.get("content-type") || "application/json", "content-range": resp.headers.get("content-range") || "" }, b: texto, t: Date.now() }, k);
       if (metodo === "GET" && !url.pathname.includes("/rpc/")) {
-        const kp = clavePariente(url);
-        return req(s.get(kp)).then((lista) => { const l = (lista || []).filter((x) => x.k !== k); l.push({ k, sel: url.searchParams.get("select") || "*" }); s.put(l.slice(-6), kp); });
+        const kp = clavePariente(url), kt = claveTabla(url);
+        const sinLimite = !url.searchParams.has("limit") && !url.searchParams.has("offset") && !/vnd\.pgrst\.object/.test(resp.headers.get("content-type") || "");
+        return Promise.all([
+          req(s.get(kp)).then((lista) => { const l = (lista || []).filter((x) => x.k !== k); l.push({ k, sel: url.searchParams.get("select") || "*" }); s.put(l.slice(-6), kp); }),
+          // Índice de la tabla: copias completas (sin límite) para armar consultas locales
+          sinLimite ? req(s.get(kt)).then((lista) => { const l = (lista || []).filter((x) => x.k !== k); l.push({ k, sel: url.searchParams.get("select") || "*", f: url.search }); s.put(l.slice(-40), kt); }) : null,
+        ]);
       }
     });
   } catch (_) { /* sin espacio o modo privado: se sigue sin copia */ }
 }
+const claveTabla = (url) => `#${uid()}|${url.pathname}`;
+// Filtros que no cambian el resultado (todo lo guardado es de las cuentas del usuario)
+const NEUTROS = new Set(["cuenta_id"]);
+/**
+ * Consulta local: busca copias completas de la misma tabla cuyos filtros sean más amplios
+ * que los pedidos (p. ej. «todos los estudiantes» para pedir «el estudiante X» o «los de
+ * este grupo»), y aplica ahí los filtros, el orden y el límite. Si no hay una fuente
+ * segura, no inventa nada.
+ */
+async function consultaLocal(url) {
+  const pedidos = filtros(url);
+  if (pedidos.desconocido) return null;
+  const lista = await tx("copias", "readonly", (s) => req(s.get(claveTabla(url)))).catch(() => null);
+  if (!lista?.length) return null;
+  const pide = columnas(url);
+  const clavePedido = new Set(pedidos.lista.map((f) => `${f.col}|${f.no}|${f.op}|${f.val}`));
+  for (const { k, sel, f } of lista.slice().reverse()) {
+    const tiene = columnas(new URL("http://x/?select=" + encodeURIComponent(sel)));
+    const colsOk = tiene.cols.has("*") || [...pide.cols].every((c) => c !== "*" && tiene.cols.has(c));
+    if (!colsOk || ![...pide.rels].every((r) => tiene.rels.has(r))) continue;
+    const fuente = filtros(new URL("http://x/" + (f || "")));
+    if (fuente.desconocido) continue;
+    // La fuente debe ser igual o más amplia: cada filtro suyo (salvo la cuenta) también está pedido
+    if (!fuente.lista.every((x) => NEUTROS.has(x.col) || clavePedido.has(`${x.col}|${x.no}|${x.op}|${x.val}`))) continue;
+    const c = await leerCopia(k); if (!c) continue;
+    let filas; try { filas = JSON.parse(c.b); } catch (_) { continue; }
+    if (!Array.isArray(filas)) continue;
+    // Las columnas a filtrar deben venir en la fuente (si no, no se puede saber)
+    if (filas.length && !pedidos.lista.every((x) => x.col in filas[0])) continue;
+    let res = ordenar(filas.filter((x) => cumple(x, pedidos)), url);
+    const off = Number(url.searchParams.get("offset")) || 0, lim = Number(url.searchParams.get("limit")) || 0;
+    if (off || lim) res = res.slice(off, lim ? off + lim : undefined);
+    return { filas: res, t: c.t };
+  }
+  return null;
+}
+
 /** Busca una copia de la misma consulta que traiga al menos las columnas pedidas. */
 async function copiaPariente(url) {
   const lista = await tx("copias", "readonly", (s) => req(s.get(clavePariente(url)))).catch(() => null);
@@ -258,7 +323,7 @@ async function leer(url, init, metodo, tabla) {
     try {
       const r = await fetchRed(url.href, { ...init, signal: ctl.signal });
       clearTimeout(t);
-      if (r.ok) guardarCopia(k, r, url, metodo);
+      if (r.ok) { guardarCopia(k, r, url, metodo); anotarConexion(); }
       return r;
     } catch (e) {
       clearTimeout(t);
@@ -273,6 +338,17 @@ async function leer(url, init, metodo, tabla) {
   let pariente = false;
   if (!c && metodo === "GET" && tabla) { c = await copiaPariente(url); pariente = !!c; }
   const pend = (await bandeja().catch(() => [])).filter((x) => x.estado === "pendiente");
+  // Sin copia exacta: se arma la respuesta con los datos de esa tabla ya guardados en el equipo
+  if (!c && metodo === "GET" && tabla) {
+    const local = await consultaLocal(url);
+    if (local) {
+      ultimaCopia = local.t;
+      const objeto = /vnd\.pgrst\.object/.test(new Headers(init?.headers).get("accept") || "");
+      const datos = superponer(url, tabla, local.filas, pend);
+      if (objeto) return datos.length === 1 ? respuesta(200, datos[0]) : respuesta(406, { code: "PGRST116", message: "No se encontró en los datos guardados." });
+      return respuesta(200, datos);
+    }
+  }
   if (c) {
     ultimaCopia = c.t;
     if (metodo === "HEAD" || !tabla) return new Response(metodo === "HEAD" ? null : c.b, { status: c.s, headers: c.h });
@@ -351,6 +427,7 @@ function respuestaLocal(url, init, metodo, rpc, body, item) {
 }
 
 async function escribir(url, init, metodo, tabla, rpc, etiqueta) {
+  if (PRECARGA) return respuesta(metodo === "POST" && rpc ? 200 : 204, metodo === "POST" && rpc ? null : undefined);   // preparar el equipo solo lee
   const permitido = (tabla && TABLAS_OFFLINE.has(tabla)) || (rpc && RPC_OFFLINE.has(rpc));
   let body = init?.body;
   // Ids creados aquí (inserciones simples) y clave del cobro: así un reenvío nunca duplica
@@ -379,7 +456,7 @@ async function escribir(url, init, metodo, tabla, rpc, etiqueta) {
   }
   try {
     const r = await fetchRed(url.href, { ...init, body });
-    if (r.ok) avisarEscritura(metodo, tabla || rpc);
+    if (r.ok) { avisarEscritura(metodo, tabla || rpc); anotarConexion(); }
     return r;
   } catch (e) {
     if (init?.signal?.aborted || !errorRed(e)) throw e;
@@ -416,7 +493,7 @@ async function quitarItem(n) { await tx("bandeja", "readwrite", (s) => s.delete(
 
 /** Sube los cambios pendientes, en el orden en que se hicieron. */
 export async function sincronizar() {
-  if (sincronizando) return estadoActual;
+  if (sincronizando || PRECARGA) return estadoActual;
   const correr = async () => {
     const pend = (await bandeja()).filter((x) => x.estado === "pendiente").sort((a, b) => a.n - b.n);
     if (!pend.length) return refrescarEstado();
@@ -440,7 +517,7 @@ export async function sincronizar() {
         let cuerpo = null; try { const tx = await r.text(); cuerpo = tx ? JSON.parse(tx) : null; } catch (_) {}
         const duplicado = r.status === 409 && cuerpo?.code === "23505" && it.metodo === "POST";
         if (r.ok || duplicado) {
-          await quitarItem(it.n); subidos++;
+          await quitarItem(it.n); subidos++; anotarConexion();
           if (it.rpc) { const reg = { clave: JSON.parse(it.body || "{}").p_clave, rpc: it.rpc, resumen: it.resumen, extra: it.extra, t: it.t, resultado: cuerpo, subido: Date.now(), uid: it.uid };
             if (reg.clave) await tx("hechos", "readwrite", (s) => s.put(reg)).catch(() => {}); resultados.push(reg); }
         } else if (r.status >= 500 || r.status === 401 || r.status === 429) {
@@ -485,5 +562,7 @@ export async function borrarCopias() {
 }
 
 // Arranque: estado inicial y subir lo pendiente
-refrescarEstado().then((e) => { if (e.pendientes && enLinea) programarSync(1500); });
-setInterval(() => { if (enLinea && estadoActual.pendientes && !sincronizando) sincronizar().catch(() => {}); }, 45000);
+if (!PRECARGA) {
+  refrescarEstado().then((e) => { if (e.pendientes && enLinea) programarSync(1500); });
+  setInterval(() => { if (enLinea && estadoActual.pendientes && !sincronizando) sincronizar().catch(() => {}); }, 45000);
+}

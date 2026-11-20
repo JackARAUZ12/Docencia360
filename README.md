@@ -69,6 +69,9 @@ Docencia360 funciona con y sin conexión. Internet sirve para registrarse, entra
 - Lo que el servidor rechace se muestra en el aviso de arriba con el motivo y las opciones «Reintentar» o «Descartar».
 - **Siempre necesitan internet:** registro, primer inicio de sesión, matricular, aula de estudiantes, inscripción en línea, cambiar de plan y cerrar caja.
 - **Al cerrar sesión** se borra la copia de consulta del equipo. Los cambios sin subir se conservan para la próxima vez que esa cuenta entre en el mismo equipo.
+- **El equipo se prepara solo:** con internet, una copia oculta de la app (que solo lee y nunca escribe) recorre todas las pantallas del menú y las de cada grupo, y guarda sus datos. Se repite cada 6 horas. Así, sin internet, se abren también las pantallas que nunca se visitaron (`assets/js/core/precarga.js`).
+- **Consultas locales:** si falta una copia exacta, la respuesta se arma con los datos ya guardados de esa tabla, siempre que la fuente sea igual o más amplia que lo pedido. Si no hay una fuente segura, no se inventa nada.
+- **Bloqueo a los 3 días:** si el equipo pasa más de 72 horas sin conectarse con el servidor, se bloquea hasta conectarse. Los cambios pendientes se conservan. El reloj guardado nunca retrocede, así que atrasar la hora de la computadora no sirve.
 - **La app se guarda en el equipo** (`sw.js`, instalable con `manifest.webmanifest`). Con internet siempre usa la versión más nueva.
 - **Al cambiar archivos de la app** hay que regenerar la lista que usa `sw.js`. La prueba `tests/ui/sin_internet.mjs` falla si quedó desactualizada.
 

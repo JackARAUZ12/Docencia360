@@ -101,7 +101,7 @@ iniciarEnrutador(ctx, main, RUTAS, {
 });
 
 // Primera vez: bienvenida guiada (solo el dueño, si aún no tiene grupos)
-if (ctx.esDueno && !ctx.guia.bienvenida) {
+if (ctx.esDueno && !ctx.guia.bienvenida && !new URLSearchParams(location.search).has("precarga")) {
   // En la demostración se muestra siempre la primera vez (es lo mismo que verá al crear su cuenta)
   if (ctx.cuenta.es_demo) bienvenida(ctx);
   else ctx.datos.grupos().then((g) => { if (!g.some((x) => x.estado === "activo")) bienvenida(ctx); }).catch(() => {});
