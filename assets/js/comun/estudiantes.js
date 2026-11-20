@@ -1,6 +1,6 @@
 // Estudiantes: registro, edición y expediente individual.
 import { sb, q } from "../core/sb.js";
-import { h, tabla, formularioModal, confirmar, fecha, fechaCorta, nombreCompleto, nota, descargarCSV } from "../core/ui.js";
+import { h, tabla, formularioModal, confirmar, fecha, fechaCorta, nombreCompleto, nota, descargarCSV, coincide } from "../core/ui.js";
 import { ICONOS } from "../core/iconos.js";
 import { botonReporte } from "./reporte.js";
 
@@ -47,9 +47,8 @@ export async function render(el, ctx, { partes }) {
   let filtro = "activo", texto = "";
   const cont = h("div");
   const pintar = () => {
-    const t = texto.toLowerCase();
     const lista = est.filter((e) => (filtro === "todos" || e.estado === filtro) &&
-      (!t || nombreCompleto(e).toLowerCase().includes(t) || (e.telefono || "").includes(t) || (e.codigo || "").toLowerCase().includes(t)));
+      coincide(texto, nombreCompleto(e), e.telefono, e.contacto_telefono, e.contacto_nombre, e.codigo, e.documento, (gruposDe[e.id] || []).join(" ")));
     cont.replaceChildren(tabla([
       { t: "Estudiante", v: (e) => h("a.fila-enlace", { href: `#/estudiantes/${e.id}` }, nombreCompleto(e)) },
       { t: "Grupos", v: (e) => (gruposDe[e.id] || []).join(", ") || h("span.tenue", "Sin grupo") },
@@ -75,7 +74,7 @@ export async function render(el, ctx, { partes }) {
         h("span", { html: ICONOS.subir }), "Importar Excel") : null,
       ctx.esGestor ? h("button.btn", { onclick: () => editarEstudiante(ctx, null, ctx.recargar) }, h("span", { html: ICONOS.mas_add }), "Nuevo estudiante") : null),
     h("div", { style: "display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center" },
-      h("input", { type: "search", placeholder: "Buscar por nombre o teléfono", style: "max-width:320px", "aria-label": "Buscar",
+      h("input", { type: "search", placeholder: "Buscar por nombre, teléfono, grupo o código", style: "max-width:320px", "aria-label": "Buscar",
         oninput: (e) => { texto = e.target.value; pintar(); } }),
       filtros,
       h("span.tenue", `${est.filter((e) => e.estado === "activo").length} activos de ${est.length}`)),

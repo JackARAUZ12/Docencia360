@@ -305,3 +305,4 @@ body:has(.guia-flotante:not([hidden])) .p-main { padding-bottom: calc(150px + en
 .lista-cobro-varios .cobro-item > input { width: 8.5rem; flex: none; }
 .cobro-total { font-size: 1.15rem; margin: .75rem 0; }
 @media (max-width: 520px) { .lista-cobro-varios .cobro-item > input { width: 100%; } }
+body:has(dialog.bienvenida[open]) .guia-flotante { display: none !important; }

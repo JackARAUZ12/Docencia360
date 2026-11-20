@@ -2,7 +2,7 @@
 // en cualquier examen o tarea en línea. Se llenan a mano o con «Guardar en
 // el banco» desde un examen; se usan con «Agregar del banco».
 import { sb, q } from "../core/sb.js";
-import { h, modal, confirmar, toast } from "../core/ui.js";
+import { h, modal, confirmar, toast, coincide } from "../core/ui.js";
 import { editarPregunta, TIPO_P } from "./enlinea.js";
 
 const resumen = (p) => p.tipo === "opcion" ? `Correcta: ${p.opciones[p.correcta]}` : p.tipo === "vf" ? `Correcta: ${p.correcta ? "Verdadero" : "Falso"}`
@@ -29,10 +29,10 @@ export async function render(el, ctx, { params }) {
   el.append(
     ctx.titulo("Banco de preguntas", h("button.btn", { onclick: () => editarPregunta(ctx, null, null, 0, ctx.recargar, { banco: true }) }, "Nueva pregunta")),
     h("p.suave", "Para llenarlo rápido: abre un examen que ya tengas y toca «Guardar en el banco». Para usarlo: en un examen, «Agregar del banco»."),
-    todas.length ? [filtros, h("input", { type: "search", placeholder: "Buscar en las preguntas", style: "max-width:360px;margin:.5rem 0 1rem", "aria-label": "Buscar", oninput: (e) => { texto = e.target.value.toLowerCase(); pintar(); } })] : null,
+    todas.length ? [filtros, h("input", { type: "search", placeholder: "Buscar en las preguntas", style: "max-width:360px;margin:.5rem 0 1rem", "aria-label": "Buscar", oninput: (e) => { texto = e.target.value; pintar(); } })] : null,
     lista);
   function pintar() {
-    const vis = todas.filter((p) => (!tema || p.tema === tema) && (!texto || p.enunciado.toLowerCase().includes(texto)));
+    const vis = todas.filter((p) => (!tema || p.tema === tema) && coincide(texto, p.enunciado, p.tema));
     lista.replaceChildren(vis.length ? h("section.hoja", h("ol.lista-preguntas", vis.map((p) => h("li",
       h("div.crece",
         h("div.tenue", `${p.tema} · ${TIPO_P[p.tipo]} · ${Number(p.puntos)} punto(s)${p.usada ? ` · usada ${p.usada} vez/veces` : ""}`),

@@ -56,7 +56,7 @@ const revisar = () => {
   // botones con el texto en 3+ líneas (se ve apretado)
   for (const el of ctrl.filter((e) => e.tagName === "BUTTON" || e.matches("a.btn"))) {
     const lh = parseFloat(getComputedStyle(el).lineHeight) || 20;
-    if (el.innerText.trim() && el.getBoundingClientRect().height > lh * 3 + 24 && !el.matches(".bv-opcion, .chip, .tarjeta, .opcion, .modo-btn, .curso-insc")) out.push(`botón apretado: ${nombre(el)}`);
+    if (el.innerText.trim() && el.getBoundingClientRect().height > lh * 3 + 24 && !el.matches(".bv-opcion, .chip, .tarjeta, .opcion, .modo-btn, .curso-insc, .atajo")) out.push(`botón apretado: ${nombre(el)}`);
   }
   const texto = (raiz === document.body ? (document.querySelector("main") || document.body) : raiz).innerText;
   for (const mal of ["undefined", "[object Object]", "NaN", "Invalid Date", "(opcional) (opcional)", "null"]) {

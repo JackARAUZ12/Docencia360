@@ -21,7 +21,7 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   // ---- Dirección ----
   let p = await pagina(ctxB, "propietario", tag);
   await p.goto(BASE + "/app/academia.html#/inicio"); await p.waitForTimeout(1400);
-  const menu = await p.locator("nav.a-lateral").innerText();
+  const menu = await p.locator("nav.a-lateral").textContent();
   ok(["Comunicados", "Exámenes en línea", "Aula virtual", "Pagos a instructores", "Familias"].every((x) => menu.includes(x)), `${tag} el menú trae comunicados, aula, exámenes, pagos a instructores y familias`);
   ok(!/\b(estudiantes activos)\b/.test("") && (await p.locator(".cifra b").first().innerText()).length > 0, `${tag} las cifras en Inicio muestran número (también el 0)`);
 

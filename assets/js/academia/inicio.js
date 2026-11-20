@@ -61,9 +61,25 @@ export async function render(el, ctx) {
     }
   }
 
+  // Acciones de todos los días, a un toque (según el rol)
+  const F = ctx.esFinanzas && ctx.f("finanzas"), G = ctx.esGestor;
+  let cajaHoy = null;
+  if (F) {
+    const miUser = ctx.rol === "finanzas" ? (await sb.auth.getUser()).data?.user?.id || null : null;
+    const cd = await q(sb.rpc("d360_caja_dia", { p_cuenta: ctx.id, p_fecha: hoy, p_cajero: miUser })).catch(() => null);
+    if (cd) cajaHoy = h("a.atajo.atajo-caja", { href: "#/caja" }, h("span.tenue", miUser ? "Mi caja de hoy" : "Caja de hoy"), h("strong", M(cd.total)), h("span.tenue", `${cd.recibos} recibo(s)${(cd.cierres || []).length ? " · cerrada" : ""}`));
+  }
+  const atajos = !ctx.esDocente ? h("div.atajos",
+    F ? h("button.atajo.atajo-principal", { type: "button", onclick: () => ctx.barraRapida?.enfocar("cobrar") }, h("strong", "Cobrar"), h("span", "matrícula o mensualidad")) : null,
+    cajaHoy,
+    G ? h("a.atajo", { href: "#/asistencia" }, h("strong", "Pasar lista"), h("span", "de la clase de hoy")) : null,
+    G || F ? h("a.atajo", { href: "#/interesados" }, h("strong", "Interesados"), h("span", "anotar o matricular")) : null,
+    G || F ? h("button.atajo", { type: "button", onclick: () => ctx.barraRapida?.enfocar("buscar") }, h("strong", "Buscar estudiante"), h("span", "ficha, cobro o WhatsApp")) : null) : null;
+
   el.append(
     h("div.p-titulo", h("div", h("p.tenue", { style: "margin:0" }, diaLargo(hoy)), h("h1", `Hola, ${ctx.cuenta.miembro_nombre.split(" ")[0]}`))),
     claseAhora,
+    atajos,
     notifs.map((x) => h("div.aviso.ojo", h("strong", x.titulo + ". "), x.cuerpo || "", x.enlace ? [" ", h("a", { href: x.enlace }, "Ver")] : null, " ",
       h("button.btn.btn-texto.btn-sm", { onclick: async (e) => { await sb.from("notificaciones").update({ leida: true }).eq("id", x.id); e.target.closest(".aviso").remove(); } }, "Entendido"))),
     ctx.esDocente

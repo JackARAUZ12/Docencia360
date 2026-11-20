@@ -72,3 +72,39 @@
 /* Franja de demostración / aviso del plan: mismo ancho y centrado que el contenido */
 .a-app .franja-panel { max-width: 1240px; }
 @media (min-width: 960px) and (max-width: 1023px) { .a-app .franja-panel { padding: 1rem 16px 0; } }
+
+/* Menú con grupos que se despliegan */
+.a-grupo-nav.desplegable > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.a-grupo-nav.desplegable > summary::-webkit-details-marker { display: none; }
+.a-grupo-nav.desplegable > summary::after { content: "▸"; margin-left: .4rem; opacity: .7; transition: transform .15s; }
+.a-grupo-nav.desplegable[open] > summary::after { transform: rotate(90deg); }
+.a-grupo-nav.desplegable > summary { padding: .35rem .6rem; font-size: .8rem; font-weight: 700; color: rgba(244, 246, 242, .6); border-radius: 8px; }
+.a-grupo-nav.desplegable > summary:hover { color: #F4F6F2; background: rgba(255,255,255,.06); }
+.a-grupo-nav.desplegable > summary > span:first-child { flex: 1; }
+.a-grupo-nav.desplegable > summary .tenue { font-weight: 400; margin-left: .3rem; color: inherit; opacity: .8; }
+
+/* Barra rápida: buscar estudiante y cobrar */
+.a-rapida { display: flex; gap: .6rem; align-items: center; padding: .6rem 16px; border-bottom: 1px solid var(--renglon); background: var(--papel); position: relative; z-index: 9; }
+@media (min-width: 1024px) { .a-rapida { padding: .6rem 2rem; } }
+@media print { .a-rapida { display: none !important; } }
+.rapida-caja { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
+.rapida-caja input { width: 100%; padding-left: 2.2rem; }
+.rapida-icono { position: absolute; left: .75rem; color: var(--texto-3); font-size: 1.15rem; pointer-events: none; z-index: 1; }
+.rapida-pista { position: absolute; left: 2.2rem; top: -.55rem; font-size: .72rem; font-weight: 700; color: var(--acento); background: var(--papel); padding: 0 .3rem; z-index: 1; }
+.rapida-cobrar { flex: none; }
+.rapida-res { position: absolute; top: calc(100% + 4px); left: 0; right: 0; list-style: none; margin: 0; padding: .3rem; background: var(--papel); border: 1px solid var(--renglon-fuerte); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.18); max-height: 70vh; overflow: auto; z-index: 30; }
+.rapida-item { display: flex; align-items: center; gap: .5rem; padding: .35rem; border-radius: 8px; flex-wrap: wrap; }
+.rapida-item.activo { background: var(--acento-suave); }
+.rapida-nombre { flex: 1 1 200px; min-width: 0; display: grid; text-align: left; background: none; border: 0; padding: .35rem .4rem; font: inherit; color: var(--texto); cursor: pointer; }
+.rapida-nombre strong, .rapida-nombre .tenue { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rapida-acciones { display: flex; gap: .35rem; flex-wrap: wrap; }
+.rapida-vacio { padding: .75rem; color: var(--texto-2); }
+
+/* Atajos del Inicio */
+.atajos { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .6rem; margin: 0 0 1.25rem; }
+.atajo { display: grid; gap: .15rem; text-align: left; padding: .85rem 1rem; border: 1px solid var(--renglon-fuerte); border-radius: 12px; background: var(--papel); color: var(--texto); font: inherit; cursor: pointer; text-decoration: none; }
+.atajo:hover, .atajo:focus-visible { border-color: var(--acento); background: var(--acento-suave); }
+.atajo strong { font-size: 1.05rem; } .atajo span { color: var(--texto-2); font-size: .88rem; }
+.atajo-principal { background: var(--acento); border-color: var(--acento); }
+.atajo-principal strong, .atajo-principal span { color: var(--papel); }
+.atajo-principal:hover, .atajo-principal:focus-visible { background: var(--acento); filter: brightness(1.08); }

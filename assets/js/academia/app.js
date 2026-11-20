@@ -8,6 +8,7 @@ import { botonTema } from "../core/tema.js";
 import { crearContexto, avisoPlan, textoPlan, iniciarEnrutador } from "../core/panel.js";
 import { accionMatricular, seccionMatriculasFicha, seccionEstadoCuenta } from "./matriculas.js";
 import { cargarGuia, botonGuia } from "../core/guia.js";
+import { barraRapida } from "./rapida.js";
 
 const ctx = await crearContexto("academia");
 if (ctx.rol === "tutor") { location.replace(ruta("app/familias.html")); await new Promise(() => {}); }
@@ -56,28 +57,41 @@ const AREAS = [
   ]],
 ];
 const RUTAS = AREAS.flatMap(([, rs]) => rs.filter((x) => x.ver));
+// «Día a día»: lo que cada rol usa todos los días, siempre a la vista. El resto, en grupos que se despliegan.
+const DIA = (D ? ["inicio", "asistencia", "grupos", "calificaciones"]
+  : ["inicio", "finanzas", "estudiantes", "asistencia", "interesados", "caja"]).filter((r) => RUTAS.some((x) => x.r === r && !x.oculto));
+const VISIBLES = RUTAS.filter((x) => !x.oculto);
+const COMPACTO = VISIBLES.length > 12;   // con menús cortos (instructor) se muestra todo abierto
 
 const icono = (n) => h("span", { html: ICONOS[n] });
 const main = h("main.a-main", { id: "contenido", tabIndex: -1 });
 const tituloRuta = h("div.ruta", "Inicio");
 const ROLES = { propietario: "Propietario", director: "Dirección", subdirector: "Subdirección", coordinador: "Coordinación", administrativo: "Administración", finanzas: "Finanzas", docente: "Instructor" };
 
+const enlace = (x, texto) => h("a", { href: "#/" + x.r, dataset: { r: x.r }, onclick: () => app.classList.remove("abierto") }, icono(x.i), h("span", texto || x.t));
+const rapida = barraRapida(ctx);
+ctx.barraRapida = rapida;
 const app = h("div.a-app",
   h("div.a-velo", { onclick: () => app.classList.remove("abierto") }),
   h("nav.a-lateral", { "aria-label": "Menú principal" },
     marca(ruta("app/academia.html")),
     h("div.a-inst", h("strong", ctx.cuenta.nombre), h("span.tenue", `${ctx.cuenta.miembro_nombre} · ${ROLES[ctx.rol] || ctx.rol}`)),
-    AREAS.map(([area, rs]) => {
-      const vis = rs.filter((x) => x.ver && !x.oculto);
-      return vis.length ? h("div.a-grupo-nav", h("span", area), vis.map((x) =>
-        h("a", { href: "#/" + x.r, dataset: { r: x.r }, onclick: () => app.classList.remove("abierto") }, icono(x.i), h("span", x.t)))) : null;
-    }),
+    COMPACTO ? h("div.a-grupo-nav", h("span", "Día a día"), DIA.map((r) => enlace(RUTAS.find((x) => x.r === r), r === "finanzas" ? "Cobrar y finanzas" : null))) : null,
+    (() => {
+      const grupos = AREAS.map(([area, rs]) => [area, rs.filter((x) => x.ver && !x.oculto && !(COMPACTO && DIA.includes(x.r)))]).filter(([, v]) => v.length);
+      if (!COMPACTO) return grupos.map(([area, vis]) => h("div.a-grupo-nav", h("span", area), vis.map((x) => enlace(x))));
+      // Grupos de 1–2 opciones se juntan en «Más» para no abrir menús casi vacíos
+      const grandes = grupos.filter(([, v]) => v.length > 2), mas = grupos.filter(([, v]) => v.length <= 2).flatMap(([, v]) => v);
+      const desplegable = (area, vis) => h("details.a-grupo-nav.desplegable", { dataset: { area } }, h("summary", h("span", area), h("span.tenue", String(vis.length))), vis.map((x) => enlace(x)));
+      return [...grandes.map(([area, vis]) => desplegable(area, vis)), mas.length ? desplegable("Más", mas) : null];
+    })(),
     h("div.pie", h("p.tenue", { style: "margin:0 .6rem .5rem" }, textoPlan(ctx.cuenta)),
       h("a", { href: "#", onclick: (e) => { e.preventDefault(); salir(); } }, icono("salir"), h("span", "Salir")))),
   h("div",
     h("header.a-cabecera",
       h("button.a-menu", { type: "button", "aria-label": "Abrir menú", onclick: () => app.classList.add("abierto"), html: ICONOS.menu }),
       h("div.crece", tituloRuta, h("div.tenue", ctx.cuenta.nombre)), botonTema()),
+    rapida,
     h("div.franja-panel", avisoPlan(ctx)),
     main));
 document.getElementById("app").replaceChildren(app);
@@ -99,5 +113,15 @@ iniciarEnrutador(ctx, main, RUTAS, {
     interesados: "anota a quien pregunta, agéndale una clase de prueba y matricúlalo en un paso. Comparte tu enlace de inscripción en línea en redes y WhatsApp.",
     recuperaciones: "si alguien faltó, agenda que recupere la clase en otro grupo; el instructor de ese grupo lo verá al pasar lista.",
   },
-  alNavegar: (r) => { tituloRuta.textContent = RUTAS.find((x) => x.r === r)?.t || ""; guia.actualizar(); },
+  alNavegar: (r) => {
+    tituloRuta.textContent = RUTAS.find((x) => x.r === r)?.t || "";
+    // Abre el grupo del menú donde está la pantalla actual
+    document.querySelectorAll("details.desplegable").forEach((d) => { if (d.querySelector(`[data-r="${r}"]`)) d.open = true; });
+    guia.actualizar();
+  },
 });
+
+// Primera vez: bienvenida guiada (solo la dueña, si aún no hay cursos)
+if (ctx.esDueno && !ctx.cuenta.es_demo && !ctx.guia.bienvenida) {
+  ctx.datos.cursos().then((c) => { if (!c.length) import("./bienvenida.js").then((m) => m.bienvenidaAcademia(ctx)); }).catch(() => {});
+}

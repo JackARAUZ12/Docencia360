@@ -126,6 +126,7 @@ const RPC = {
     { id: "m3", nombre: "Instructora Fija", telefono: null, activo: true, forma: "fijo", tarifa: 8000, clases: 8, horas: 12, sin_horario: 0, calculado: 8000, pagado: 0, detalle: [], pagos: [] },
     { id: "m4", nombre: "Nuevo Instructor", telefono: null, activo: true, forma: null, tarifa: null, clases: 0, horas: 0, sin_horario: 0, calculado: null, pagado: 0, detalle: [], pagos: [] }] },
   d360_instructor_pagar: "mvp2",
+  d360_crear_miembro: { miembro_id: "m9", codigo_personal: "482915" },
   d360_cobrar_varios: { pagos: [{ id: "pv1", recibo: 41, monto: 300, cargo_id: "cg1", concepto: "Matrícula · Álgebra", saldo: 0 }, { id: "pv2", recibo: 42, monto: 720, cargo_id: "cg2", concepto: "Mensualidad octubre 2026 · Álgebra", saldo: 0 }],
     total: 1020, fecha: hoy, metodo: "efectivo", referencia: null },
   d360_caja_dia: { fecha: hoy, cajero: null, total: 2000, recibos: 3, anulados: 100, por_metodo: { efectivo: 1700, transferencia: 300 },

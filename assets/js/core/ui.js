@@ -215,3 +215,74 @@ export function imprimir(nodo) {
   addEventListener("afterprint", fin);
   setTimeout(() => { print(); setTimeout(fin, 1000); }, 50);
 }
+
+// ---------- Búsqueda ----------
+/** Texto comparable: sin tildes, sin mayúsculas y con espacios simples («María» = «maria»). */
+export const normalizar = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+/** ¿Los campos contienen todas las palabras buscadas, en cualquier orden? («lopez ana» encuentra «Ana López»). */
+export function coincide(consulta, ...campos) {
+  const pal = normalizar(consulta).split(" ").filter(Boolean);
+  if (!pal.length) return true;
+  const txt = normalizar(campos.flat().filter((x) => x != null).join(" "));
+  return pal.every((p) => txt.includes(p));
+}
+
+/**
+ * Buscador que filtra mientras escribes cualquier lista o tabla ya pintada
+ * (filas de tabla o elementos de lista), sin volver a pedir datos. Si la lista
+ * se vuelve a pintar, el filtro se aplica solo. Muestra «N de M» y un aviso
+ * cuando nada coincide.
+ */
+export function buscadorVivo(objetivo, { placeholder = "Buscar…", items = "tbody > tr, ul.lista > li, ol.lista > li, ul.pase > li", min = 0, etiqueta = "Buscar en la lista" } = {}) {
+  const input = h("input", { type: "search", placeholder, "aria-label": etiqueta, autocomplete: "off", enterKeyHint: "search" });
+  const cuenta = h("span.tenue.buscador-cuenta", { "aria-live": "polite" });
+  const caja = h("div.buscador-vivo", h("span.buscador-icono", { "aria-hidden": "true" }, "⌕"), input, cuenta);
+  let aviso = null, t;
+  const aplicar = () => {
+    const el = typeof objetivo === "function" ? objetivo() : objetivo;
+    if (!el) return;
+    const filas = [...el.querySelectorAll(items)].filter((f) => !f.closest(".buscador-vivo"));
+    caja.hidden = filas.length < min && !input.value;
+    let vis = 0;
+    for (const f of filas) { const ok = coincide(input.value, f.textContent); f.hidden = !ok; if (ok) vis++; }
+    cuenta.textContent = input.value ? `${vis} de ${filas.length}` : "";
+    if (aviso) { aviso.remove(); aviso = null; }
+    if (input.value && !vis && filas.length) { aviso = h("p.vacio.buscador-nada", `Nada coincide con «${input.value}».`); el.append(aviso); }
+  };
+  input.addEventListener("input", () => { clearTimeout(t); t = setTimeout(aplicar, 60); });
+  input.addEventListener("keydown", (e) => { if (e.key === "Escape") { input.value = ""; aplicar(); } });
+  // Re-aplicar cuando la lista se vuelve a pintar
+  queueMicrotask(() => {
+    const el = typeof objetivo === "function" ? objetivo() : objetivo;
+    if (!el) return;
+    new MutationObserver((m) => { if (m.some((x) => x.target !== aviso && ![...x.addedNodes].every((n) => n === aviso))) { clearTimeout(t); t = setTimeout(aplicar, 30); } }).observe(el, { childList: true, subtree: true });
+    aplicar();
+  });
+  caja.aplicar = aplicar; caja.input = input;
+  return caja;
+}
+
+/**
+ * Pone un buscador en vivo en cada lista o tabla larga (10 filas o más) de la
+ * pantalla, también en las que se pintan después. No toca las pantallas que ya
+ * traen su propio buscador ni las listas dentro de ventanas.
+ */
+const SEL_FILAS = "tbody > tr, ul.lista > li, ol.lista > li, ul.pase > li";
+export function activarBuscadores(raiz, { min = 10 } = {}) {
+  const revisar = () => {
+    if (raiz.querySelector('input[type="search"]:not(.buscador-vivo input)')) return;   // la pantalla ya tiene su buscador
+    for (const s of raiz.querySelectorAll("section.hoja, div.hoja")) {
+      if (s.closest("dialog") || s.querySelector(".buscador-vivo") || s.parentElement?.closest("section.hoja, div.hoja")) continue;
+      const filas = [...s.querySelectorAll(SEL_FILAS)].filter((f) => !f.closest(".buscador-vivo"));
+      if (filas.length < min) continue;
+      const b = buscadorVivo(s, { placeholder: "Escribe para buscar en esta lista…", items: SEL_FILAS });
+      const titulo = s.querySelector(":scope > h2, :scope > .hoja-titulo");
+      titulo ? titulo.after(b) : s.prepend(b);
+    }
+  };
+  let t;
+  const obs = new MutationObserver(() => { clearTimeout(t); t = setTimeout(revisar, 120); });
+  obs.observe(raiz, { childList: true, subtree: true });
+  revisar();
+  return () => obs.disconnect();
+}

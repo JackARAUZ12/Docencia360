@@ -2,7 +2,7 @@
 // avisos del plan y enrutador por hash. Cada modalidad arma su propia
 // estructura visual y su propia lista de rutas encima de esto.
 import { sb, q, mensajeError } from "./sb.js";
-import { h, toast, errorEn, cargando, fecha, modal } from "./ui.js";
+import { h, toast, errorEn, cargando, fecha, modal, activarBuscadores } from "./ui.js";
 import { protegerModalidad, salir, ruta } from "./sesion.js";
 import { ayuda } from "./guia.js";
 
@@ -121,7 +121,7 @@ export function textoPlan(c) {
  * especiales: { [r]: (main) => void } para vistas sin módulo (p. ej. "mas").
  */
 export function iniciarEnrutador(ctx, main, rutas, { inicio = "inicio", especiales = {}, alNavegar, ayudas = {} } = {}) {
-  let n = 0;
+  let n = 0, apagarBuscadores = null;
   // Cambios sin guardar: un módulo registra ctx.pendiente = { hay: () => bool, confirmar: async () => bool }
   // y el enrutador pregunta antes de salir de la pantalla (menú, botones o cerrar la pestaña).
   addEventListener("beforeunload", (e) => { if (ctx.pendiente?.hay()) { e.preventDefault(); e.returnValue = ""; } });
@@ -153,6 +153,8 @@ export function iniciarEnrutador(ctx, main, rutas, { inicio = "inicio", especial
       const tip = ayudas[r] && ctx.guia ? ayuda(ctx, r, ayudas[r]) : null;
       if (tip) { const t = vista.querySelector(":scope > .p-titulo, :scope > h1"); t ? t.after(tip) : vista.prepend(tip); }
       main.replaceChildren(vista);
+      // Listas largas: buscador que filtra mientras se escribe
+      apagarBuscadores?.(); apagarBuscadores = activarBuscadores(vista);
       main.focus({ preventScroll: true });
       scrollTo(0, 0);
     } catch (e) {

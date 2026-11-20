@@ -1,6 +1,6 @@
 // Matrículas: inscripción con cobros automáticos, renovación y retiro.
 import { sb, q } from "../core/sb.js";
-import { h, tabla, modal, formularioModal, confirmar, fecha, hoyISO, dinero, nombreCompleto, descargarCSV } from "../core/ui.js";
+import { h, tabla, modal, formularioModal, confirmar, fecha, hoyISO, dinero, nombreCompleto, descargarCSV, coincide } from "../core/ui.js";
 import { ICONOS } from "../core/iconos.js";
 import { editarEstudiante } from "../comun/estudiantes.js";
 
@@ -131,9 +131,9 @@ export async function render(el, ctx, { params }) {
   const cuenta = (e) => ms.filter((m) => m.estado === e).length;
 
   function pintar() {
-    const t = texto.toLowerCase();
+    const t = texto;
     const filas = ms.filter((m) => (estado === "todas" || m.estado === estado) &&
-      (!t || nombreCompleto(m.estudiantes || {}).toLowerCase().includes(t) || (m.cursos?.nombre || "").toLowerCase().includes(t) || (m.grupos?.nombre || "").toLowerCase().includes(t)));
+      coincide(t, nombreCompleto(m.estudiantes || {}), m.cursos?.nombre, m.grupos?.nombre));
     cont.replaceChildren(tabla([
       { t: "Estudiante", v: (m) => h("a.fila-enlace", { href: `#/estudiantes/${m.estudiante_id}` }, nombreCompleto(m.estudiantes || {})) },
       { t: "Curso / grupo", v: (m) => [m.cursos?.nombre || "—", h("div.tenue", m.grupos?.nombre || "")] },

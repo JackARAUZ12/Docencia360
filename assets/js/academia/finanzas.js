@@ -1,7 +1,7 @@
 // Finanzas de la academia: cobros, pagos, recibos y morosidad.
 // Sin contabilidad compleja: lo necesario para saber quién debe y cuánto entró.
 import { sb, q } from "../core/sb.js";
-import { h, tabla, modal, formularioModal, confirmar, fecha, hoyISO, sumarDias, dinero, nombreCompleto, descargarCSV, imprimir } from "../core/ui.js";
+import { h, tabla, modal, formularioModal, confirmar, fecha, hoyISO, sumarDias, dinero, nombreCompleto, descargarCSV, imprimir, coincide } from "../core/ui.js";
 import { ICONOS } from "../core/iconos.js";
 import { movimiento, resumenAcademia, listaMovimientos, mesISO } from "../comun/movimientos.js";
 
@@ -141,8 +141,7 @@ export async function render(el, ctx, { params }) {
     if (vista === "resumen") return resumenAcademia(ctx, cont, { mes, alCambiarMes: cambiarMes, pendiente: totalPend });
     if (vista === "gastos") return listaMovimientos(ctx, cont, { mes, alCambiarMes: cambiarMes });
     if (vista === "pagos") {
-      const t = texto.toLowerCase();
-      const fs = pagos.filter((p) => !t || nombreCompleto(E[p.estudiante_id] || {}).toLowerCase().includes(t) || String(p.recibo).includes(t));
+      const fs = pagos.filter((p) => coincide(texto, nombreCompleto(E[p.estudiante_id] || {}), String(p.recibo), String(p.recibo).padStart(6, "0"), p.cargos?.concepto, p.referencia));
       cont.replaceChildren(h("section.hoja", tabla([
         { t: "Recibo", v: (p) => h("strong.num", String(p.recibo).padStart(6, "0")) },
         { t: "Fecha", v: (p) => fecha(p.fecha) },
@@ -159,10 +158,10 @@ export async function render(el, ctx, { params }) {
       ], fs, { vacio: "No hay pagos en los últimos 120 días." })));
       return;
     }
-    const t = texto.toLowerCase();
+    const t = texto;
     const fs = cargos.filter((c) => (filtro === "todos" || (filtro === "vencidos" ? c.vence < hoy : c.vence >= hoy)) &&
       (!estSel || c.estudiante_id === estSel) &&
-      (!t || nombreCompleto(E[c.estudiante_id] || {}).toLowerCase().includes(t) || c.concepto.toLowerCase().includes(t)));
+      coincide(t, nombreCompleto(E[c.estudiante_id] || {}), c.concepto));
     cont.replaceChildren(h("section.hoja", tabla([
       { t: "Vence", v: (c) => h("span", { className: c.vence < hoy ? "nota-baja" : "" }, fecha(c.vence)) },
       { t: "Estudiante", v: (c) => [h("a.fila-enlace", { href: `#/estudiantes/${c.estudiante_id}` }, nombreCompleto(E[c.estudiante_id] || {})), h("div.tenue", E[c.estudiante_id]?.contacto_telefono || E[c.estudiante_id]?.telefono || "")] },

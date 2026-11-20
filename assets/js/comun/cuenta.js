@@ -133,7 +133,8 @@ export async function render(el, ctx) {
           h("p.suave", "La guía te acompaña hasta dejar lista tu cuenta. Si la ocultaste, puedes volver a mostrarla."),
           h("div", { style: "display:flex;gap:.5rem;flex-wrap:wrap" },
             h("button.btn.btn-sec", { onclick: async () => { await ctx.guiaGuardar({ oculta: false }); await ctx.botonGuia?.actualizar(); ctx.toast("Guía visible: usa el botón «Primeros pasos»."); } }, "Mostrar la guía"),
-            ctx.modalidad === "profesor" ? h("button.btn.btn-texto", { onclick: async () => (await import("../core/guia.js")).bienvenida(ctx, { forzar: true }) }, "Ver la bienvenida otra vez") : null)) : null,
+            ctx.modalidad === "profesor" ? h("button.btn.btn-texto", { onclick: async () => (await import("../core/guia.js")).bienvenida(ctx, { forzar: true }) }, "Ver la bienvenida otra vez")
+              : h("button.btn.btn-texto", { onclick: async () => (await import("../academia/bienvenida.js")).bienvenidaAcademia(ctx, { forzar: true }) }, "Abrir la bienvenida guiada"))) : null,
         h("section.hoja", h("h2", "Seguridad"),
           h("p.suave", "Por seguridad, la sesión se cierra sola tras un tiempo sin uso."),
           ctx.esDueno ? h("button.btn.btn-sec", { onclick: () => formularioModal("Cambiar contraseña", [

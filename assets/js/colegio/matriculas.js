@@ -1,7 +1,7 @@
 // Matrícula escolar: inscripción por sección con matrícula y colegiaturas automáticas,
 // becas, traslados y retiros. Vista por grado y sección con cupos.
 import { sb, q } from "../core/sb.js";
-import { h, tabla, formularioModal, fecha, dinero, nombreCompleto, descargarCSV } from "../core/ui.js";
+import { h, tabla, formularioModal, fecha, dinero, nombreCompleto, descargarCSV, coincide } from "../core/ui.js";
 import { ICONOS } from "../core/iconos.js";
 import { estructura } from "./util.js";
 import { editarEstudiante } from "../comun/estudiantes.js";
@@ -78,8 +78,8 @@ export async function render(el, ctx, { params }) {
   const cont = h("div");
 
   const pintar = () => {
-    const t = texto.toLowerCase();
-    const fs = ms.filter((m) => (!filtroSec || m.grupo_id === filtroSec) && (!t || nombreCompleto(m.estudiantes || {}).toLowerCase().includes(t) || (m.estudiantes?.codigo || "").toLowerCase().includes(t)));
+    const t = texto;
+    const fs = ms.filter((m) => (!filtroSec || m.grupo_id === filtroSec) && coincide(t, nombreCompleto(m.estudiantes || {}), m.estudiantes?.codigo));
     cont.replaceChildren(tabla([
       { t: "Estudiante", v: (m) => [h("a.fila-enlace", { href: `#/estudiantes/${m.estudiante_id}` }, nombreCompleto(m.estudiantes || {})), m.estudiantes?.codigo ? h("div.tenue", m.estudiantes.codigo) : null] },
       { t: "Sección", v: (m) => E.seccion(m.grupo_id)?.nombre || "—" },

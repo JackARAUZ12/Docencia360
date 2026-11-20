@@ -1,6 +1,6 @@
 // Grupos: integrantes, asignatura/curso y horario semanal.
 import { sb, q } from "../core/sb.js";
-import { h, tabla, formularioModal, confirmar, modal, fecha, hora, DIAS, nombreCompleto } from "../core/ui.js";
+import { h, tabla, formularioModal, confirmar, modal, fecha, hora, DIAS, nombreCompleto, coincide } from "../core/ui.js";
 import { ICONOS } from "../core/iconos.js";
 import { CAMPOS_ESTUDIANTE } from "./estudiantes.js";
 
@@ -107,8 +107,8 @@ async function detalle(el, ctx, id) {
   };
   const agregarEstudiantes = () => {
     const buscar = h("input", { type: "search", placeholder: "Buscar", "aria-label": "Buscar estudiante" });
-    const lista = h("div", libres.map((e) => h("label.check", { dataset: { n: nombreCompleto(e).toLowerCase() } }, h("input", { type: "checkbox", value: e.id }), nombreCompleto(e))));
-    buscar.addEventListener("input", () => lista.querySelectorAll("label").forEach((l) => l.classList.toggle("oculto", !l.dataset.n.includes(buscar.value.toLowerCase()))));
+    const lista = h("div", libres.map((e) => h("label.check", { dataset: { n: nombreCompleto(e) } }, h("input", { type: "checkbox", value: e.id }), nombreCompleto(e))));
+    buscar.addEventListener("input", () => lista.querySelectorAll("label").forEach((l) => l.classList.toggle("oculto", !coincide(buscar.value, l.dataset.n))));
     modal("Agregar estudiantes al grupo", h("div", buscar, lista), [
       { texto: "Cancelar", clase: "btn-sec" },
       { texto: "Agregar seleccionados", onclick: async (cerrar) => {

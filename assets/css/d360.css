@@ -374,3 +374,11 @@ a.btn-texto[href="#/cuenta"] { white-space: normal; text-align: left; max-width:
 .btn.con-rubrica { border-color: var(--aprobado); color: var(--aprobado); }
 .banco-elegir { max-height: 55vh; overflow-y: auto; }
 .banco-elegir li { border-bottom: 1px solid var(--renglon); padding: .5rem 0; }
+
+/* Buscador en vivo de listas */
+.buscador-vivo { display: flex; align-items: center; gap: .5rem; position: relative; margin: .25rem 0 .75rem; max-width: 460px; }
+.buscador-vivo .buscador-icono { position: absolute; left: .75rem; color: var(--texto-3); font-size: 1.15rem; pointer-events: none; }
+.buscador-vivo input { padding-left: 2.2rem; flex: 1; min-width: 0; }
+.buscador-vivo .buscador-cuenta { white-space: nowrap; font-size: .85rem; }
+.buscador-nada { padding: 1rem 0; }
+[hidden] { display: none !important; }

@@ -2,7 +2,7 @@
 // Cada acción está protegida en el servidor: RLS + funciones que
 // verifican d360_es_plataforma_admin(). Esta interfaz no decide permisos.
 import { sb, q } from "../core/sb.js";
-import { h, marca, tabla, formularioModal, confirmar, modal, toast, fecha, dinero, hoyISO, sumarDias, errorEn, cargando } from "../core/ui.js";
+import { h, marca, tabla, formularioModal, confirmar, modal, toast, fecha, dinero, hoyISO, sumarDias, errorEn, cargando, coincide } from "../core/ui.js";
 import { sesionActual, salir, ruta } from "../core/sesion.js";
 import { botonTema } from "../core/tema.js";
 
@@ -69,7 +69,7 @@ async function cuentas(el) {
   const pintar = () => {
     const t = texto.toLowerCase();
     const filas = lista.filter((c) => (!fMod || c.modalidad === fMod) && (!fEst || c.estado === fEst) &&
-      (!t || [c.nombre, c.codigo, c.propietario_email, c.telefono].some((x) => (x || "").toLowerCase().includes(t))));
+      coincide(texto, c.nombre, c.codigo, c.propietario_email, c.telefono));
     cont.replaceChildren(tabla([
       { t: "Cuenta", v: (c) => [h("strong", c.nombre), c.es_demo ? h("span.estado.info", { style: "margin-left:.4rem" }, "Demo") : null, h("div.tenue", `${c.codigo} · ${c.propietario_email || ""}`)] },
       { t: "Modalidad", v: (c) => MOD[c.modalidad] },
