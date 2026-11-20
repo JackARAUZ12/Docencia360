@@ -62,7 +62,7 @@ function pasosDemo(ctx, res) {
     if (DEMO_SOLO_VER.has(p.k)) { ultimosHref[p.k] = RUTA_DE(p.href); if (!p.hecho) { p.b = "Ver cómo es"; p.d += " En la demo solo se mira: se marca al abrir la pantalla."; } }
   }
   res.hechos = res.pasos.filter((p) => p.hecho).length;
-  res.completa = res.pasos.filter((p) => !p.opcional).every((p) => p.hecho);
+  res.completa = res.pasos.every((p) => p.hecho);
   return res;
 }
 
@@ -129,8 +129,8 @@ export async function pasosProfesor(ctx) {
   if (ctx.f("rubricas")) pasos.push({ k: "rubrica", hecho: extra.rubrica, t: "Crea tu primera rúbrica", d: "Empieza con una plantilla y califica exposiciones o proyectos eligiendo niveles.", href: "#/rubricas", b: "Crear", opcional: true });
   if (ctx.f("banco_preguntas")) pasos.push({ k: "banco", hecho: extra.banco, t: "Guarda preguntas en tu banco", d: "Desde un examen, «Guardar en el banco», para reusarlas en otros.", href: "#/banco", b: "Ver banco", opcional: true });
   const obligatorios = pasos.filter((p) => !p.opcional);
-  // La guía se da por completa con los pasos obligatorios; los opcionales siguen en la lista.
-  return pasosDemo(ctx, { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: g1, completa: obligatorios.every((p) => p.hecho) });
+  // La guía sigue visible hasta completar TODOS los pasos (también los opcionales).
+  return pasosDemo(ctx, { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: g1, obligatorios: obligatorios.every((p) => p.hecho), completa: pasos.every((p) => p.hecho) });
 }
 
 /** Pasos de la guía de la academia (dirección): de cero a la primera clase con lista y cobros. */
@@ -172,7 +172,7 @@ export async function pasosAcademia(ctx) {
   if (ctx.f("comunicados")) pasos.push({ k: "comunicado", hecho: comunicado, t: "Publica tu primer comunicado", d: "Llega al aula de los estudiantes, a las familias o solo a instructores.", href: "#/comunicados", b: "Publicar", opcional: true });
   if (ctx.f("portal_familias")) pasos.push({ k: "familia", hecho: familia, t: "Da acceso a una familia", d: "Desde la ficha del estudiante: «Padres y tutores» → «Agregar».", href: "#/estudiantes", b: "Ir", opcional: true });
   const obligatorios = pasos.filter((p) => !p.opcional);
-  return pasosDemo(ctx, { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: g1, completa: obligatorios.every((p) => p.hecho) });
+  return pasosDemo(ctx, { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: g1, obligatorios: obligatorios.every((p) => p.hecho), completa: pasos.every((p) => p.hecho) });
 }
 const pasosDe = (ctx) => (ctx.modalidad === "academia" ? pasosAcademia(ctx) : pasosProfesor(ctx));
 
@@ -217,7 +217,12 @@ export function botonGuia(ctx) {
     const { hechos, pasos } = ultimo;
     // Avisa qué paso se acaba de completar (no la primera vez que se revisa)
     const ahora = new Set(pasos.filter((p) => p.hecho).map((p) => p.k));
-    if (previos) { const nuevo = pasos.find((p) => p.hecho && !previos.has(p.k)); if (nuevo && !(hechos >= pasos.length || ultimo.completa)) ctx.toast(`✓ Paso completado: ${nuevo.t}`); }
+    // Si una acción completa varios pasos a la vez, se nombran todos
+    if (previos && !(hechos >= pasos.length || ultimo.completa)) {
+      const nuevos = pasos.filter((p) => p.hecho && !previos.has(p.k)).map((p) => p.t);
+      if (nuevos.length === 1) ctx.toast(`✓ Paso completado: ${nuevos[0]}`);
+      else if (nuevos.length > 1) ctx.toast(`✓ ${nuevos.length} pasos completados: ${nuevos.slice(0, -1).join(", ")} y ${nuevos.at(-1)}`);
+    }
     previos = ahora;
     // La lista abierta y los paneles de Inicio se actualizan en el momento
     if (abierta?.lista.isConnected) { abierta.lista.replaceChildren(listaPasos(ultimo, cerrarDialogo)); if (abierta.titulo) abierta.titulo.textContent = `Primeros pasos · ${hechos} de ${pasos.length}`; }

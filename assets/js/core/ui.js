@@ -65,7 +65,8 @@ export function toast(msg, tipo = "") {
   if (!c) { c = h("div#toasts", { "aria-live": "polite" }); c.id = "toasts"; document.body.append(c); }
   const t = h("div.toast" + (tipo ? "." + tipo : ""), { role: tipo === "mal" ? "alert" : "status" }, msg);
   c.append(t);
-  setTimeout(() => t.remove(), tipo === "mal" ? 6000 : 3200);
+  // Mensajes largos (p. ej. varios pasos completados) quedan más tiempo en pantalla
+  setTimeout(() => t.remove(), Math.min(9000, Math.max(tipo === "mal" ? 6000 : 3200, String(msg).length * 55)));
 }
 
 // ---------- Modal ----------

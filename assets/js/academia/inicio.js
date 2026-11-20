@@ -116,7 +116,7 @@ export async function render(el, ctx) {
   );
 
   // Cuenta en marcha: los primeros pasos con avance real, arriba, hasta completarlos
-  if (ctx.esDueno && !ctx.guia?.oculta && !ctx.guia?.completa) {
+  if (ctx.esDueno && !ctx.guia?.oculta) {
     const { pasosAcademia, listaPasos, alActualizarGuia } = await import("../core/guia.js");
     const g = await pasosAcademia(ctx).catch(() => null);
     const panel = (d) => h("section.hoja.guia-inicio", { style: "margin-bottom:1.25rem" },

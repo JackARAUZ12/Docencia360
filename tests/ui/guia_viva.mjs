@@ -35,15 +35,22 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   ok(desp && desp[0] === antes[0] + 1, `${tag} profesor: al crear el grupo el panel pasa a ${desp?.[0]} de ${desp?.[1]} sin cambiar de pantalla`);
   ok(await p.locator(".guia-viva li.hecho").count() === hechos0 + 1, `${tag} profesor: el paso queda marcado ✓ en la lista`);
   ok(await p.getByText("✓ Paso completado: Crea tu primer grupo").isVisible(), `${tag} profesor: avisa «Paso completado»`);
+  // Una acción que completa varios pasos a la vez: el aviso los nombra todos
+  await p.evaluate(async () => { const { sb, q } = await import("/assets/js/core/sb.js");
+    await Promise.all([q(sb.from("asistencias").insert({ grupo_id: "g", estudiante_id: "e", fecha: "2026-11-20", estado: "presente" })), q(sb.from("evaluaciones").insert({ nombre: "Prueba", grupo_id: "g" }))]); });
+  await p.waitForTimeout(1600);
+  ok(await p.getByText(/✓ 2 pasos completados: .+ y .+/).isVisible(), `${tag} profesor: si se completan varios pasos a la vez, el aviso los nombra todos`);
+  const n2 = (await cuenta(p, ".guia-viva h2"))?.[0];
+  await p.evaluate(() => { const t = document.querySelector("#toasts"); if (t) t.replaceChildren(); });
   // Lista abierta desde el botón flotante (en otra pantalla)
   await p.goto(BASE + "/app/profesor.html#/grupos"); await p.waitForTimeout(1300); await cerrarDialogos(p);
   const flot = p.locator("button.guia-flotante");
-  ok(await flot.isVisible() && (await flot.textContent()).includes(`${antes[0] + 1}/`), `${tag} profesor: el botón flotante muestra el avance nuevo`);
+  ok(await flot.isVisible() && (await flot.textContent()).includes(`${n2}/`), `${tag} profesor: el botón flotante muestra el avance nuevo (${n2})`);
   await flot.click(); await p.waitForTimeout(400);
-  ok((await cuenta(p, "dialog.modal .modal-cab h2"))?.[0] === antes[0] + 1, `${tag} profesor: la lista abierta muestra el avance`);
+  ok((await cuenta(p, "dialog.modal .modal-cab h2"))?.[0] === n2, `${tag} profesor: la lista abierta muestra el avance`);
   await insertar(p, "horarios", { grupo_id: "g", dia: 1 }); await p.waitForTimeout(1500);
-  ok((await cuenta(p, "dialog.modal .modal-cab h2"))?.[0] === antes[0] + 2 && await p.locator("dialog.modal li.hecho").count() === hechos0 + 2, `${tag} profesor: con la lista abierta, el título y los ✓ se actualizan solos`);
-  ok((await flot.textContent()).includes(`${antes[0] + 2}/`), `${tag} profesor: el botón flotante también avanza`);
+  ok((await cuenta(p, "dialog.modal .modal-cab h2"))?.[0] === n2 + 1 && await p.locator("dialog.modal li.hecho").count() === n2 + 1, `${tag} profesor: con la lista abierta, el título y los ✓ se actualizan solos`);
+  ok((await flot.textContent()).includes(`${n2 + 1}/`), `${tag} profesor: el botón flotante también avanza`);
   // Leer datos no dispara revisiones
   let revisiones = 0; p.on("request", (r) => { if (r.url().includes("/rest/v1/evaluaciones")) revisiones++; });
   await p.evaluate(async () => { const { sb, q } = await import("/assets/js/core/sb.js"); await q(sb.from("grupos").select("id")); await q(sb.rpc("d360_resumen_panel", {})).catch(() => {}); });
@@ -70,7 +77,8 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   await insertar(p, "cursos", { nombre: "Inglés A1", cuenta_id: "x" }); await p.waitForTimeout(1500);
   ok((await cuenta(p, ".guia-viva h2"))?.[0] === a0[0] + 1 && await p.getByText("✓ Paso completado: Registra tus cursos").isVisible(), `${tag} academia: al registrar el curso, el panel avanza solo y avisa`);
   await insertar(p, "matriculas", { estudiante_id: "e1", cuenta_id: "x" }); await p.waitForTimeout(1500);
-  ok(await p.locator(".guia-viva").count() === 0, `${tag} academia: al completar los pasos, el panel desaparece`);
+  ok(await p.locator(".guia-viva").count() === 1 && (await cuenta(p, ".guia-viva h2"))?.[0] === a0[0] + 2,
+    `${tag} academia: con los pasos obligatorios hechos, la guía SIGUE visible hasta completar también los opcionales`);
   await p.close(); await ctxA.close();
 }
 await browser.close();
