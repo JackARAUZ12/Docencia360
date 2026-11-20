@@ -80,6 +80,7 @@ const espera = (ms) => new Promise((ok) => setTimeout(ok, ms));
 /** Revisa cada 30 minutos si toca volver a preparar el equipo. */
 export function programarPrecarga(ctx) {
   if (PRECARGA) return;
+  if (navigator.webdriver && !window.__D360_PRECARGA_PRUEBA) return;   // en pruebas automáticas, solo si la prueba lo pide
   setTimeout(() => prepararEquipo(ctx), 4000);
   setInterval(() => prepararEquipo(ctx), 30 * 60000);
   addEventListener("online", () => setTimeout(() => prepararEquipo(ctx), 8000));

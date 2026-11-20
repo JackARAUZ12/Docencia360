@@ -21,7 +21,7 @@ for (const [modalidad, inicio, pantallas] of [
   const estado = { sinRed: false };
   const p = await ctxB.newPage();
   p.on("pageerror", (e) => errores.push(`${modalidad}: ${e.message}`));
-  await p.addInitScript(() => { window.__D360_SW = true; });
+  await p.addInitScript(() => { window.__D360_SW = true; window.__D360_PRECARGA_PRUEBA = true; });
   await preparar(p, true, modalidad, "propietario");
   await p.route(/supabase\.co/, (route) => (estado.sinRed ? route.abort("internetdisconnected") : route.fallback()));
   let escrituras = 0;
