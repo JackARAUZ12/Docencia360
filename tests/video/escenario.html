@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Escenario del video</title>
+<style>
+  :root { --verde: #1E3A32; --verde2: #2B5245; --amarillo: #F2C94C; --crema: #F4F6F2; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; font-family: Inter, "Segoe UI", system-ui, sans-serif; }
+  body { background: radial-gradient(1200px 700px at 20% 10%, #2E5A4C 0%, var(--verde) 55%, #14281F 100%); color: var(--crema); position: relative; }
+  body::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,.06) 1px, transparent 1px); background-size: 28px 28px; }
+  .marca { position: absolute; left: 64px; top: 40px; font-weight: 800; font-size: 30px; letter-spacing: -.01em; z-index: 5; }
+  .marca span { color: var(--amarillo); }
+  .etiqueta { position: absolute; right: 64px; top: 46px; font-weight: 700; font-size: 18px; letter-spacing: .12em; text-transform: uppercase; color: var(--amarillo); z-index: 5; }
+
+  /* Dispositivos */
+  .disp { position: absolute; transition: transform .9s cubic-bezier(.2,.8,.2,1), opacity .6s, left .9s cubic-bezier(.2,.8,.2,1), top .9s cubic-bezier(.2,.8,.2,1); transform-origin: top left; }
+  .laptop { width: 1402px; }
+  .laptop .pantalla { background: #0B0F12; border-radius: 22px 22px 0 0; padding: 8px 18px 20px; box-shadow: 0 40px 80px rgba(0,0,0,.45); }
+  .laptop .pantalla .camara { width: 8px; height: 8px; border-radius: 50%; background: #2a3138; margin: 0 auto 6px; }
+  .laptop iframe { display: block; width: 1366px; height: 768px; border: 0; border-radius: 6px; background: #fff; }
+  .laptop .base { height: 26px; margin: 0 -120px; background: linear-gradient(#cfd5d9, #9aa3aa); border-radius: 0 0 26px 26px; box-shadow: 0 30px 60px rgba(0,0,0,.35); }
+  .laptop .base::after { content: ""; display: block; width: 220px; height: 10px; margin: 0 auto; background: #8b949b; border-radius: 0 0 12px 12px; }
+  .telefono { width: 430px; padding: 20px; background: #0B0F12; border-radius: 64px; box-shadow: 0 40px 80px rgba(0,0,0,.5), inset 0 0 0 3px #2a3138; }
+  .telefono .isla { position: absolute; left: 50%; top: 31px; width: 116px; height: 30px; margin-left: -58px; background: #000; border-radius: 20px; z-index: 2; }
+  .telefono .pant { width: 390px; height: 844px; border-radius: 46px; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
+  .telefono .estado { height: 44px; flex: none; display: flex; justify-content: space-between; align-items: center; padding: 6px 30px 0 34px; font: 600 15px/1 Inter, system-ui, sans-serif; color: #111; background: #fff; }
+  .telefono .estado i { font-style: normal; letter-spacing: 1px; }
+  .telefono iframe { display: block; width: 390px; height: 800px; border: 0; background: #fff; }
+
+  /* Modos */
+  body.ambos .laptop { left: 70px; top: 150px; transform: scale(.80); opacity: 1; }
+  body.ambos .telefono { left: 1395px; top: 135px; transform: scale(.85); opacity: 1; }
+  body.pc .laptop { left: 273px; top: 96px; transform: scale(.98); opacity: 1; }
+  body.pc .telefono { left: 1700px; top: 300px; transform: scale(.55); opacity: 0; }
+  body.tel .laptop { left: -900px; top: 200px; transform: scale(.6); opacity: 0; }
+  body.tel .telefono { left: 1180px; top: 70px; transform: scale(1.0); opacity: 1; }
+  body.tarjeta .laptop, body.tarjeta .telefono { opacity: 0; }
+
+  /* Texto lateral (modo teléfono) */
+  .lado { position: absolute; left: 110px; top: 300px; width: 900px; opacity: 0; transform: translateY(20px); transition: opacity .6s, transform .6s; }
+  body.tel .lado.ver { opacity: 1; transform: none; }
+  .lado small { display: block; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--amarillo); font-size: 20px; margin-bottom: 18px; }
+  .lado h2 { font-size: 64px; line-height: 1.05; margin: 0 0 22px; font-weight: 800; letter-spacing: -.02em; }
+  .lado p { font-size: 30px; line-height: 1.4; margin: 0; opacity: .9; }
+
+  /* Subtítulo (modos pc y ambos) */
+  .sub { position: absolute; left: 50%; bottom: 36px; transform: translate(-50%, 20px); width: 1500px; background: rgba(12, 22, 18, .92); border-left: 8px solid var(--amarillo);
+    border-radius: 18px; padding: 20px 30px 22px; font-size: 30px; line-height: 1.35; font-weight: 500; opacity: 0; transition: opacity .45s, transform .45s; z-index: 6; box-shadow: 0 20px 50px rgba(0,0,0,.35); }
+  .sub.ver { opacity: 1; transform: translate(-50%, 0); }
+  .sub b { display: block; font-size: 18px; letter-spacing: .12em; text-transform: uppercase; color: var(--amarillo); margin-bottom: 8px; font-weight: 800; }
+  body.tel .sub { opacity: 0 !important; }
+
+  /* Tarjeta de título */
+  .tarj { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 160px; opacity: 0; transition: opacity .6s; z-index: 8; pointer-events: none; }
+  .tarj.ver { opacity: 1; }
+  .tarj small { font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--amarillo); font-size: 24px; }
+  .tarj h1 { font-size: 104px; line-height: 1; margin: 26px 0 28px; font-weight: 800; letter-spacing: -.03em; max-width: 15ch; }
+  .tarj p { font-size: 36px; line-height: 1.4; margin: 0; max-width: 46ch; opacity: .88; }
+  .tarj .pasos { display: flex; gap: 18px; margin-top: 46px; flex-wrap: wrap; }
+  .tarj .pasos span { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); border-radius: 999px; padding: 12px 24px; font-size: 26px; font-weight: 600; }
+  .barra { position: absolute; left: 0; bottom: 0; height: 8px; background: var(--amarillo); width: 0; transition: width .6s; z-index: 9; }
+</style>
+</head>
+<body class="tarjeta">
+  <div class="marca">Docencia<span>360</span></div>
+  <div class="etiqueta" id="etiqueta">Para docentes</div>
+  <div class="disp laptop" id="laptop"><div class="pantalla"><div class="camara"></div><iframe id="pc" title="Computadora"></iframe></div><div class="base"></div></div>
+  <div class="disp telefono" id="telefono"><div class="isla"></div><div class="pant"><div class="estado"><span>9:41</span><i>▂▄▆ ▮▮▮</i></div><iframe id="tel" title="Teléfono"></iframe></div></div>
+  <div class="lado" id="lado"><small></small><h2></h2><p></p></div>
+  <div class="sub" id="sub"><b></b><span></span></div>
+  <div class="tarj" id="tarj"><small></small><h1></h1><p></p><div class="pasos"></div></div>
+  <div class="barra" id="barra"></div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  window.esc = {
+    modo(m) { document.body.className = m; },
+    sub(et, txt) { const s = $("sub"); if (!txt) { s.classList.remove("ver"); return; } s.querySelector("b").textContent = et; s.querySelector("span").textContent = txt; s.classList.add("ver"); },
+    lado(et, tit, txt) { const l = $("lado"); if (!tit) { l.classList.remove("ver"); return; } l.querySelector("small").textContent = et; l.querySelector("h2").textContent = tit; l.querySelector("p").textContent = txt || ""; l.classList.add("ver"); },
+    tarjeta(et, tit, txt, pasos) { const t = $("tarj"); if (!tit) { t.classList.remove("ver"); return; }
+      t.querySelector("small").textContent = et; t.querySelector("h1").textContent = tit; t.querySelector("p").textContent = txt || "";
+      const p = t.querySelector(".pasos"); p.innerHTML = ""; (pasos || []).forEach((x) => { const s = document.createElement("span"); s.textContent = x; p.append(s); });
+      t.classList.add("ver"); },
+    etiqueta(t) { $("etiqueta").textContent = t; },
+    avance(f) { $("barra").style.width = (f * 100) + "%"; },
+    cargar(cual, url) { $(cual).src = url; },
+  };
+</script>
+</body>
+</html>
