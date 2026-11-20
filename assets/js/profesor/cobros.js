@@ -5,8 +5,11 @@
 // Usa las mismas tablas y reglas que las academias (cargos y pagos con
 // recibo numerado y saldo automático). Profesional y Premium.
 import { sb, q } from "../core/sb.js";
+import { mostrarComprobante } from "../comun/ticket.js";
 import { h, tabla, modal, formularioModal, confirmar, fecha, hoyISO, dinero, nombreCompleto } from "../core/ui.js";
 import { registrarPago, verRecibo } from "../academia/finanzas.js";
+import { etiquetar } from "../core/offline.js";
+import { codigoProvisional } from "../core/conexion.js";
 import { numeroWhatsApp } from "../comun/reporte.js";
 import { movimiento } from "../comun/movimientos.js";
 
@@ -216,9 +219,20 @@ function registrarClase(ctx, estudiantes) {
     { name: "pagado", label: "Ya me pagó", type: "checkbox", value: true },
     { name: "metodo", label: "Forma de pago", type: "select", required: true, options: [["efectivo", "Efectivo"], ["transferencia", "Transferencia"], ["deposito", "Depósito"], ["tarjeta", "Tarjeta"], ["otro", "Otro"]] },
   ], {}, async (d, cerrar) => {
-    const r = await q(sb.rpc("d360_cobro_clase", { p_cuenta: ctx.id, p_estudiante: d.estudiante_id, p_fecha: d.fecha, p_detalle: d.detalle || null,
-      p_monto: Number(d.monto), p_pagado: !!d.pagado, p_metodo: d.metodo || "efectivo" }));
-    cerrar(); ctx.toast(r.recibo ? `Clase registrada y pagada · recibo N.º ${r.recibo}` : "Clase registrada: queda en «Quién debe»");
+    const est = activos.find((e) => e.id === d.estudiante_id) || {};
+    const clave = crypto.randomUUID();   // si el envío se repite, la clase no se registra dos veces
+    const ticket = d.pagado ? { fecha: d.fecha, hora: new Date().toISOString(), estudiante: nombreCompleto(est), estudiante_id: est.id, telefono: est.contacto_telefono || est.telefono,
+      items: [{ concepto: `Clase particular${d.detalle ? " · " + d.detalle : ""}`, monto: Number(d.monto) }], total: Number(d.monto), metodo: d.metodo || "efectivo", cajero: ctx.cuenta.miembro_nombre } : null;
+    const r = await q(etiquetar(sb.rpc("d360_cobro_clase", { p_cuenta: ctx.id, p_estudiante: d.estudiante_id, p_fecha: d.fecha, p_detalle: d.detalle || null,
+      p_monto: Number(d.monto), p_pagado: !!d.pagado, p_metodo: d.metodo || "efectivo", p_clave: clave }),
+      `Clase de ${nombreCompleto(est)} · ${dinero(d.monto, ctx.cuenta.moneda)}${d.pagado ? " (pagada)" : ""}`, ticket ? { ticket } : null));
+    cerrar();
+    if (r?._pendiente) {
+      ctx.toast("Sin internet: la clase quedó guardada en este equipo y se subirá sola al volver la conexión.");
+      if (ticket) { mostrarComprobante(ctx, { ...ticket, recibos: [], provisional: codigoProvisional(clave), saldoPendiente: null }); }
+      return;
+    }
+    ctx.toast(r.recibo ? `Clase registrada y pagada · recibo N.º ${r.recibo}` : "Clase registrada: queda en «Quién debe»");
     ctx.recargar();
   }, { boton: "Registrar" });
   // Tarifa del estudiante elegido

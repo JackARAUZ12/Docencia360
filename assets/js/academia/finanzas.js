@@ -1,6 +1,9 @@
 // Finanzas de la academia: cobros, pagos, recibos y morosidad.
 // Sin contabilidad compleja: lo necesario para saber quién debe y cuánto entró.
 import { sb, q } from "../core/sb.js";
+import { mostrarComprobante, configurarTicket } from "../comun/ticket.js";
+import { etiquetar } from "../core/offline.js";
+import { codigoProvisional } from "../core/conexion.js";
 import { h, tabla, modal, formularioModal, confirmar, fecha, hoyISO, sumarDias, dinero, nombreCompleto, descargarCSV, imprimir, coincide } from "../core/ui.js";
 import { ICONOS } from "../core/iconos.js";
 import { movimiento, resumenAcademia, listaMovimientos, mesISO } from "../comun/movimientos.js";
@@ -25,7 +28,6 @@ export function recibo(ctx, p, cargo, est) {
 
 /** Comprobante de un pago: vista previa e impresión en 58, 76 u 80 mm, Carta, Bluetooth o WhatsApp. */
 export async function verRecibo(ctx, p, cargo, est) {
-  const { mostrarComprobante } = await import("../comun/ticket.js");
   return mostrarComprobante(ctx, {
     recibos: [p.recibo], fecha: p.fecha, hora: p.creado || (cargo ? new Date().toISOString() : null),
     estudiante: nombreCompleto(est || {}), estudiante_id: est?.id || p.estudiante_id, telefono: est?.contacto_telefono || est?.telefono,
@@ -61,6 +63,7 @@ export async function cobrarVarios(ctx, est, preseleccion = [], alGuardar) {
   const metodo = h("select", { "aria-label": "Forma de pago" }, METODOS.map(([v, t]) => h("option", { value: v }, t)));
   const fechaI = h("input", { type: "date", value: hoy, max: hoy, "aria-label": "Fecha del pago" });
   const ref = h("input", { maxLength: 80, placeholder: "N.º de transferencia o voucher (opcional)", "aria-label": "Referencia" });
+  const clave = crypto.randomUUID();   // identifica este cobro: si el envío se repite, no se cobra dos veces
   const m = modal(`Cobrar · ${nombreCompleto(est)}`, h("div",
     h("p.suave", "Marca lo que paga ahora. Puedes cobrar varios conceptos juntos (por ejemplo matrícula y mensualidad) en un solo comprobante, o un abono parcial."),
     err, h("ul.lista.lista-cobro-varios", filas),
@@ -75,12 +78,21 @@ export async function cobrarVarios(ctx, est, preseleccion = [], alGuardar) {
       if (!items.length) { err.textContent = "Marca al menos un concepto."; err.classList.remove("oculto"); return false; }
       if (malo) { err.textContent = "Revisa los montos: deben ser mayores que cero y no pasar del saldo."; err.classList.remove("oculto"); return false; }
       try {
-        const r = await q(sb.rpc("d360_cobrar_varios", { p_cuenta: ctx.id, p_estudiante: est.id, p_items: items, p_metodo: metodo.value, p_fecha: fechaI.value || hoy, p_referencia: ref.value.trim() || null }));
-        cerrar(); ctx.toast(r.pagos.length > 1 ? `${r.pagos.length} pagos registrados · recibos ${r.pagos.map((x) => x.recibo).join(", ")}` : `Pago registrado · recibo N.º ${r.pagos[0].recibo}`);
-        const { mostrarComprobante } = await import("../comun/ticket.js");
-        await mostrarComprobante(ctx, { recibos: r.pagos.map((x) => x.recibo), fecha: r.fecha, hora: new Date().toISOString(),
-          estudiante: nombreCompleto(est), estudiante_id: est.id, telefono: est.contacto_telefono || est.telefono,
-          items: r.pagos.map((x) => ({ concepto: x.concepto, monto: x.monto })), total: r.total, metodo: r.metodo, referencia: r.referencia, cajero: ctx.cuenta.miembro_nombre });
+        const totalTxt = items.reduce((a, b) => a + b.monto, 0);
+        const ticket = { fecha: fechaI.value || hoy, hora: new Date().toISOString(), estudiante: nombreCompleto(est), estudiante_id: est.id, telefono: est.contacto_telefono || est.telefono,
+          items: items.map((it) => ({ concepto: cargos.find((c) => c.id === it.cargo_id)?.concepto, monto: it.monto })), total: totalTxt, metodo: metodo.value, referencia: ref.value.trim() || null, cajero: ctx.cuenta.miembro_nombre };
+        const r = await q(etiquetar(sb.rpc("d360_cobrar_varios", { p_cuenta: ctx.id, p_estudiante: est.id, p_items: items, p_metodo: metodo.value, p_fecha: fechaI.value || hoy, p_referencia: ref.value.trim() || null, p_clave: clave }),
+          `Cobro a ${nombreCompleto(est)} · ${M(totalTxt)}`, { ticket }));
+        cerrar();
+        if (r?._pendiente) {
+          // Sin internet: queda guardado en este equipo y se sube solo; el comprobante es provisional
+          ctx.toast("Sin internet: el cobro quedó guardado en este equipo y se subirá solo al volver la conexión.");
+          await mostrarComprobante(ctx, { ...ticket, recibos: [], provisional: codigoProvisional(clave), saldoPendiente: null });
+        } else {
+          ctx.toast(r.pagos.length > 1 ? `${r.pagos.length} pagos registrados · recibos ${r.pagos.map((x) => x.recibo).join(", ")}` : `Pago registrado · recibo N.º ${r.pagos[0].recibo}`);
+          await mostrarComprobante(ctx, { ...ticket, recibos: r.pagos.map((x) => x.recibo), fecha: r.fecha,
+            items: r.pagos.map((x) => ({ concepto: x.concepto, monto: x.monto })), total: r.total, metodo: r.metodo, referencia: r.referencia });
+        }
         alGuardar?.();
       } catch (e) { err.textContent = e.message; err.classList.remove("oculto"); }
       return false;
@@ -99,10 +111,21 @@ export function registrarPago(ctx, cargo, est, alGuardar) {
     { name: "referencia", label: "Referencia / número de transferencia" },
   ], {}, async (d, cerrar) => {
     if (d.monto > saldo + 0.001) throw new Error(`El monto supera el saldo (${dinero(saldo, ctx.cuenta.moneda)}).`);
-    const p = await q(sb.from("pagos").insert({ cuenta_id: ctx.id, estudiante_id: est.id, cargo_id: cargo.id, monto: d.monto, metodo: d.metodo, fecha: d.fecha, referencia: d.referencia }).select("*").single());
-    cerrar(); ctx.toast(`Pago registrado · recibo N.º ${p.recibo}`);
-    const actualizado = { ...cargo, pagado: Number(cargo.pagado) + Number(d.monto) };
-    verRecibo(ctx, p, actualizado, est);
+    // Mismo camino que «Cobrar»: con clave única, así funciona también sin internet y nunca se duplica
+    const clave = crypto.randomUUID();
+    const ticket = { fecha: d.fecha, hora: new Date().toISOString(), estudiante: nombreCompleto(est), estudiante_id: est.id, telefono: est.contacto_telefono || est.telefono,
+      items: [{ concepto: cargo.concepto, monto: Number(d.monto) }], total: Number(d.monto), metodo: d.metodo, referencia: d.referencia || null, cajero: ctx.cuenta.miembro_nombre };
+    const r = await q(etiquetar(sb.rpc("d360_cobrar_varios", { p_cuenta: ctx.id, p_estudiante: est.id, p_items: [{ cargo_id: cargo.id, monto: Number(d.monto) }],
+      p_metodo: d.metodo || "efectivo", p_fecha: d.fecha, p_referencia: d.referencia || null, p_clave: clave }), `Pago de ${nombreCompleto(est)} · ${dinero(d.monto, ctx.cuenta.moneda)}`, { ticket }));
+    cerrar();
+    if (r?._pendiente) {
+      ctx.toast("Sin internet: el pago quedó guardado en este equipo y se subirá solo al volver la conexión.");
+      mostrarComprobante(ctx, { ...ticket, recibos: [], provisional: codigoProvisional(clave), saldoPendiente: null });
+    } else {
+      const p = r.pagos[0];
+      ctx.toast(`Pago registrado · recibo N.º ${p.recibo}`);
+      mostrarComprobante(ctx, { ...ticket, recibos: r.pagos.map((x) => x.recibo), items: r.pagos.map((x) => ({ concepto: x.concepto || "Abono a cuenta", monto: x.monto })), total: r.total });
+    }
     alGuardar?.();
   }, { boton: "Registrar pago" });
 }
@@ -199,7 +222,7 @@ export async function render(el, ctx, { params }) {
     ctx.titulo("Finanzas",
       ctx.f("exportar") ? h("button.btn.btn-sec", { onclick: () => descargarCSV(`pagos-${hoy}.csv`, [["Recibo", "Fecha", "Estudiante", "Concepto", "Forma", "Referencia", "Monto", "Anulado"],
         ...pagos.map((p) => [p.recibo, p.fecha, nombreCompleto(E[p.estudiante_id] || {}), p.cargos?.concepto || "Abono", p.metodo, p.referencia, p.monto, p.anulado ? "sí" : "no"])]) }, h("span", { html: ICONOS.descargar }), "Exportar pagos") : null,
-      h("button.btn.btn-sec", { onclick: async () => (await import("../comun/ticket.js")).configurarTicket(ctx) }, "Datos del comprobante"),
+      h("button.btn.btn-sec", { onclick: async () => configurarTicket(ctx) }, "Datos del comprobante"),
       h("a.btn.btn-sec", { href: "#/caja" }, "Cierre de caja"),
       h("button.btn.btn-sec", { onclick: () => movimiento(ctx, "gasto") }, "Registrar gasto"),
       h("button.btn", { onclick: cobroManual }, h("span", { html: ICONOS.mas_add }), "Nuevo cobro")),

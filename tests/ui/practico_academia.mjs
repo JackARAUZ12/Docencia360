@@ -52,7 +52,7 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
     const nombres = ["Ana López", "María José Gutiérrez", "Luis Pérez", "José Ñúñez", "Carla Ruiz", "Pedro Díaz", "Sofía Herrera", "Raúl Martínez", "Elena Ríos", "Iván Zeledón", "Lucía Pineda", "Mario Gómez"];
     const s = document.createElement("section"); s.className = "hoja prueba-larga";
     s.innerHTML = "<h2>Lista larga</h2><ul class='lista'>" + nombres.map((n) => `<li><strong>${n}</strong></li>`).join("") + "</ul>";
-    document.querySelector("main > div").append(s);
+    document.querySelector("main > div:not(.conexion)").append(s);
   });
   await p.waitForTimeout(500);
   const bv = p.locator(".prueba-larga .buscador-vivo input");

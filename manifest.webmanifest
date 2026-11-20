@@ -1,0 +1,12 @@
+{
+  "name": "Docencia360",
+  "short_name": "Docencia360",
+  "description": "Gestión de clases, asistencia, notas y cobros. Funciona también sin internet.",
+  "start_url": "./entrar.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F4F6F2",
+  "theme_color": "#1E3A32",
+  "lang": "es",
+  "icons": [{ "src": "assets/img/icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

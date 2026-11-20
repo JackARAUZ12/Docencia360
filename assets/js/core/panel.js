@@ -5,6 +5,7 @@ import { sb, q, mensajeError } from "./sb.js";
 import { h, toast, errorEn, cargando, fecha, modal, activarBuscadores } from "./ui.js";
 import { protegerModalidad, salir, ruta } from "./sesion.js";
 import { ayuda } from "./guia.js";
+import { barraConexion, avisosSincronizacion } from "./conexion.js";
 
 const GESTORES = ["propietario", "director", "subdirector", "coordinador", "administrativo"];
 const FINANZAS = ["propietario", "director", "administrativo", "finanzas"];
@@ -56,6 +57,17 @@ export async function crearContexto(modalidad) {
     return todos.filter((g) => mios.has(g.id));
   };
   if (ctx.esDueno && !ctx.cuenta.es_demo) revisarTerminos(ctx);
+  // Con internet, se dejan guardados en el equipo los datos básicos (grupos, estudiantes,
+  // asignaturas, cursos…) para que los formularios funcionen aunque luego se vaya la conexión
+  setTimeout(() => {
+    if (navigator.onLine === false) return;
+    const base = [ctx.datos.grupos, ctx.datos.asignaturas, ctx.datos.cursos, ctx.datos.estudiantes];
+    if (ctx.modalidad !== "profesor" || ctx.f("asistentes")) base.push(ctx.datos.instructores);
+    if (ctx.esDocente) base.push(ctx.datos.misGrupos);
+    base.forEach((f) => f(true).catch(() => {}));
+    // Encabezado del comprobante (RUC, dirección…) para imprimir aunque no haya internet
+    if (ctx.f("finanzas") && ctx.esFinanzas) import("../comun/ticket.js").then((m) => m.datosTicket(ctx, true)).catch(() => {});
+  }, 2500);
   return ctx;
 }
 
@@ -122,6 +134,9 @@ export function textoPlan(c) {
  */
 export function iniciarEnrutador(ctx, main, rutas, { inicio = "inicio", especiales = {}, alNavegar, ayudas = {} } = {}) {
   let n = 0, apagarBuscadores = null;
+  // Aviso de conexión arriba de cada pantalla (sin internet / cambios por subir)
+  const barra = barraConexion(ctx);
+  avisosSincronizacion(ctx);
   // Cambios sin guardar: un módulo registra ctx.pendiente = { hay: () => bool, confirmar: async () => bool }
   // y el enrutador pregunta antes de salir de la pantalla (menú, botones o cerrar la pestaña).
   addEventListener("beforeunload", (e) => { if (ctx.pendiente?.hay()) { e.preventDefault(); e.returnValue = ""; } });
@@ -152,14 +167,14 @@ export function iniciarEnrutador(ctx, main, rutas, { inicio = "inicio", especial
       // Consejo de una línea la primera vez que se entra a la sección
       const tip = ayudas[r] && ctx.guia ? ayuda(ctx, r, ayudas[r]) : null;
       if (tip) { const t = vista.querySelector(":scope > .p-titulo, :scope > h1"); t ? t.after(tip) : vista.prepend(tip); }
-      main.replaceChildren(vista);
+      main.replaceChildren(barra, vista);
       // Listas largas: buscador que filtra mientras se escribe
       apagarBuscadores?.(); apagarBuscadores = activarBuscadores(vista);
       main.focus({ preventScroll: true });
       scrollTo(0, 0);
     } catch (e) {
       console.error(e);
-      if (actual === n) errorEn(main, e, navegar);
+      if (actual === n) { errorEn(main, e, navegar); main.prepend(barra); }
     }
   }
   ctx.recargar = () => navegar();

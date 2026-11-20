@@ -30,7 +30,9 @@ export async function datosTicket(ctx, refrescar = false) {
 }
 
 const n2 = (x) => Number(x || 0);
-const recibosTxt = (t) => t.recibos.map((r) => String(r).padStart(6, "0")).join(", ");
+const recibosTxt = (t) => (t.provisional ? `${t.provisional} (provisional)` : t.recibos.map((r) => String(r).padStart(6, "0")).join(", "));
+const tituloTicket = (t) => (t.anulado ? "*** ANULADO ***" : t.provisional ? "COMPROBANTE PROVISIONAL" : "COMPROBANTE DE PAGO");
+const AVISO_PROV = "Cobro hecho sin internet. Recibirá su número definitivo al conectarse.";
 const horaTxt = (t) => (t.hora ? new Date(t.hora).toLocaleTimeString("es-NI", { hour: "numeric", minute: "2-digit" }) : "");
 
 /** Líneas de texto del ticket ajustadas a N columnas (para ESC/POS y WhatsApp). */
@@ -47,8 +49,8 @@ export function lineasTicket(ctx, t, cfg, cols = 32) {
   if (cfg.direccion) partir(cfg.direccion).forEach((x) => add(centro(x)));
   if (cfg.telefono) add(centro(`Tel. ${cfg.telefono}`));
   add(raya);
-  add(centro(t.anulado ? "*** ANULADO ***" : "COMPROBANTE DE PAGO"));
-  add(dos(t.recibos.length > 1 ? "Recibos N.º" : "Recibo N.º", "")); partir(recibosTxt(t)).forEach(add);
+  add(centro(tituloTicket(t)));
+  add(dos(t.provisional ? "Código:" : t.recibos.length > 1 ? "Recibos N.º" : "Recibo N.º", "")); partir(recibosTxt(t)).forEach(add);
   add(dos("Fecha:", `${fecha(t.fecha)}${horaTxt(t) ? " " + horaTxt(t) : ""}`));
   add("Estudiante:"); partir(t.estudiante).forEach(add);
   add(raya);
@@ -60,6 +62,7 @@ export function lineasTicket(ctx, t, cfg, cols = 32) {
   if (cfg.mostrar_saldo && t.saldoPendiente != null) add(dos("Saldo pendiente:", M(t.saldoPendiente)));
   if (t.cajero) add(dos("Atendió:", t.cajero));
   add(raya);
+  if (t.provisional) { partir(AVISO_PROV).forEach(add); add(raya); }
   partir(cfg.pie).forEach((x) => add(centro(x)));
   return L;
 }
@@ -74,8 +77,9 @@ export function htmlTicket(ctx, t, cfg, ancho) {
       cfg.direccion ? h("div", cfg.direccion) : null,
       cfg.telefono ? h("div", `Tel. ${cfg.telefono}`) : null),
     h("div.t-raya"),
-    h("div.t-centro.t-titulo", t.anulado ? "*** ANULADO ***" : "COMPROBANTE DE PAGO"),
-    h("div.t-fila", h("span", t.recibos.length > 1 ? "Recibos N.º" : "Recibo N.º"), h("b", recibosTxt(t))),
+    h("div.t-centro.t-titulo", tituloTicket(t)),
+    h("div.t-fila", h("span", t.provisional ? "Código" : t.recibos.length > 1 ? "Recibos N.º" : "Recibo N.º"), h("b", recibosTxt(t))),
+    t.provisional ? h("div.t-provisional", AVISO_PROV) : null,
     h("div.t-fila", h("span", "Fecha"), h("span", `${fecha(t.fecha)}${horaTxt(t) ? " · " + horaTxt(t) : ""}`)),
     h("div.t-est", h("span", "Estudiante"), h("b", t.estudiante)),
     h("div.t-raya"),
@@ -198,7 +202,7 @@ export async function mostrarComprobante(ctx, t, { titulo } = {}) {
   const nota = h("p.tenue", { style: "font-size:.85rem;margin:.6rem 0 0" },
     hayBluetooth() ? "«Bluetooth directo» funciona con impresoras térmicas Bluetooth en Chrome o Edge. Si tu impresora no aparece, usa «Imprimir»."
       : "Para impresoras Bluetooth en Android usa «Imprimir» con la app de la impresora (p. ej. RawBT). En iPhone, con AirPrint o la app de la impresora.");
-  const m = modal(titulo || (t.recibos.length > 1 ? `Recibos N.º ${recibosTxt(t)}` : `Recibo N.º ${t.recibos[0]}`), h("div",
+  const m = modal(titulo || (t.provisional ? `Comprobante provisional ${t.provisional}` : t.recibos.length > 1 ? `Recibos N.º ${recibosTxt(t)}` : `Recibo N.º ${t.recibos[0]}`), h("div",
     h("p.etiqueta", "Tamaño del papel"), chips, vista, nota), [
     { texto: "Cerrar", clase: "btn-sec" },
     tel ? { texto: "WhatsApp", clase: "btn-sec", onclick: () => {

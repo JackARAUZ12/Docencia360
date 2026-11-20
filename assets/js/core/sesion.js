@@ -1,5 +1,6 @@
 // Sesión, cuenta activa y protección de páginas.
 import { sb, q } from "./sb.js";
+import { usuarioLocal, estado as estadoConexion, borrarCopias } from "./offline.js";
 
 /** Raíz del sitio (funciona en dominio propio o en subcarpeta de GitHub Pages). */
 export const RAIZ = new URL("../../../", import.meta.url).href;
@@ -16,8 +17,13 @@ const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
 const leer = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } };
 
 export async function sesionActual() {
-  const { data } = await sb.auth.getSession();
-  return data.session;
+  const { data, error } = await sb.auth.getSession();
+  if (data.session) return data.session;
+  // Sin internet la sesión no se puede renovar, pero sigue guardada en este equipo:
+  // se usa para abrir la copia local. Al volver el internet se renueva sola.
+  const sinRed = navigator.onLine === false || !estadoConexion().enLinea || /fetch|network/i.test(error?.message || "") || error?.name === "AuthRetryableFetchError";
+  const u = sinRed ? usuarioLocal() : null;
+  return u ? { user: u, sinConexion: true } : null;
 }
 
 export async function misCuentas() {
@@ -60,7 +66,12 @@ export async function protegerModalidad(modalidad) {
 }
 
 export async function salir(motivo, destino = "entrar.html") {
-  await sb.auth.signOut();
+  const est = estadoConexion();
+  if (!motivo && est.pendientes > 0 && !confirm(`Tienes ${est.pendientes} cambio(s) guardados en este equipo que todavía no se subieron a internet.\n\nSi sales ahora se subirán la próxima vez que entres con tu cuenta en este mismo equipo. ¿Salir de todos modos?`)) return;
+  await borrarCopias();   // la copia de consulta no queda en el equipo (privacidad)
+  // Sin internet no se puede avisar al servidor: se cierra la sesión solo en este equipo
+  const r = await sb.auth.signOut(est.enLinea && navigator.onLine !== false ? undefined : { scope: "local" }).catch((e) => ({ error: e }));
+  if (r?.error) await sb.auth.signOut({ scope: "local" }).catch(() => {});
   try { localStorage.removeItem(CLAVE_CUENTA); } catch (_) {}
   location.replace(ruta(destino + (motivo ? `?motivo=${motivo}` : "")));
 }

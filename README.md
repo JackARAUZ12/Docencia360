@@ -58,6 +58,26 @@ docs/                 Arquitectura, seguridad y precios
 3. Opcional: en la Edge Function `acceso-codigo`, define el secreto `D360_ORIGENES` con tu dominio (por ejemplo `https://docencia360.com`) para restringir CORS.
 4. En el panel de administrador (`admin/entrar.html`) → Parámetros, escribe tu número en `publico.contacto_whatsapp`, tu nombre o empresa en `publico.titular` y tu correo en `publico.correo_contacto` (aparecen en los términos y la privacidad).
 
+## Modo sin internet (híbrido)
+
+Docencia360 funciona con y sin conexión. Internet sirve para registrarse, entrar por primera vez y **guardar y proteger** la información en el servidor.
+
+- **Con internet** todo va directo a Supabase y se guarda una copia de lo consultado en el equipo (IndexedDB, por usuario).
+- **Sin internet** se ve la última copia y se puede: pasar lista, poner notas, crear y editar estudiantes, grupos y horarios, y cobrar con **comprobante provisional** (código `P-XXXXXX`).
+- Lo guardado sin conexión queda en una bandeja y **se sube solo y en orden** al volver el internet, con la sesión del usuario: el servidor vuelve a revisar permisos (RLS).
+- **Cobros sin duplicados:** cada cobro lleva una clave única (`p_clave`). Si se reenvía, el servidor devuelve el mismo recibo. Si el concepto ya se pagó en otro equipo, el dinero queda como saldo a favor (no se pierde). La caja no deja cerrar con cobros sin subir y avisa de los que llegaron después del cierre.
+- Lo que el servidor rechace se muestra en el aviso de arriba con el motivo y las opciones «Reintentar» o «Descartar».
+- **Siempre necesitan internet:** registro, primer inicio de sesión, matricular, aula de estudiantes, inscripción en línea, cambiar de plan y cerrar caja.
+- **Al cerrar sesión** se borra la copia de consulta del equipo. Los cambios sin subir se conservan para la próxima vez que esa cuenta entre en el mismo equipo.
+- **La app se guarda en el equipo** (`sw.js`, instalable con `manifest.webmanifest`). Con internet siempre usa la versión más nueva.
+- **Al cambiar archivos de la app** hay que regenerar la lista que usa `sw.js`. La prueba `tests/ui/sin_internet.mjs` falla si quedó desactualizada.
+
+```bash
+node herramientas/generar-sw.mjs
+```
+
+Código: `assets/js/core/offline.js` (copia, bandeja y subida), `assets/js/core/conexion.js` (aviso y bandeja), migración `41_sin_conexion`.
+
 ## Pruebas
 
 ```bash

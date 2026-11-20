@@ -67,12 +67,13 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   await p.goto(BASE + "/app/profesor.html#/cobros?vista=deben"); await p.waitForTimeout(1300);
   ok(await p.locator(".lista-cobros li").count() >= 1, `${tag} Finanzas: quién debe`);
   await ancho(p, w, `${tag} Quién debe`);
-  let pago = null; p.on("request", (r) => { if (r.url().includes("/rest/v1/pagos") && r.method() === "POST") pago = JSON.parse(r.postData() || "null"); });
+  // El pago se registra con la misma función que «Cobrar» (con clave única: funciona sin internet y no se duplica)
+  let pago = null; p.on("request", (r) => { if (r.url().includes("rpc/d360_cobrar_varios")) { const b = JSON.parse(r.postData() || "{}"); pago = { ...(b.p_items?.[0] || {}), clave: b.p_clave }; } });
   await p.locator(".lista-cobros li").first().getByRole("button", { name: "Registrar pago" }).click(); await p.waitForTimeout(500);
   const dlg = p.locator("dialog.modal").last();
   if (await dlg.getByRole("button", { name: "Cobrar" }).count()) { await dlg.getByRole("button", { name: "Cobrar" }).first().click(); await p.waitForTimeout(400); }
   await p.locator("dialog.modal").last().getByRole("button", { name: "Registrar pago" }).click(); await p.waitForTimeout(700);
-  ok(pago && pago.cargo_id && pago.monto > 0, `${tag} registra el pago de un cobro`);
+  ok(pago && pago.cargo_id && pago.monto > 0 && /^[0-9a-f-]{36}$/.test(pago.clave || ""), `${tag} registra el pago de un cobro`);
   await p.keyboard.press("Escape"); await p.waitForTimeout(300); await p.keyboard.press("Escape"); await p.waitForTimeout(300);
   await p.goto(BASE + "/app/profesor.html#/cobros?vista=deben"); await p.waitForTimeout(1200);
   await p.locator(".lista-cobros li").first().getByRole("button", { name: "WhatsApp" }).click(); await p.waitForTimeout(400);

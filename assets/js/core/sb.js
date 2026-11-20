@@ -1,5 +1,6 @@
 // Cliente único de Supabase (librería servida desde /assets/vendor).
 import { CONFIG } from "../config.js";
+import { fetchHibrido, SIN_COPIA, REQUIERE_INTERNET } from "./offline.js";
 
 if (!window.supabase?.createClient) {
   throw new Error("No se cargó la librería de Supabase");
@@ -7,12 +8,23 @@ if (!window.supabase?.createClient) {
 
 export const sb = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: "d360-sesion" },
+  // Con internet va directo; sin internet usa la copia local y guarda los cambios para subirlos después
+  global: { fetch: fetchHibrido },
 });
+
+// La aplicación se guarda en el equipo para abrir sin internet (service worker).
+// En pruebas automáticas se activa solo si la prueba lo pide.
+if ("serviceWorker" in navigator && location.protocol.startsWith("http") && (!navigator.webdriver || window.__D360_SW)) {
+  const registrar = () => navigator.serviceWorker.register(new URL("../../../sw.js", import.meta.url)).catch(() => {});
+  document.readyState === "complete" ? registrar() : addEventListener("load", registrar);
+}
 
 /** Traduce errores de Postgres/Supabase a mensajes comprensibles. */
 export function mensajeError(e) {
   if (!e) return "Ocurrió un error.";
   const m = e.message || String(e);
+  if (e.code === SIN_COPIA || m.includes(SIN_COPIA)) return "Sin conexión: esta información todavía no se abrió con internet en este dispositivo. Conéctate una vez y quedará guardada.";
+  if (e.code === REQUIERE_INTERNET || m.includes(REQUIERE_INTERNET)) return "Esto necesita internet. Conéctate para hacerlo; lo demás puedes seguir usándolo sin conexión.";
   if (e.code === "42501" || /row-level security|permission denied/i.test(m)) {
     return "No tienes permiso para esta acción, o tu plan está vencido.";
   }

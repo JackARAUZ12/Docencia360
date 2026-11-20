@@ -3,6 +3,7 @@
 // totales del cierre los calcula el servidor y el cierre no se puede editar.
 import { sb, q } from "../core/sb.js";
 import { h, tabla, modal, fecha, hoyISO, sumarDias, dinero, toast } from "../core/ui.js";
+import { bandeja, usuarioLocal } from "../core/offline.js";
 
 const METODO = { efectivo: "Efectivo", transferencia: "Transferencia", deposito: "Depósito", tarjeta: "Tarjeta", otro: "Otro" };
 const hora = (iso) => new Date(iso).toLocaleTimeString("es-NI", { hour: "numeric", minute: "2-digit" });
@@ -12,14 +13,17 @@ export async function render(el, ctx, { params }) {
   const hoy = hoyISO();
   const dia = /^\d{4}-\d{2}-\d{2}$/.test(params.get("fecha") || "") && params.get("fecha") <= hoy ? params.get("fecha") : hoy;
   // La cajera ve su propia caja por defecto; la dirección, toda la caja
-  const miUser = (await sb.auth.getUser()).data?.user?.id || null;
+  const miUser = (await sb.auth.getUser().catch(() => null))?.data?.user?.id || usuarioLocal()?.id || null;
   const soloMia = ctx.rol === "finanzas";
   const cajeroParam = params.get("cajero");
   const cajero = cajeroParam === "todos" ? null : cajeroParam || (soloMia ? miUser : null);
   const d = await q(sb.rpc("d360_caja_dia", { p_cuenta: ctx.id, p_fecha: dia, p_cajero: cajero }));
   const M = (n) => dinero(n, ctx.cuenta.moneda);
   const cierre = (d.cierres || []).find((k) => (k.cajero || null) === (cajero || null));
-  const posteriores = cierre ? d.pagos.filter((p) => !p.anulado && new Date(p.hora) > new Date(cierre.creado)) : [];
+  // Pagos que llegaron al sistema después del cierre (incluye cobros sin internet subidos más tarde)
+  const tras = d.tras_cierre || (cierre ? (() => { const ps = d.pagos.filter((p) => !p.anulado && new Date(p.hora) > new Date(cierre.creado)); return { cantidad: ps.length, total: ps.reduce((s, p) => s + Number(p.monto), 0) }; })() : { cantidad: 0, total: 0 });
+  // Cobros hechos sin internet en ESTE equipo que todavía no se subieron
+  const cobrosLocales = (await bandeja().catch(() => [])).filter((x) => x.rpc && x.estado !== "subido");
   const ir = (f, c) => ctx.ir(`#/caja?fecha=${f}${c !== undefined ? `&cajero=${c ?? "todos"}` : cajero ? `&cajero=${cajero}` : "&cajero=todos"}`);
 
   const selFecha = h("input", { type: "date", value: dia, max: hoy, "aria-label": "Día", onchange: (e) => e.target.value && ir(e.target.value) });
@@ -84,6 +88,7 @@ export async function render(el, ctx, { params }) {
   };
 
   const cerrarCaja = () => {
+    if (cobrosLocales.length) { toast(`Antes de cerrar, sube los ${cobrosLocales.length} cobro(s) hechos sin internet en este equipo (aviso de arriba).`, "mal"); return; }
     const esperado = Number(d.por_metodo?.efectivo || 0);
     const contado = h("input", { type: "number", min: 0, step: "0.01", required: true, inputMode: "decimal", "aria-label": "Efectivo contado", placeholder: "0.00" });
     const dif = h("p.cierre-dif");
@@ -129,11 +134,12 @@ export async function render(el, ctx, { params }) {
       Number(d.anulados) ? h("div.cifra.alerta", h("b", M(d.anulados)), h("span", "anulado (no suma)")) : null),
     cierre ? h("section.hoja.cierre-hecho", { style: "margin-top:1rem" }, h("div.hoja-titulo", h("h2", "✓ Caja cerrada"), h("button.btn.btn-sec.btn-sm", { type: "button", onclick: () => imprimirCierre(cierre) }, "Imprimir cierre")),
       resumenCierre(cierre),
-      posteriores.length ? h("div.aviso.ojo", `Después del cierre se registraron ${posteriores.length} pago(s) por ${M(posteriores.reduce((s, p) => s + Number(p.monto), 0))}. Quedan en el día, pero no en este cierre.`) : null) : null,
+      Number(tras.cantidad) ? h("div.aviso.ojo", `Después del cierre se registraron ${tras.cantidad} pago(s) por ${M(tras.total)} (por ejemplo, cobros hechos sin internet que se subieron más tarde). Quedan en el día, pero no en este cierre.`) : null) : null,
+    cobrosLocales.length ? h("div.aviso.ojo", { style: "margin-top:1rem" }, `En este equipo hay ${cobrosLocales.length} cobro(s) hechos sin internet que todavía no aparecen aquí: ${cobrosLocales.map((x) => x.resumen).join(" · ")}. Se suman cuando vuelva la conexión.`) : null,
     h("section.hoja", { style: "margin-top:1rem" }, h("h2", "Recibos del día"),
       tabla([
         { t: "Recibo", v: (p) => h("strong.num", String(p.recibo).padStart(6, "0")) },
-        { t: "Hora", v: (p) => hora(p.hora) },
+        { t: "Hora", v: (p) => (p.sin_conexion ? h("span", hora(p.hora), h("div.tenue", "sin internet")) : hora(p.hora)) },
         { t: "Estudiante", v: (p) => h("div.celda-doble", h("strong", p.estudiante), h("div.tenue", p.concepto)) },
         { t: "Forma", v: (p) => METODO[p.metodo] || p.metodo },
         { t: "Cobró", v: (p) => p.cajero_nombre },
