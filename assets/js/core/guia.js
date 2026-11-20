@@ -21,7 +21,49 @@ export async function cargarGuia(ctx) {
     if (ctx.cuenta.es_demo) { try { sessionStorage.setItem(CLAVE_DEMO(ctx), JSON.stringify(ctx.guia)); } catch (_) {} return; }
     try { const srv = await q(sb.rpc("d360_guia_guardar", { p_cuenta: ctx.id, p_cambios: cambios })); if (srv && typeof srv === "object") ctx.guia = { ...ctx.guia, ...srv, ayudas: { ...(ctx.guia.ayudas || {}), ...(srv.ayudas || {}) } }; } catch (_) { /* se reintenta la próxima vez */ }
   };
+  if (ctx.cuenta.es_demo) escucharDemo(ctx);
   return ctx.guia;
+}
+
+// ---------- Recorrido de la demostración ----------
+// En la demo ya hay datos de ejemplo, así que los pasos NO se marcan por los datos:
+// se marcan cuando la persona HACE cada paso aquí (crear un grupo, pasar lista…).
+// Lo que la demo no permite (crear usuarios o códigos) se marca al abrir esa pantalla.
+const DEMO_ACCION = {
+  grupo: ["POST grupos"], estudiantes: ["POST estudiantes", "POST d360_importar_estudiantes", "POST grupo_estudiantes"],
+  horario: ["POST horarios", "POST grupo_docentes"], lista: ["POST asistencias"], nota: ["POST evaluaciones", "POST calificaciones"],
+  examen: ["POST d360_actividad_publicar"], mensual: ["POST d360_cobros_generar"], clase: ["POST d360_cobro_clase"], gasto: ["POST movimientos"],
+  rubrica: ["POST rubricas"], banco: ["POST banco_preguntas", "POST d360_actividad_a_banco"],
+  curso: ["POST cursos"], matricula: ["POST d360_matricular", "POST d360_interesado_matricular"], tarifa: ["POST tarifas_instructor"],
+  inscripcion: ["POST d360_inscripcion_enlace"], comunicado: ["POST comunicados"],
+};
+// La demo no deja crear usuarios ni códigos: estos pasos se completan al ver la pantalla
+const DEMO_SOLO_VER = new Set(["acceso", "aula", "asistente", "instructor", "familia", "inscripcion"]);
+const RUTA_DE = (href) => (href || "").replace(/^#\/?/, "").split("?")[0];
+let ultimosHref = {};   // paso → pantalla (para marcar los de «solo ver»)
+function escucharDemo(ctx) {
+  const marcar = (k) => { if (ctx.guia.demo?.[k]) return; ctx.guiaGuardar({ demo: { ...(ctx.guia.demo || {}), [k]: true } }); dispatchEvent(new CustomEvent("d360:cambio")); };
+  addEventListener("d360:escritura", (e) => {
+    const a = `${e.detail.metodo} ${e.detail.nombre}`;
+    for (const [k, lista] of Object.entries(DEMO_ACCION)) if (lista.includes(a)) marcar(k);
+  });
+  const alVer = () => {
+    const r = RUTA_DE(location.hash);
+    for (const [k, href] of Object.entries(ultimosHref)) if (DEMO_SOLO_VER.has(k) && href && (r === href || r.startsWith(href + "/"))) marcar(k);
+  };
+  addEventListener("hashchange", () => setTimeout(alVer, 50));
+}
+/** En la demo: los pasos se marcan por lo que la persona hizo aquí, no por los datos de ejemplo. */
+function pasosDemo(ctx, res) {
+  if (!ctx.cuenta.es_demo) return res;
+  const hecho = ctx.guia.demo || {};
+  for (const p of res.pasos) {
+    if (p.k !== "cobro") p.hecho = !!hecho[p.k];
+    if (DEMO_SOLO_VER.has(p.k)) { ultimosHref[p.k] = RUTA_DE(p.href); if (!p.hecho) { p.b = "Ver cómo es"; p.d += " En la demo solo se mira: se marca al abrir la pantalla."; } }
+  }
+  res.hechos = res.pasos.filter((p) => p.hecho).length;
+  res.completa = res.pasos.filter((p) => !p.opcional).every((p) => p.hecho);
+  return res;
 }
 
 /** Ayuda de una línea que aparece solo la primera vez en una sección. */
@@ -88,7 +130,7 @@ export async function pasosProfesor(ctx) {
   if (ctx.f("banco_preguntas")) pasos.push({ k: "banco", hecho: extra.banco, t: "Guarda preguntas en tu banco", d: "Desde un examen, «Guardar en el banco», para reusarlas en otros.", href: "#/banco", b: "Ver banco", opcional: true });
   const obligatorios = pasos.filter((p) => !p.opcional);
   // La guía se da por completa con los pasos obligatorios; los opcionales siguen en la lista.
-  return { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: g1, completa: obligatorios.every((p) => p.hecho) };
+  return pasosDemo(ctx, { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: g1, completa: obligatorios.every((p) => p.hecho) });
 }
 
 /** Pasos de la guía de la academia (dirección): de cero a la primera clase con lista y cobros. */
@@ -130,7 +172,7 @@ export async function pasosAcademia(ctx) {
   if (ctx.f("comunicados")) pasos.push({ k: "comunicado", hecho: comunicado, t: "Publica tu primer comunicado", d: "Llega al aula de los estudiantes, a las familias o solo a instructores.", href: "#/comunicados", b: "Publicar", opcional: true });
   if (ctx.f("portal_familias")) pasos.push({ k: "familia", hecho: familia, t: "Da acceso a una familia", d: "Desde la ficha del estudiante: «Padres y tutores» → «Agregar».", href: "#/estudiantes", b: "Ir", opcional: true });
   const obligatorios = pasos.filter((p) => !p.opcional);
-  return { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: g1, completa: obligatorios.every((p) => p.hecho) };
+  return pasosDemo(ctx, { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: g1, completa: obligatorios.every((p) => p.hecho) });
 }
 const pasosDe = (ctx) => (ctx.modalidad === "academia" ? pasosAcademia(ctx) : pasosProfesor(ctx));
 
@@ -155,7 +197,8 @@ export function botonGuia(ctx) {
     if (!ultimo) return;
     const lista = h("div.guia-lista-viva", listaPasos(ultimo, cerrarDialogo));
     const m = modal(`Primeros pasos · ${ultimo.hechos} de ${ultimo.pasos.length}`, h("div",
-      h("p.suave", "Sigue estos pasos para dejar lista tu cuenta. Se marcan solos cuando los haces."),
+      h("p.suave", ctx.cuenta.es_demo ? "Así empieza una cuenta nueva. Haz cada paso aquí, con datos de prueba: se marcan solos cuando los haces. Todo se borra cada noche."
+        : "Sigue estos pasos para dejar lista tu cuenta. Se marcan solos cuando los haces."),
       lista,
       h("div", { style: "display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem" },
         ctx.modalidad === "profesor" ? h("button.btn.btn-texto.btn-sm", { type: "button", onclick: () => { cerrarDialogo(); bienvenida(ctx, { forzar: true }); } }, "Ver la bienvenida otra vez") : null,
@@ -182,7 +225,7 @@ export function botonGuia(ctx) {
     if (otraVez) { otraVez = false; setTimeout(btn.actualizar, 50); }
     if (hechos >= pasos.length || ultimo.completa) {
       btn.hidden = true;
-      if (!ctx.guia.completa) { ctx.guiaGuardar({ completa: true }); ctx.toast("¡Completaste los primeros pasos! Tu cuenta está lista."); }
+      if (!ctx.guia.completa) { ctx.guiaGuardar({ completa: true }); ctx.toast(ctx.cuenta.es_demo ? "¡Terminaste el recorrido! Así de fácil es. Crea tu cuenta para empezar con tus datos." : "¡Completaste los primeros pasos! Tu cuenta está lista."); }
       return;
     }
     btn.replaceChildren(
@@ -201,6 +244,11 @@ export function alActualizarGuia(nodo, fn) {
   const oir = (e) => { if (!nodo.isConnected) { removeEventListener("d360:guia", oir); return; } fn(e.detail); };
   addEventListener("d360:guia", oir);
 }
+/** Nota de la demostración al inicio de la bienvenida. */
+export function avisoDemo() {
+  return h("div.aviso.info", { style: "margin:0 0 1rem" }, h("strong", "Estás en la demostración. "),
+    "Esto es lo mismo que verás al crear tu cuenta. Hazlo con datos de prueba (se borran cada noche) o toca «Saltar por ahora» para explorar.");
+}
 function cerrarDialogo() { document.querySelectorAll("dialog.modal").forEach((d) => { d.close(); d.remove(); }); }
 
 /**
@@ -208,8 +256,8 @@ function cerrarDialogo() { document.querySelectorAll("dialog.modal").forEach((d)
  * estudiantes → listo. Todo se guarda de verdad en cada paso.
  */
 export async function bienvenida(ctx, { forzar = false } = {}) {
-  if (!ctx.esDueno || (!forzar && (ctx.guia?.bienvenida || ctx.cuenta.es_demo))) return;
-  const nombre = (ctx.cuenta.miembro_nombre || "").split(" ")[0];
+  if (!ctx.esDueno || (!forzar && ctx.guia?.bienvenida)) return;
+  const nombre = ctx.cuenta.es_demo ? "" : (ctx.cuenta.miembro_nombre || "").split(" ")[0];
   const estado = { grupo: null, grupoNombre: "", agregados: 0 };
   const dlg = h("dialog.modal.bienvenida", { "aria-labelledby": "bv-titulo" });
   const cuerpo = h("div.bv-cuerpo");
@@ -237,6 +285,7 @@ export async function bienvenida(ctx, { forzar = false } = {}) {
     const nivel = h("input", { name: "nivel", maxLength: 60, placeholder: "Ej.: 9no grado, Inglés A1, Preuniversitario" });
     cuerpo.replaceChildren(
       h("h2", { id: "bv-titulo" }, `¡Bienvenido${nombre ? ", " + nombre : ""}!`),
+      ctx.cuenta.es_demo ? avisoDemo() : null,
       h("p.suave", "En 3 pasos cortos dejamos lista tu primera clase. Todo lo puedes cambiar después."),
       h("form.bv-form", { onsubmit: (e) => { e.preventDefault(); if (!asig.value.trim()) return asig.focus(); paso2(asig.value.trim(), nivel.value.trim()); } },
         h("label.campo", h("span", "¿Qué enseñas?"), asig),

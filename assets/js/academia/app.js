@@ -122,6 +122,8 @@ iniciarEnrutador(ctx, main, RUTAS, {
 });
 
 // Primera vez: bienvenida guiada (solo la dueña, si aún no hay cursos)
-if (ctx.esDueno && !ctx.cuenta.es_demo && !ctx.guia.bienvenida) {
-  ctx.datos.cursos().then((c) => { if (!c.length) import("./bienvenida.js").then((m) => m.bienvenidaAcademia(ctx)); }).catch(() => {});
+if (ctx.esDueno && !ctx.guia.bienvenida) {
+  // En la demostración se muestra siempre la primera vez (es lo mismo que verá al crear su cuenta)
+  if (ctx.cuenta.es_demo) import("./bienvenida.js").then((m) => m.bienvenidaAcademia(ctx));
+  else ctx.datos.cursos().then((c) => { if (!c.length) import("./bienvenida.js").then((m) => m.bienvenidaAcademia(ctx)); }).catch(() => {});
 }

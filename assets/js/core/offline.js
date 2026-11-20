@@ -368,6 +368,7 @@ async function escribir(url, init, metodo, tabla, rpc, etiqueta) {
     if (!permitido) throw errorD360(REQUIERE_INTERNET, "Esto necesita internet. Conéctate para hacerlo; lo demás puedes seguir usándolo sin conexión.");
     if (rpc) { const b = JSON.parse(body || "{}"); b.p_cobrado_en ||= new Date().toISOString(); body = JSON.stringify(b); }
     const item = await encolar(url, init, metodo, tabla, rpc, body, etiqueta);
+    avisarEscritura(metodo, tabla || rpc);
     return respuestaLocal(url, init, metodo, rpc, body, item);
   };
   if (!enLinea) return sinRed();
@@ -377,13 +378,18 @@ async function escribir(url, init, metodo, tabla, rpc, etiqueta) {
     if (estadoActual.pendientes > 0 && permitido) return sinRed();
   }
   try {
-    return await fetchRed(url.href, { ...init, body });
+    const r = await fetchRed(url.href, { ...init, body });
+    if (r.ok) avisarEscritura(metodo, tabla || rpc);
+    return r;
   } catch (e) {
     if (init?.signal?.aborted || !errorRed(e)) throw e;
     marcarRed(false);
     return sinRed();
   }
 }
+
+// Avisa qué se guardó (tabla o función): lo usa, por ejemplo, el recorrido de la demostración
+function avisarEscritura(metodo, nombre) { try { dispatchEvent(new CustomEvent("d360:escritura", { detail: { metodo, nombre } })); } catch (_) {} }
 
 /** fetch que usa el cliente de Supabase: con internet va directo; sin internet usa la copia y la bandeja. */
 export async function fetchHibrido(input, init0 = {}) {

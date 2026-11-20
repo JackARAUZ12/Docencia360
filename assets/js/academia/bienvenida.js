@@ -4,10 +4,11 @@
 // cobros → listo. Todo se guarda de verdad en cada paso; se puede saltar.
 import { sb, q, mensajeError } from "../core/sb.js";
 import { h, DIAS } from "../core/ui.js";
+import { avisoDemo } from "../core/guia.js";
 
 export async function bienvenidaAcademia(ctx, { forzar = false } = {}) {
-  if (!ctx.esDueno || (!forzar && (ctx.guia?.bienvenida || ctx.cuenta.es_demo))) return;
-  const nombre = (ctx.cuenta.miembro_nombre || "").split(" ")[0];
+  if (!ctx.esDueno || (!forzar && ctx.guia?.bienvenida)) return;
+  const nombre = ctx.cuenta.es_demo ? "" : (ctx.cuenta.miembro_nombre || "").split(" ")[0];
   const est = { curso: null, grupo: null, grupoNombre: "", agregados: 0, matriculados: 0, instructorCodigo: null, instructorNombre: "" };
   const fin = ctx.f("finanzas");
   const dlg = h("dialog.modal.bienvenida", { "aria-labelledby": "bv-titulo" });
@@ -39,6 +40,7 @@ export async function bienvenidaAcademia(ctx, { forzar = false } = {}) {
     const err = caja(); const btn = h("button.btn", { type: "submit" }, "Continuar");
     cuerpo.replaceChildren(
       h("h2", { id: "bv-titulo" }, `¡Bienvenida${nombre ? ", " + nombre : ""}!`),
+      ctx.cuenta.es_demo ? avisoDemo() : null,
       h("p.suave", "En 4 pasos cortos dejamos lista tu academia: tu primer curso, su grupo, tus estudiantes y sus cobros. Todo lo puedes cambiar después."),
       h("form.bv-form", { onsubmit: async (e) => {
         e.preventDefault(); if (nom.value.trim().length < 2) return nom.focus();
@@ -64,7 +66,8 @@ export async function bienvenidaAcademia(ctx, { forzar = false } = {}) {
     const inst = h("select", { "aria-label": "Instructor" },
       h("option", { value: "" }, "Lo asigno después"),
       instructores.map((m) => h("option", { value: m.id }, m.nombre)),
-      h("option", { value: "nuevo" }, "+ Registrar un instructor nuevo"));
+      // En la demo no se crean usuarios: se elige uno de los instructores de ejemplo
+      ctx.cuenta.es_demo ? null : h("option", { value: "nuevo" }, "+ Registrar un instructor nuevo"));
     const nuevoInst = h("input", { maxLength: 120, placeholder: "Nombre del instructor", hidden: true, "aria-label": "Nombre del instructor nuevo" });
     inst.addEventListener("change", () => { nuevoInst.hidden = inst.value !== "nuevo"; if (!nuevoInst.hidden) nuevoInst.focus(); });
     const err = caja(); const btn = h("button.btn", { type: "submit" }, "Crear el grupo");

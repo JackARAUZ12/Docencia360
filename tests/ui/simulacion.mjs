@@ -239,6 +239,7 @@ export async function preparar(page, conSesion, modalidad = "profesor", rol = pr
       const planSim = modalidad === "profesor" && process.env.PLAN ? planes.find((p) => p.id === process.env.PLAN) : null;
       if (fn === "d360_mis_cuentas") body = body.map((c) => ({ ...c, modalidad, rol, miembro_id: process.env.MIEMBRO || c.miembro_id,
         ...(planSim ? { plan_id: planSim.id, plan_nombre: planSim.nombre } : {}),
+        ...(process.env.DEMO ? { es_demo: true } : {}),
         ...(process.env.ESTADO ? { estado: process.env.ESTADO, operativa: !["pendiente", "vencida", "suspendida"].includes(process.env.ESTADO) } : {}), nombre: modalidad === "academia" ? "Academia Horizonte" : c.nombre,
         plan_nombre: modalidad === "academia" ? "Profesional" : (planSim?.nombre ?? c.plan_nombre),
         funciones: modalidad === "colegio" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, portal_familias: true, boletines: true, sedes: true } : modalidad === "academia" ? { finanzas: true, certificados: true, exportar: true, reportes_pdf: true, comunicados: true, tareas: true, rubricas: true, portal_estudiantes: true, banco_preguntas: true, portal_familias: process.env.SIN_FAMILIAS ? false : true, reporte_whatsapp: true } : (planSim?.funciones ?? c.funciones) }));

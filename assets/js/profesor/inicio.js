@@ -93,6 +93,9 @@ export async function render(el, ctx) {
   el.append(
     h("div.p-titulo", h("div", h("p.tenue", { style: "margin:0" }, diaLargo(hoy)), h("h1", `Hola, ${nombre}`))),
     avisoLimite,
+    // Demostración: el recorrido de primeros pasos arriba, hasta terminarlo
+    ctx.cuenta.es_demo && guiaDatos && !guiaDatos.completa && !ctx.guia?.oculta ? (() => {
+      const caja = guia(); alActualizarGuia(caja, (d) => { if (d.completa) caja.remove(); }); caja.style.marginBottom = "1.25rem"; return caja; })() : null,
     avisoCobros,
     enCurso ? claseAhora(enCurso, true) : proxima ? claseAhora(proxima, false) : null,
     notifs.length ? h("div", notifs.map((n) => h("div.aviso.ojo", h("strong", n.titulo + ". "), n.cuerpo || "",
