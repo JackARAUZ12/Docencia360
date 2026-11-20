@@ -1,6 +1,6 @@
 // Inicio del profesor: qué toca hoy, qué está pendiente y cómo va todo.
 import { sb, q } from "../core/sb.js";
-import { pasosProfesor, listaPasos, bienvenida } from "../core/guia.js";
+import { pasosProfesor, listaPasos, bienvenida, alActualizarGuia } from "../core/guia.js";
 import { h, dinero, hoyISO, sumarDias, diaLargo, fechaCorta, hora, nota } from "../core/ui.js";
 
 const u_al_limite = (filas) => filas.some(([u, m]) => u >= m);
@@ -23,10 +23,12 @@ export async function render(el, ctx) {
 
   // Primeros pasos (los mismos del botón flotante), marcados con datos reales
   const guiaDatos = ctx.esDueno ? await pasosProfesor(ctx) : null;
-  const guia = () => h("section.hoja",
-    h("div.hoja-titulo", h("h2", `Primeros pasos · ${guiaDatos.hechos} de ${guiaDatos.pasos.length}`),
+  const panelGuia = (d) => h("section.hoja",
+    h("div.hoja-titulo", h("h2", `Primeros pasos · ${d.hechos} de ${d.pasos.length}`),
       h("button.btn.btn-texto.btn-sm", { type: "button", onclick: () => bienvenida(ctx, { forzar: true }) }, "Ver la bienvenida")),
-    listaPasos(guiaDatos));
+    listaPasos(d));
+  // El panel se actualiza solo cuando completas un paso
+  const guia = () => { const caja = h("div.guia-viva", panelGuia(guiaDatos)); alActualizarGuia(caja, (d) => caja.replaceChildren(panelGuia(d))); return caja; };
 
   // Cuenta nueva: la guía en lugar de un panel vacío
   if (!activos.length || !resumen.estudiantes_activos) {

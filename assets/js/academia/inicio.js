@@ -117,11 +117,17 @@ export async function render(el, ctx) {
 
   // Cuenta en marcha: los primeros pasos con avance real, arriba, hasta completarlos
   if (ctx.esDueno && !ctx.guia?.oculta && !ctx.guia?.completa) {
-    const { pasosAcademia, listaPasos } = await import("../core/guia.js");
+    const { pasosAcademia, listaPasos, alActualizarGuia } = await import("../core/guia.js");
     const g = await pasosAcademia(ctx).catch(() => null);
-    if (g && !g.completa) el.querySelector(".p-titulo")?.after(h("section.hoja.guia-inicio", { style: "margin-bottom:1.25rem" },
-      h("div.hoja-titulo", h("h2", `Pon en marcha tu academia · ${g.hechos} de ${g.pasos.length}`),
-        h("button.btn.btn-texto.btn-sm", { type: "button", onclick: async (e) => { await ctx.guiaGuardar({ oculta: true }); e.target.closest("section").remove(); ctx.botonGuia?.actualizar(); ctx.toast("Guía oculta. Puedes volver a verla en «Plan y cuenta»."); } }, "Ocultar")),
-      listaPasos(g)));
+    const panel = (d) => h("section.hoja.guia-inicio", { style: "margin-bottom:1.25rem" },
+      h("div.hoja-titulo", h("h2", `Pon en marcha tu academia · ${d.hechos} de ${d.pasos.length}`),
+        h("button.btn.btn-texto.btn-sm", { type: "button", onclick: async (e) => { await ctx.guiaGuardar({ oculta: true }); e.target.closest(".guia-viva").remove(); ctx.botonGuia?.actualizar(); ctx.toast("Guía oculta. Puedes volver a verla en «Plan y cuenta»."); } }, "Ocultar")),
+      listaPasos(d));
+    if (g && !g.completa) {
+      const caja = h("div.guia-viva", panel(g));
+      el.querySelector(".p-titulo")?.after(caja);
+      // Se actualiza sola al completar un paso; al terminarlos todos, desaparece
+      alActualizarGuia(caja, (d) => (d.completa ? caja.remove() : caja.replaceChildren(panel(d))));
+    }
   }
 }

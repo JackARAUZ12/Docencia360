@@ -31,5 +31,21 @@ export function mensajeError(e) {
 export async function q(promesa) {
   const { data, error } = await promesa;
   if (error) throw Object.assign(new Error(mensajeError(error)), { original: error });
+  avisarCambio(promesa);
   return data;
+}
+
+// Cuando algo se guarda (crear, editar, borrar o una acción que cambia datos),
+// se avisa a la página con el evento «d360:cambio». Así, por ejemplo, la guía de
+// Primeros pasos se actualiza sola sin tener que cambiar de pantalla.
+const RPC_QUE_CAMBIAN = /\/rpc\/d360_(importar_estudiantes|alumnos_activar|actividad_publicar|matricular|crear_miembro|cobrar_varios|cobro_clase|cobros_generar|inscripcion_enlace|interesado_matricular|instructor_pagar|banco_a_actividad|actividad_a_banco|promover|vincular_tutor|caja_cerrar)\b/;
+let tCambio;
+function avisarCambio(b) {
+  try {
+    const metodo = b?.method, url = String(b?.url || "");
+    if (!metodo || metodo === "GET" || metodo === "HEAD") return;
+    if (url.includes("/rpc/") && !RPC_QUE_CAMBIAN.test(url)) return;   // las consultas por RPC no cambian datos
+    clearTimeout(tCambio);
+    tCambio = setTimeout(() => dispatchEvent(new CustomEvent("d360:cambio")), 300);
+  } catch (_) { /* nunca interrumpe el guardado */ }
 }

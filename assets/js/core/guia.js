@@ -150,22 +150,36 @@ export function listaPasos({ pasos, hechos }, alElegir) {
 export function botonGuia(ctx) {
   const btn = h("button.guia-flotante", { type: "button", "aria-haspopup": "dialog" });
   btn.hidden = true;
-  let ultimo = null;
+  let ultimo = null, abierta = null, previos = null;
   const abrir = () => {
     if (!ultimo) return;
-    modal(`Primeros pasos · ${ultimo.hechos} de ${ultimo.pasos.length}`, h("div",
+    const lista = h("div.guia-lista-viva", listaPasos(ultimo, cerrarDialogo));
+    const m = modal(`Primeros pasos · ${ultimo.hechos} de ${ultimo.pasos.length}`, h("div",
       h("p.suave", "Sigue estos pasos para dejar lista tu cuenta. Se marcan solos cuando los haces."),
-      listaPasos(ultimo, cerrarDialogo),
+      lista,
       h("div", { style: "display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem" },
         ctx.modalidad === "profesor" ? h("button.btn.btn-texto.btn-sm", { type: "button", onclick: () => { cerrarDialogo(); bienvenida(ctx, { forzar: true }); } }, "Ver la bienvenida otra vez") : null,
         h("button.btn.btn-texto.btn-sm", { type: "button", onclick: async () => { await ctx.guiaGuardar({ oculta: true }); cerrarDialogo(); btn.hidden = true; ctx.toast("Guía oculta. Puedes volver a verla en Mi cuenta."); } }, "Ocultar la guía"))),
       [{ texto: "Cerrar", clase: "btn-sec" }]);
+    abierta = { lista, titulo: m.el?.querySelector(".modal-cab h2") };
   };
   btn.addEventListener("click", abrir);
+  let corriendo = false, otraVez = false;
   btn.actualizar = async () => {
     if (!ctx.esDueno || ctx.guia?.oculta) { btn.hidden = true; return; }
-    try { ultimo = await pasosDe(ctx); } catch (_) { return; }
+    if (corriendo) { otraVez = true; return; }   // una sola revisión a la vez
+    corriendo = true;
+    try { ultimo = await pasosDe(ctx); } catch (_) { corriendo = false; return; }
+    corriendo = false;
     const { hechos, pasos } = ultimo;
+    // Avisa qué paso se acaba de completar (no la primera vez que se revisa)
+    const ahora = new Set(pasos.filter((p) => p.hecho).map((p) => p.k));
+    if (previos) { const nuevo = pasos.find((p) => p.hecho && !previos.has(p.k)); if (nuevo && !(hechos >= pasos.length || ultimo.completa)) ctx.toast(`✓ Paso completado: ${nuevo.t}`); }
+    previos = ahora;
+    // La lista abierta y los paneles de Inicio se actualizan en el momento
+    if (abierta?.lista.isConnected) { abierta.lista.replaceChildren(listaPasos(ultimo, cerrarDialogo)); if (abierta.titulo) abierta.titulo.textContent = `Primeros pasos · ${hechos} de ${pasos.length}`; }
+    dispatchEvent(new CustomEvent("d360:guia", { detail: ultimo }));
+    if (otraVez) { otraVez = false; setTimeout(btn.actualizar, 50); }
     if (hechos >= pasos.length || ultimo.completa) {
       btn.hidden = true;
       if (!ctx.guia.completa) { ctx.guiaGuardar({ completa: true }); ctx.toast("¡Completaste los primeros pasos! Tu cuenta está lista."); }
@@ -177,7 +191,15 @@ export function botonGuia(ctx) {
     btn.setAttribute("aria-label", `Primeros pasos: ${hechos} de ${pasos.length} completados`);
     btn.hidden = false;
   };
+  // Cada vez que algo se guarda, se revisan los pasos (sin esperar a cambiar de pantalla)
+  let t; addEventListener("d360:cambio", () => { clearTimeout(t); t = setTimeout(btn.actualizar, 400); });
   return btn;
+}
+
+/** Vuelve a pintar un panel de pasos cada vez que la guía se actualiza (mientras siga en pantalla). */
+export function alActualizarGuia(nodo, fn) {
+  const oir = (e) => { if (!nodo.isConnected) { removeEventListener("d360:guia", oir); return; } fn(e.detail); };
+  addEventListener("d360:guia", oir);
 }
 function cerrarDialogo() { document.querySelectorAll("dialog.modal").forEach((d) => { d.close(); d.remove(); }); }
 
