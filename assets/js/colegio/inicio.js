@@ -76,4 +76,20 @@ export async function render(el, ctx) {
         h("section.hoja", h("h2", "Próximas fechas"),
           eventos.length ? h("ul.lista", eventos.map((e) => h("li", h("span.estado.info", fechaCorta(e.fecha)), h("div.crece", h("div.titulo", e.titulo))))) : h("p.suave", "Sin fechas próximas.")))),
   );
+
+  // Colegio en marcha: los primeros pasos con avance real, arriba, hasta completarlos
+  if (ctx.esDueno && !ctx.guia?.oculta) {
+    const { pasosColegio, listaPasos, alActualizarGuia } = await import("../core/guia.js");
+    const g = await pasosColegio(ctx).catch(() => null);
+    const panel = (d) => h("section.hoja.guia-inicio", { style: "margin-bottom:1.25rem" },
+      h("div.hoja-titulo", h("h2", `Pon en marcha tu colegio · ${d.hechos} de ${d.pasos.length}`),
+        h("button.btn.btn-texto.btn-sm", { type: "button", onclick: async (e) => { await ctx.guiaGuardar({ oculta: true }); e.target.closest(".guia-viva").remove(); ctx.botonGuia?.actualizar(); ctx.toast("Guía oculta. Puedes volver a verla en «Plan y cuenta»."); } }, "Ocultar")),
+      listaPasos(d));
+    if (g && !g.completa) {
+      const caja = h("div.guia-viva", panel(g));
+      el.querySelector(".p-titulo")?.after(caja);
+      // Se actualiza sola al completar un paso; al terminarlos todos, desaparece
+      alActualizarGuia(caja, (d) => (d.completa ? caja.remove() : caja.replaceChildren(panel(d))));
+    }
+  }
 }

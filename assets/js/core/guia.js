@@ -37,9 +37,13 @@ const DEMO_ACCION = {
   rubrica: ["POST rubricas"], banco: ["POST banco_preguntas", "POST d360_actividad_a_banco"],
   curso: ["POST cursos"], matricula: ["POST d360_matricular", "POST d360_interesado_matricular"], tarifa: ["POST tarifas_instructor"],
   inscripcion: ["POST d360_inscripcion_enlace"], comunicado: ["POST comunicados"],
+  col_periodo: ["POST periodos", "PATCH periodos"], col_seccion: ["POST grupos"], col_plan: ["POST asignaturas"],
+  col_asignacion: ["POST grupo_docentes", "PATCH grupo_docentes"], col_horario: ["POST horarios"], col_matricula: ["POST d360_matricular_colegio"],
+  col_lista: ["POST asistencias"], col_notas: ["POST evaluaciones", "POST calificaciones"], col_comunicado: ["POST comunicados"],
+  col_pago: ["POST d360_cobrar_varios"],
 };
 // La demo no deja crear usuarios ni códigos: estos pasos se completan al ver la pantalla
-const DEMO_SOLO_VER = new Set(["acceso", "aula", "asistente", "instructor", "familia", "inscripcion"]);
+const DEMO_SOLO_VER = new Set(["acceso", "aula", "asistente", "instructor", "familia", "inscripcion", "col_docente", "col_familia"]);
 const RUTA_DE = (href) => (href || "").replace(/^#\/?/, "").split("?")[0];
 let ultimosHref = {};   // paso → pantalla (para marcar los de «solo ver»)
 function escucharDemo(ctx) {
@@ -175,7 +179,84 @@ export async function pasosAcademia(ctx) {
   const obligatorios = pasos.filter((p) => !p.opcional);
   return pasosDemo(ctx, { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: g1, obligatorios: obligatorios.every((p) => p.hecho), completa: pasos.every((p) => p.hecho) });
 }
-const pasosDe = (ctx) => (ctx.modalidad === "academia" ? pasosAcademia(ctx) : pasosProfesor(ctx));
+/**
+ * Pasos de la guía del colegio (dirección), en el orden natural de puesta en marcha:
+ * datos y año escolar → grados y secciones → plan de estudios → docentes y su carga →
+ * horario → matrícula → día a día (asistencia y notas) → familias, comunicados y cobros.
+ */
+export async function pasosColegio(ctx) {
+  const c = ctx.id;
+  const uno = (t, col = "id") => sb.from(t).select(col).eq("cuenta_id", c).limit(1);
+  const fin = ctx.f("finanzas") && ctx.esFinanzas;
+  const [periodo, secciones, plan, docentes, asignacion, horario, matricula, lista, notas, comunicado, familia, pago] = await Promise.all([
+    existe(uno("periodos")),
+    q(sb.from("grupos").select("id").eq("cuenta_id", c).not("grado_id", "is", null).eq("estado", "activo").order("nombre").limit(1)),
+    existe(uno("asignaturas").not("grado_id", "is", null)),
+    existe(uno("miembros").eq("rol", "docente")),
+    existe(uno("grupo_docentes")),
+    existe(uno("horarios")),
+    existe(uno("matriculas")),
+    existe(uno("asistencias")),
+    existe(uno("evaluaciones")),
+    ctx.f("comunicados") ? existe(uno("comunicados")) : false,
+    ctx.f("portal_familias") ? existe(uno("miembros").eq("rol", "tutor")) : false,
+    fin ? existe(uno("pagos")) : false,
+  ]);
+  const s1 = secciones[0]?.id;
+  const pasos = [
+    { k: "col_periodo", hecho: periodo, t: "Completa los datos del colegio y el año escolar", d: "Logo, lema y los cortes de evaluación (bimestres o trimestres). Aparecen en los boletines.", href: "#/institucion", b: "Completar" },
+    { k: "col_seccion", hecho: !!s1, t: "Crea los grados y sus secciones", d: "Por ejemplo «7mo grado» con sus secciones «7mo A» y «7mo B». Ahí pones la matrícula y la colegiatura de cada grado.", href: "#/estructura", b: "Crear" },
+    { k: "col_plan", hecho: plan, t: "Arma el plan de estudios", d: "Las asignaturas de cada grado: Matemática, Lengua y Literatura, Ciencias…", href: "#/estructura?vista=plan", b: "Armar plan" },
+    { k: "col_docente", hecho: docentes, t: "Registra a tus docentes", d: "Cada docente recibe su código personal y ve solo sus secciones.", href: "#/docentes", b: "Registrar" },
+    { k: "col_asignacion", hecho: asignacion, t: "Asigna quién da cada asignatura", d: "En cada sección, el docente de cada asignatura y el maestro guía.", href: "#/estructura?vista=docentes", b: "Asignar" },
+    { k: "col_horario", hecho: horario, t: "Arma el horario de clases", d: "Toca un espacio de la cuadrícula para poner la clase. Avisa si un docente queda en dos lugares a la vez.", href: "#/horarios", b: "Armar horario" },
+    { k: "col_matricula", hecho: matricula, t: "Matricula a los estudiantes", d: "Uno por uno o con la lista. La matrícula y las colegiaturas del año se generan solas.", href: "#/matriculas", b: "Matricular" },
+    { k: "col_lista", hecho: lista, t: "Pasa la primera asistencia", d: "Tú o el docente: «Todos presentes» y se marca solo a quien faltó.", href: s1 ? `#/asistencia?grupo=${s1}` : "#/asistencia", b: "Pasar lista" },
+    { k: "col_notas", hecho: notas, t: "Registra las primeras calificaciones", d: "Crea una evaluación y pon las notas. Los promedios y boletines se calculan solos.", href: "#/calificaciones", b: "Calificar" },
+  ];
+  if (ctx.f("comunicados")) pasos.push({ k: "col_comunicado", hecho: comunicado, t: "Publica tu primer comunicado", d: "Para todo el colegio, un grado o una sección. Llega a las familias y a los docentes.", href: "#/comunicados", b: "Publicar", opcional: true });
+  if (ctx.f("portal_familias")) pasos.push({ k: "col_familia", hecho: familia, t: "Da acceso a las familias", d: "Cada padre o tutor ve las notas, la asistencia, los avisos y los pagos de su hijo.", href: "#/familias", b: "Dar acceso", opcional: true });
+  if (fin) pasos.push({ k: "col_pago", hecho: pago, t: "Registra el primer pago", d: "Cobra matrícula o colegiatura con recibo. Siempre sabrás quién está al día.", href: "#/finanzas", b: "Cobrar", opcional: true });
+  const obligatorios = pasos.filter((p) => !p.opcional);
+  return pasosDemo(ctx, { pasos, hechos: pasos.filter((p) => p.hecho).length, grupo: s1, obligatorios: obligatorios.every((p) => p.hecho), completa: pasos.every((p) => p.hecho) });
+}
+const pasosDe = (ctx) => (ctx.modalidad === "academia" ? pasosAcademia(ctx) : ctx.modalidad === "colegio" ? pasosColegio(ctx) : pasosProfesor(ctx));
+
+/**
+ * Bienvenida del colegio: explica en una pantalla el orden de puesta en marcha y lleva
+ * al primer paso. Lo demás lo acompaña «Primeros pasos».
+ */
+export function bienvenidaColegio(ctx, { forzar = false } = {}) {
+  if (!ctx.esDueno || (!forzar && ctx.guia?.bienvenida)) return;
+  const nombre = ctx.cuenta.es_demo ? "" : (ctx.cuenta.miembro_nombre || "").replace(/^(Lic\.|Prof\.|Profa\.|Sr\.|Sra\.|Dr\.|Dra\.)\s*/, "").split(" ")[0];
+  const dlg = h("dialog.modal.bienvenida", { "aria-labelledby": "bv-titulo" });
+  const cerrar = async (como, ir) => {
+    dlg.close(); dlg.remove();
+    await ctx.guiaGuardar({ bienvenida: como });
+    if (ir) location.hash = ir;
+    ctx.botonGuia?.actualizar();
+    if (como === "omitida") ctx.toast("Cuando quieras, sigue la guía desde el botón «Primeros pasos».");
+  };
+  const fases = [
+    ["1", "La estructura", "Datos del colegio, año escolar, grados, secciones y plan de estudios."],
+    ["2", "El equipo", "Docentes, quién da cada asignatura y el horario."],
+    ["3", "Los estudiantes", "Matrícula con sus colegiaturas generadas solas."],
+    ["4", "El día a día", "Asistencia, calificaciones, boletines, comunicados y familias."],
+  ];
+  dlg.append(
+    h("div.bv-cabeza", h("span.tenue", "Primeros pasos"), h("button.btn.btn-texto.btn-sm", { type: "button", onclick: () => cerrar("omitida") }, "Explorar primero")),
+    h("div.bv-cuerpo",
+      h("h2", { id: "bv-titulo" }, `¡Bienvenido${nombre ? ", " + nombre : ""}!`),
+      ctx.cuenta.es_demo ? avisoDemo("Explorar primero") : null,
+      h("p.suave", "Dejar listo el colegio toma cuatro bloques. La guía «Primeros pasos» te lleva de uno en uno y marca solo lo que ya hiciste."),
+      h("ol.bv-fases", fases.map(([n, t, d]) => h("li", h("span.num", n), h("div", h("strong", t), h("span.tenue", d))))),
+      h("div.bv-pie",
+        h("button.btn.btn-sec", { type: "button", onclick: () => cerrar("omitida") }, "Explorar primero"),
+        h("button.btn", { type: "button", onclick: () => cerrar("hecha", "#/institucion") }, "Empezar: datos del colegio"))));
+  dlg.addEventListener("cancel", (e) => { e.preventDefault(); cerrar("omitida"); });
+  document.body.append(dlg);
+  dlg.showModal();
+}
 
 /** Lista de pasos (se usa en Inicio y en el panel del botón flotante). */
 export function listaPasos({ pasos, hechos }, alElegir) {
@@ -251,9 +332,9 @@ export function alActualizarGuia(nodo, fn) {
   addEventListener("d360:guia", oir);
 }
 /** Nota de la demostración al inicio de la bienvenida. */
-export function avisoDemo() {
+export function avisoDemo(boton = "Saltar por ahora") {
   return h("div.aviso.info", { style: "margin:0 0 1rem" }, h("strong", "Estás en la demostración. "),
-    "Esto es lo mismo que verás al crear tu cuenta. Hazlo con datos de prueba (se borran cada noche) o toca «Saltar por ahora» para explorar.");
+    `Esto es lo mismo que verás al crear tu cuenta. Hazlo con datos de prueba (se borran cada noche) o toca «${boton}» para recorrerla libremente.`);
 }
 function cerrarDialogo() { document.querySelectorAll("dialog.modal").forEach((d) => { d.close(); d.remove(); }); }
 

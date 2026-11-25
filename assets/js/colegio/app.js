@@ -8,9 +8,11 @@ import { botonTema } from "../core/tema.js";
 import { crearContexto, avisoPlan, textoPlan, iniciarEnrutador } from "../core/panel.js";
 import { seccionMatriculaColegio, seccionTutores, seccionDocumentos, fotoFicha } from "./fichas.js";
 import { seccionEstadoCuenta } from "../academia/matriculas.js";
+import { cargarGuia, botonGuia, bienvenidaColegio } from "../core/guia.js";
 
 const ctx = await crearContexto("colegio");
 if (ctx.rol === "tutor") { location.replace(ruta("app/familias.html")); await new Promise(() => {}); }
+await cargarGuia(ctx);
 
 // Extensiones del expediente del estudiante
 ctx.accionesFicha = [];
@@ -76,6 +78,30 @@ const app = h("div.a-app",
     main));
 document.getElementById("app").replaceChildren(app);
 
+// Primeros pasos: botón con el avance (solo la dirección dueña de la cuenta)
+const guia = botonGuia(ctx);
+guia.classList.add("en-academia");
+document.body.append(guia);
+ctx.botonGuia = guia;
+
 iniciarEnrutador(ctx, main, RUTAS, {
-  alNavegar: (r) => { tituloRuta.textContent = RUTAS.find((x) => x.r === r)?.t || ""; },
+  // Consejo de una línea la primera vez que se entra a cada sección
+  ayudas: {
+    institucion: "aquí van el logo, el lema y los cortes de evaluación del año (bimestres o trimestres). Aparecen en los boletines.",
+    estructura: "primero los grados (con su matrícula y colegiatura), luego sus secciones, el plan de estudios y quién da cada asignatura.",
+    docentes: "cada docente recibe su código personal para entrar. Solo ve sus secciones y asignaturas.",
+    horarios: "toca un espacio libre de la cuadrícula para poner una clase. El sistema avisa si un docente queda en dos lugares a la vez.",
+    matriculas: "al matricular se generan solas la matrícula y las colegiaturas del año según el grado. Puedes cobrar en el mismo momento.",
+    calificaciones: "crea la evaluación (examen, tarea, proyecto) y pon las notas. Los promedios por corte se calculan solos.",
+    boletines: "los boletines se arman solos con las notas y la asistencia. Agrega un comentario del maestro guía e imprímelos.",
+    familias: "cada padre o tutor recibe su código para ver las notas, la asistencia, los avisos y los pagos de su hijo.",
+    comunicados: "un comunicado para todo el colegio, un grado o una sección llega al portal de las familias y a los docentes.",
+  },
+  alNavegar: (r) => { tituloRuta.textContent = RUTAS.find((x) => x.r === r)?.t || ""; guia.actualizar(); },
 });
+
+// Primera vez: bienvenida (la dirección dueña, si todavía no hay secciones; en la demo, siempre la primera vez)
+if (ctx.esDueno && !ctx.guia.bienvenida && !new URLSearchParams(location.search).has("precarga")) {
+  if (ctx.cuenta.es_demo) bienvenidaColegio(ctx);
+  else import("./util.js").then((m) => m.estructura(ctx)).then((E) => { if (!E.secciones?.length) bienvenidaColegio(ctx); }).catch(() => {});
+}
