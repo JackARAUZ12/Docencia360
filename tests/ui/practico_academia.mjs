@@ -107,12 +107,13 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   await bv.locator('input[type="number"]').first().fill("1200");
   await bv.getByRole("button", { name: "Continuar" }).click(); await p.waitForTimeout(700);
   ok(llamadas.some(([t, d]) => t === "cursos" && d.nombre === "Inglés A1" && Number(d.mensualidad) === 1200), "bienvenida: crea el curso con su mensualidad");
-  await bv.locator(".bv-dia", { hasText: "Lun" }).click(); await bv.locator(".bv-dia", { hasText: "Mié" }).click();
+  await bv.getByRole("checkbox", { name: "Lunes" }).check(); await bv.getByRole("checkbox", { name: "Sábado" }).check();
+  await bv.getByLabel("Sábado: empieza").fill("08:00"); await bv.getByLabel("Sábado: termina").fill("10:00");
   await bv.locator('select[aria-label="Instructor"]').selectOption("nuevo");
   await bv.locator('input[aria-label="Nombre del instructor nuevo"]').fill("Sarah Johnson");
   await p.screenshot({ path: `${OUT}/bienvenida-grupo.png` });
   await bv.getByRole("button", { name: "Crear el grupo" }).click(); await p.waitForTimeout(900);
-  ok(llamadas.some(([t]) => t === "grupos") && llamadas.some(([t, d]) => t === "horarios" && Array.isArray(d) && d.length === 2) && llamadas.some(([t]) => t === "grupo_docentes"), "bienvenida: crea el grupo con horario de 2 días e instructor");
+  ok(llamadas.some(([t]) => t === "grupos") && llamadas.some(([t, d]) => t === "horarios" && Array.isArray(d) && d.length === 2 && d[1].dia === 6 && d[1].hora_inicio === "08:00" && d[0].hora_inicio !== "08:00") && llamadas.some(([t]) => t === "grupo_docentes"), "bienvenida: crea el grupo con horario de 2 días (cada uno con su hora) e instructor");
   await bv.locator("textarea").fill("Ana Sofía López\nCarlos Pérez Ruiz");
   await bv.getByRole("button", { name: "Agregar al grupo" }).click(); await p.waitForTimeout(900);
   ok(imp?.p_filas?.length === 2 && imp.p_grupo === "grupos-nuevo", "bienvenida: agrega la lista de estudiantes al grupo");

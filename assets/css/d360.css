@@ -410,3 +410,13 @@ a.btn-texto[href="#/cuenta"] { white-space: normal; text-align: left; max-width:
 .bloqueo-caja h1 { font-size: 1.5rem; margin: 0 0 .75rem; }
 .bloqueo-caja p { margin: 0 0 .75rem; line-height: 1.5; }
 .bloqueo-caja .btn { margin-top: .5rem; }
+/* Horario por día */
+.horario-dias { display: grid; gap: .35rem; }
+.hd-fila { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; padding: .35rem .6rem; border: 1px solid var(--renglon); border-radius: var(--radio-sm, 8px); }
+.hd-fila.activa { border-color: var(--acento); background: var(--acento-suave); }
+.hd-dia { display: inline-flex; align-items: center; gap: .45rem; font-weight: 600; min-width: 8rem; cursor: pointer; }
+.hd-horas { display: inline-flex; align-items: center; gap: .4rem; }
+.hd-horas input[type=time] { width: 9rem; min-width: 0; }
+.hd-fila:not(.activa) .hd-horas { display: none; }   /* solo los días marcados piden hora */
+@media (max-width: 560px) { .hd-horas { flex: 1 1 100%; } .hd-horas input[type=time] { flex: 1 1 0; width: auto; } }
+.hd-pie { display: flex; justify-content: flex-end; }

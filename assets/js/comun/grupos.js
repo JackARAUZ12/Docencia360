@@ -3,6 +3,7 @@ import { sb, q } from "../core/sb.js";
 import { h, tabla, formularioModal, confirmar, modal, fecha, hora, DIAS, nombreCompleto, coincide } from "../core/ui.js";
 import { ICONOS } from "../core/iconos.js";
 import { CAMPOS_ESTUDIANTE } from "./estudiantes.js";
+import { selectorHorario } from "./horario_dias.js";
 
 const ESTADO = { planificado: "info", activo: "ok", finalizado: "", cancelado: "mal" };
 
@@ -74,18 +75,31 @@ async function detalle(el, ctx, id) {
   if (!g) { el.append(h("div.aviso.mal", "Grupo no encontrado.")); return; }
   const activos = miembros.filter((m) => m.estado === "activo");
 
-  const agregarHorario = () => formularioModal("Agregar horario", [
-    { name: "dia", label: "Día", type: "select", required: true, options: DIAS.slice(1).map((d, i) => [i + 1, d]) },
-    { name: "hora_inicio", label: "Desde", type: "time", required: true },
-    { name: "hora_fin", label: "Hasta", type: "time", required: true },
-    academia ? { name: "miembro_id", label: "Instructor", type: "select", placeholder: "Sin instructor", options: asignados.map((a) => [a.miembro_id, a.miembros?.nombre]),
-      value: asignados[0]?.miembro_id, help: "Docencia360 avisa si el instructor ya tiene clase a esa hora." } : null,
-  ].filter(Boolean), {}, async (d, cerrar) => {
-    if (d.hora_fin <= d.hora_inicio) throw new Error("La hora de fin debe ser posterior al inicio.");
-    const miembro = academia ? d.miembro_id : ctx.cuenta.miembro_id;
-    await q(sb.from("horarios").insert({ dia: Number(d.dia), hora_inicio: d.hora_inicio, hora_fin: d.hora_fin, grupo_id: id, cuenta_id: ctx.id, miembro_id: miembro || null }));
-    cerrar(); ctx.toast("Horario agregado"); ctx.recargar();
-  }, { boton: "Agregar" });
+  // Agregar horario: se marcan uno o varios días y cada día lleva su propia hora
+  const agregarHorario = () => {
+    const horario = selectorHorario({ inicio: "16:00", fin: "17:30" });
+    const inst = academia ? h("select", { "aria-label": "Instructor" }, h("option", { value: "" }, "Sin instructor"),
+      asignados.map((a) => h("option", { value: a.miembro_id, selected: a.miembro_id === asignados[0]?.miembro_id }, a.miembros?.nombre))) : null;
+    const err = h("div.aviso.mal.oculto", { role: "alert" });
+    modal("Agregar horario", h("div",
+      h("p.suave", "Marca los días de clase. Cada día puede tener su propia hora (por ejemplo, lunes en la tarde y sábado en la mañana)."),
+      err, horario.el,
+      academia ? h("label.campo", { style: "margin-top:.75rem" }, h("span", "Instructor"), inst, h("small.tenue", "Docencia360 avisa si el instructor ya tiene clase a esa hora.")) : null), [
+      { texto: "Cancelar", clase: "btn-sec" },
+      { texto: "Agregar", onclick: async (cerrar) => {
+        err.classList.add("oculto");
+        const dias = horario.valores();
+        const problema = !dias.length ? "Marca al menos un día." : horario.error();
+        if (problema) { err.textContent = problema; err.classList.remove("oculto"); return false; }
+        const miembro = academia ? (inst.value || null) : ctx.cuenta.miembro_id;
+        try {
+          await q(sb.from("horarios").insert(dias.map((v) => ({ ...v, grupo_id: id, cuenta_id: ctx.id, miembro_id: miembro || null }))));
+          cerrar(); ctx.toast(dias.length > 1 ? `${dias.length} horarios agregados` : "Horario agregado"); ctx.recargar();
+        } catch (e) { err.textContent = e.message; err.classList.remove("oculto"); }
+        return false;
+      } },
+    ]);
+  };
 
   const ya = new Set(activos.map((m) => m.estudiante_id));
   const libres = todos.filter((e) => e.estado === "activo" && !ya.has(e.id));

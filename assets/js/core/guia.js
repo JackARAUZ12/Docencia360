@@ -5,6 +5,7 @@
 // cualquier equipo. En la demostración se guarda solo en esta pestaña.
 import { sb, q, mensajeError } from "./sb.js";
 import { h, modal, DIAS } from "./ui.js";
+import { selectorHorario } from "../comun/horario_dias.js";
 
 const CLAVE_DEMO = (ctx) => `d360-guia-demo-${ctx.id}`;
 
@@ -303,9 +304,7 @@ export async function bienvenida(ctx, { forzar = false } = {}) {
   const paso2 = (asignatura, nivel) => {
     marcar(1);
     const nom = h("input", { required: true, maxLength: 100, value: [asignatura, nivel].filter(Boolean).join(" · ") });
-    const dias = h("div.bv-dias", [1, 2, 3, 4, 5, 6, 7].map((d) => h("label.bv-dia", h("input", { type: "checkbox", value: d }), h("span", DIAS[d].slice(0, 3)))));
-    const ini = h("input", { type: "time", value: "16:00" });
-    const fin = h("input", { type: "time", value: "17:30" });
+    const horario = selectorHorario({ inicio: "16:00", fin: "17:30" });   // cada día con su propia hora
     const err = error();
     const btn = h("button.btn", { type: "submit" }, "Crear mi grupo");
     cuerpo.replaceChildren(
@@ -313,9 +312,9 @@ export async function bienvenida(ctx, { forzar = false } = {}) {
       h("p.suave", "Un grupo es una clase: los estudiantes que ves juntos. Elige los días y la hora para que Inicio te avise cuándo pasar lista."),
       h("form.bv-form", { onsubmit: async (e) => {
         e.preventDefault();
-        const marcados = [...dias.querySelectorAll("input:checked")].map((x) => Number(x.value));
+        const dias = horario.valores();
         if (!nom.value.trim()) return nom.focus();
-        if (marcados.length && (!ini.value || !fin.value || fin.value <= ini.value)) return mostrarError(err, new Error("La hora de fin debe ser después de la de inicio."));
+        if (horario.error()) return mostrarError(err, new Error(horario.error()));
         btn.disabled = true; err.classList.add("oculto");
         try {
           const asigs = await ctx.datos.asignaturas(true);
@@ -323,16 +322,15 @@ export async function bienvenida(ctx, { forzar = false } = {}) {
           const asigId = ex ? ex.id : (await q(sb.from("asignaturas").insert({ cuenta_id: ctx.id, nombre: asignatura }).select("id").single())).id;
           const g = await q(sb.from("grupos").insert({ cuenta_id: ctx.id, nombre: nom.value.trim(), asignatura_id: asigId, estado: "activo" }).select("id,nombre").single());
           estado.grupo = g.id; estado.grupoNombre = g.nombre;
-          if (marcados.length) {
-            await q(sb.from("horarios").insert(marcados.map((d) => ({ cuenta_id: ctx.id, grupo_id: g.id, miembro_id: ctx.cuenta.miembro_id, dia: d, hora_inicio: ini.value, hora_fin: fin.value }))));
+          if (dias.length) {
+            await q(sb.from("horarios").insert(dias.map((v) => ({ cuenta_id: ctx.id, grupo_id: g.id, miembro_id: ctx.cuenta.miembro_id, ...v }))));
           }
           ctx.datos.invalidar("grupos", "asignaturas");
           paso3();
         } catch (ex) { mostrarError(err, ex); btn.disabled = false; }
       } },
         h("label.campo", h("span", "Nombre del grupo"), nom),
-        h("fieldset.campo", h("legend", "Días de clase (opcional)"), dias),
-        h("div.bv-horas", h("label.campo", h("span", "Empieza"), ini), h("label.campo", h("span", "Termina"), fin)),
+        h("fieldset.campo", h("legend", "Días y horas de clase (opcional) · cada día puede tener su propia hora"), horario.el),
         err,
         h("div.bv-pie", h("button.btn.btn-sec", { type: "button", onclick: paso1 }, "Atrás"), btn)));
     nom.focus();

@@ -41,13 +41,19 @@ for (const [w, hh, tag] of [[390, 844, "movil"], [1366, 900, "pc"]]) {
   await bv.locator("input[name=nivel]").fill("9no grado");
   await bv.getByRole("button", { name: "Continuar" }).click();
   await page.waitForTimeout(300);
-  await bv.locator(".bv-dia", { hasText: "Lun" }).click();
-  await bv.locator(".bv-dia", { hasText: "Mié" }).click();
+  // Horario por día: lunes a una hora y miércoles a otra
+  await bv.getByRole("checkbox", { name: "Lunes" }).check();
+  await bv.getByRole("checkbox", { name: "Miércoles" }).check();
+  ok(await bv.getByLabel("Miércoles: empieza").inputValue() === "16:00", `${tag} al marcar otro día copia la hora del anterior`);
+  await bv.getByLabel("Miércoles: empieza").fill("18:00");
+  await bv.getByLabel("Miércoles: termina").fill("19:30");
+  ok(await bv.getByLabel("Martes: empieza").isDisabled(), `${tag} los días sin marcar no piden hora`);
   await page.screenshot({ path: `${OUT}/${tag}-2-grupo.png` });
   await bv.getByRole("button", { name: "Crear mi grupo" }).click();
   await page.waitForTimeout(600);
   ok(enviado.grupos?.nombre === "Matemática · 9no grado" && enviado.grupos?.estado === "activo", `${tag} se crea el grupo con nombre sugerido`);
-  ok(Array.isArray(enviado.horarios) && enviado.horarios.length === 2 && enviado.horarios[0].hora_inicio === "16:00", `${tag} se guarda el horario de los días marcados`);
+  ok(Array.isArray(enviado.horarios) && enviado.horarios.length === 2 && enviado.horarios[0].dia === 1 && enviado.horarios[0].hora_inicio === "16:00"
+    && enviado.horarios[1].dia === 3 && enviado.horarios[1].hora_inicio === "18:00" && enviado.horarios[1].hora_fin === "19:30", `${tag} cada día se guarda con su propia hora (lunes 16:00, miércoles 18:00–19:30)`);
   ok(await bv.getByRole("button", { name: /Con una plantilla de Excel/ }).isVisible() && await bv.getByRole("button", { name: /Saltar: lo hago después/ }).isVisible(), `${tag} el paso de estudiantes ofrece lista, Excel o saltar`);
   await page.screenshot({ path: `${OUT}/${tag}-3-opciones.png` });
   // Camino Excel: descargar la plantilla, volver atrás y usar la lista (el Excel se prueba aparte)

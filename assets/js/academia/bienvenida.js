@@ -5,6 +5,7 @@
 import { sb, q, mensajeError } from "../core/sb.js";
 import { h, DIAS } from "../core/ui.js";
 import { avisoDemo } from "../core/guia.js";
+import { selectorHorario } from "../comun/horario_dias.js";
 
 export async function bienvenidaAcademia(ctx, { forzar = false } = {}) {
   if (!ctx.esDueno || (!forzar && ctx.guia?.bienvenida)) return;
@@ -61,8 +62,7 @@ export async function bienvenidaAcademia(ctx, { forzar = false } = {}) {
     marcar(1);
     const instructores = await q(sb.from("miembros").select("id,nombre").eq("cuenta_id", ctx.id).eq("rol", "docente").eq("activo", true).order("nombre")).catch(() => []);
     const nom = h("input", { required: true, maxLength: 100, value: est.curso.nombre, placeholder: `${est.curso.nombre} · sábado mañana` });
-    const dias = h("div.bv-dias", [1, 2, 3, 4, 5, 6, 7].map((d) => h("label.bv-dia", h("input", { type: "checkbox", value: d }), h("span", DIAS[d].slice(0, 3)))));
-    const ini = h("input", { type: "time", value: "18:00" }), finH = h("input", { type: "time", value: "19:30" });
+    const horario = selectorHorario({ inicio: "18:00", fin: "19:30" });   // cada día con su propia hora
     const inst = h("select", { "aria-label": "Instructor" },
       h("option", { value: "" }, "Lo asigno después"),
       instructores.map((m) => h("option", { value: m.id }, m.nombre)),
@@ -76,9 +76,9 @@ export async function bienvenidaAcademia(ctx, { forzar = false } = {}) {
       h("p.suave", "Un grupo es el curso en un horario, por ejemplo «Inglés A1 · sábado mañana». Con el horario, el sistema avisa a qué hora pasar lista y calcula las horas del instructor."),
       h("form.bv-form", { onsubmit: async (e) => {
         e.preventDefault();
-        const marcados = [...dias.querySelectorAll("input:checked")].map((x) => Number(x.value));
+        const dias = horario.valores();
         if (!nom.value.trim()) return nom.focus();
-        if (marcados.length && (!ini.value || !finH.value || finH.value <= ini.value)) return error(err, new Error("La hora de fin debe ser después de la de inicio."));
+        if (horario.error()) return error(err, new Error(horario.error()));
         if (inst.value === "nuevo" && nuevoInst.value.trim().length < 2) return nuevoInst.focus();
         btn.disabled = true; err.classList.add("oculto");
         try {
@@ -90,13 +90,12 @@ export async function bienvenidaAcademia(ctx, { forzar = false } = {}) {
           const g = await q(sb.from("grupos").insert({ cuenta_id: ctx.id, nombre: nom.value.trim().replace(/[\s·\-–]+$/, ""), curso_id: est.curso.id, estado: "activo" }).select("id,nombre").single());
           est.grupo = g.id; est.grupoNombre = g.nombre;
           if (miembro) await q(sb.from("grupo_docentes").insert({ cuenta_id: ctx.id, grupo_id: g.id, miembro_id: miembro }));
-          if (marcados.length) await q(sb.from("horarios").insert(marcados.map((d) => ({ cuenta_id: ctx.id, grupo_id: g.id, miembro_id: miembro, dia: d, hora_inicio: ini.value, hora_fin: finH.value }))));
+          if (dias.length) await q(sb.from("horarios").insert(dias.map((v) => ({ cuenta_id: ctx.id, grupo_id: g.id, miembro_id: miembro, ...v }))));
           ctx.datos.invalidar("grupos", "instructores"); paso3();
         } catch (ex) { error(err, ex); btn.disabled = false; }
       } },
         h("label.campo", h("span", "Nombre del grupo"), nom),
-        h("fieldset.campo", h("legend", "Días de clase (opcional)"), dias),
-        h("div.bv-horas", h("label.campo", h("span", "Empieza"), ini), h("label.campo", h("span", "Termina"), finH)),
+        h("fieldset.campo", h("legend", "Días y horas de clase (opcional) · cada día puede tener su propia hora"), horario.el),
         h("label.campo", h("span", "¿Quién da la clase?"), inst), nuevoInst,
         err, h("div.bv-pie", btn)));
     nom.focus(); nom.setSelectionRange(nom.value.length, nom.value.length);

@@ -2,7 +2,7 @@
 // Guarda la aplicación en el equipo para que abra aunque no haya internet.
 // Con internet siempre se usa la versión más nueva del servidor; la copia es el respaldo.
 // Los datos NO pasan por aquí: los maneja assets/js/core/offline.js.
-const VERSION = "c0f7fd205808";
+const VERSION = "c9218c17b399";
 const CACHE = `d360-app-${VERSION}`;
 const ARCHIVOS = ["alumno.html",
   "app/academia.html",
@@ -55,6 +55,7 @@ const ARCHIVOS = ["alumno.html",
   "assets/js/comun/enlinea.js",
   "assets/js/comun/estudiantes.js",
   "assets/js/comun/grupos.js",
+  "assets/js/comun/horario_dias.js",
   "assets/js/comun/importar.js",
   "assets/js/comun/movimientos.js",
   "assets/js/comun/reporte.js",
